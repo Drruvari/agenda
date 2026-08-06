@@ -1,18 +1,55 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { DataProvider } from '@/data';
+import { configureReminders } from '@/native/notifications/reminders';
+import { fontAssets, useAppAppearance } from '@/theme';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontError, fontsLoaded]);
+
+  useEffect(() => {
+    void configureReminders();
+  }, []);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <DataProvider>
+        <ThemedNavigation />
+      </DataProvider>
+    </GestureHandlerRootView>
   );
 }
+
+function ThemedNavigation() {
+  const { colorScheme, theme } = useAppAppearance();
+  return (
+    <>
+      <Stack screenOptions={{ contentStyle: { backgroundColor: theme.background } }}>
+        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
+      </Stack>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
