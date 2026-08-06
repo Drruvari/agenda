@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.9",
+    "@shopify/react-native-skia": "2.6.2",
     "@tabler/icons-react-native": "^3.46.0",
     "expo": "^57.0.0",
     "expo-blur": "~57.0.2",

@@ -2,7 +2,7 @@ import { BlurTargetView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -36,6 +36,7 @@ import {
   useData,
 } from '@/data';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
+import { TodaysPage } from '@/features/todays-page/TodaysPage';
 import { useDayTransition } from '@/hooks/useDayTransition';
 import { usePlannerGestures } from '@/hooks/usePlannerGestures';
 import { triggerHaptic } from '@/lib/haptics';
@@ -63,7 +64,6 @@ import {
 import {
   type AgendaTheme,
   continuousCorner,
-  editorFontFamily,
   fonts,
   motion,
   rgba,
@@ -160,18 +160,15 @@ export default function PlannerScreen() {
   const insets = useSafeAreaInsets();
   const { style: dayTransitionStyle, run: runDayTransition } = useDayTransition();
   const blurTarget = useRef<View | null>(null);
-  const noteInputRef = useRef<TextInput | null>(null);
-  const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [view, setView] = useState<TodayViewModel | null>(null);
   const [deviceEvents, setDeviceEvents] = useState<DeviceCalendarEvent[]>([]);
   const [deviceBirthdays, setDeviceBirthdays] = useState<DeviceBirthday[]>([]);
   const [systemReminders, setSystemReminders] = useState<DeviceSystemReminder[]>([]);
   const [calendarAccess, setCalendarAccess] = useState<CalendarAccessState>('undetermined');
   const [birthdayAccess, setBirthdayAccess] = useState<BirthdayAccessState>('undetermined');
-  const [note, setNote] = useState('');
-  const [noteEditing, setNoteEditing] = useState(false);
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(100);
+  const [drawingActive, setDrawingActive] = useState(false);
   const today = toLocalDateString();
   const mode: Mode =
     ui.selectedDate < today ? 'Recent' : ui.selectedDate > today ? 'Upcoming' : 'Today';
@@ -222,20 +219,12 @@ export default function PlannerScreen() {
     setDeviceEvents(nativeEvents);
     setDeviceBirthdays(birthdays);
     setSystemReminders(reminders);
-    setNote(next.dailyNote?.bodyText ?? '');
   }, [repos, settings.general.showCompleted, ui.activeSpaceId, ui.selectedDate]);
 
   useEffect(() => {
     const timer = setTimeout(() => void reload(), 0);
     return () => clearTimeout(timer);
   }, [reload, revision]);
-
-  useEffect(
-    () => () => {
-      if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
-    },
-    [],
-  );
 
   const connectCalendar = async () => {
     setCalendarAccess(await requestCalendarAccess());
@@ -493,29 +482,6 @@ export default function PlannerScreen() {
     }
   };
 
-  const changeNote = (value: string) => {
-    let nextValue = value;
-    if (settings.editor.continueNumberedLists && value.endsWith('\n')) {
-      const previousLine = value.slice(0, -1).split('\n').at(-1) ?? '';
-      const match = previousLine.match(/^(\s*)(\d+)\.\s+.+/);
-      if (match) nextValue += `${match[1]}${Number(match[2]) + 1}. `;
-    }
-    setNote(nextValue);
-    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
-    const date = ui.selectedDate;
-    noteSaveTimer.current = setTimeout(() => {
-      void repos.notes
-        .saveBody(date, nextValue)
-        .then(refresh)
-        .catch((error: unknown) => {
-          triggerHaptic('error');
-          showToast(error instanceof Error ? error.message : 'Could not save note', {
-            tone: 'error',
-          });
-        });
-    }, 500);
-  };
-
   const chooseDate = useCallback(
     (date: Date) => {
       const selectedDate = toLocalDateString(date);
@@ -628,6 +594,7 @@ export default function PlannerScreen() {
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               scrollEventThrottle={16}
+              scrollEnabled={!drawingActive}
               bounces
               alwaysBounceVertical
               overScrollMode="always"
@@ -851,73 +818,14 @@ export default function PlannerScreen() {
                       )}
                     </View>
 
-                    <View style={styles.groupCard}>
-                      <View style={styles.noteHeader}>
-                        <Text style={styles.noteHeading}>Today’s page</Text>
-                        <View style={styles.headerActions}>
-                          <SquareIconButton
-                            name="writing"
-                            tone="accentSoft"
-                            onPress={() => {
-                              setNoteEditing(true);
-                              requestAnimationFrame(() => noteInputRef.current?.focus());
-                            }}
-                            accessibilityLabel="Edit today's note"
-                          />
-                          <SquareIconButton
-                            name="fileExport"
-                            tone="accentSoft"
-                            onPress={() =>
-                              void Share.share({
-                                message: note || 'Today’s page is empty.',
-                              })
-                            }
-                            accessibilityLabel="Export today's page"
-                          />
-                        </View>
-                      </View>
-
-                      {settings.editor.renderMarkdown && !noteEditing ? (
-                        <AnimatedPressable
-                          accessibilityLabel="Edit rendered markdown"
-                          onPress={() => setNoteEditing(true)}
-                          pressScale={0.99}
-                          style={[
-                            styles.noteInput,
-                            {
-                              padding: settings.editor.pageMargin,
-                              minHeight: 256,
-                            },
-                          ]}
-                        >
-                          <MarkdownPreview
-                            body={note}
-                            fontFamily={editorFontFamily(settings.editor.font)}
-                            fontSize={settings.editor.fontSize}
-                          />
-                        </AnimatedPressable>
-                      ) : (
-                        <TextInput
-                          ref={noteInputRef}
-                          value={note}
-                          onChangeText={changeNote}
-                          onBlur={() => setNoteEditing(false)}
-                          multiline
-                          textAlignVertical="top"
-                          placeholder="Write something..."
-                          placeholderTextColor={C.placeholder}
-                          style={[
-                            styles.noteInput,
-                            {
-                              padding: settings.editor.pageMargin,
-                              fontFamily: editorFontFamily(settings.editor.font),
-                              fontSize: settings.editor.fontSize,
-                              lineHeight: Math.round(settings.editor.fontSize * 1.4),
-                            },
-                          ]}
-                        />
-                      )}
-                    </View>
+                    <TodaysPage
+                      date={ui.selectedDate}
+                      repos={repos}
+                      settings={settings}
+                      onDrawingActiveChange={setDrawingActive}
+                      onError={(message) => showToast(message, { tone: 'error' })}
+                      onPersisted={refresh}
+                    />
                   </View>
                 </Animated.View>
               </Animated.View>
