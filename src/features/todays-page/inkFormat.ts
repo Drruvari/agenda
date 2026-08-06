@@ -11,6 +11,8 @@ export type InkStroke = {
   id: string;
   color: string;
   width: number;
+  /** 0–1, used for highlighter strokes. Defaults to 1. */
+  opacity?: number;
   points: InkPoint[];
 };
 
@@ -36,11 +38,13 @@ export function createStroke(
   color: string,
   width: number,
   points: InkPoint[] = [],
+  opacity = 1,
 ): InkStroke {
   return {
     id: createId(),
     color,
     width,
+    ...(opacity < 1 ? { opacity } : {}),
     points,
   };
 }
@@ -52,6 +56,7 @@ export function serializeInk(doc: InkDocument): string {
       id: stroke.id,
       color: stroke.color,
       width: stroke.width,
+      ...(stroke.opacity != null && stroke.opacity < 1 ? { opacity: stroke.opacity } : {}),
       points: stroke.points.map((point) =>
         point.p == null ? { x: point.x, y: point.y } : { x: point.x, y: point.y, p: point.p },
       ),
@@ -94,6 +99,9 @@ export function parseInk(data: string | null | undefined): InkDocument {
           id: typeof stroke.id === 'string' ? stroke.id : createId(),
           color: typeof stroke.color === 'string' ? stroke.color : '#000000',
           width: typeof stroke.width === 'number' && stroke.width > 0 ? stroke.width : 3,
+          ...(typeof stroke.opacity === 'number' && stroke.opacity < 1
+            ? { opacity: Math.max(0.05, Math.min(1, stroke.opacity)) }
+            : {}),
           points,
         };
       })
@@ -115,6 +123,28 @@ export function parseInk(data: string | null | undefined): InkDocument {
   } catch {
     return { ...EMPTY_INK, strokes: [] };
   }
+}
+
+/** Lowest painted Y for strokes (includes half stroke width). */
+export function inkContentBottom(
+  strokes: InkStroke[],
+  livePoints?: InkPoint[],
+  liveWidth = 0,
+): number {
+  let maxY = 0;
+  for (const stroke of strokes) {
+    const pad = stroke.width * 0.5;
+    for (const point of stroke.points) {
+      maxY = Math.max(maxY, point.y + pad);
+    }
+  }
+  if (livePoints && livePoints.length > 0) {
+    const pad = liveWidth * 0.5;
+    for (const point of livePoints) {
+      maxY = Math.max(maxY, point.y + pad);
+    }
+  }
+  return maxY;
 }
 
 /** Approximate distance from a world point to a polyline stroke. */

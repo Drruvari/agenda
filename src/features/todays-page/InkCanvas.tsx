@@ -1,44 +1,58 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+/* eslint-disable react-hooks/refs -- handlers read latest stroke refs by design */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, PointerType } from 'react-native-gesture-handler';
-import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
 import { runOnJS } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 import {
   createStroke,
   distanceToStroke,
+  inkContentBottom,
   type InkDocument,
   type InkPoint,
   type InkStroke,
-  type InkView,
 } from '@/features/todays-page/inkFormat';
-
-export type InkTool = 'pen' | 'eraser';
+import type { InkTool } from '@/features/todays-page/inkTools';
 
 type Props = {
   document: InkDocument;
-  inkColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  strokeOpacity: number;
   penOnly: boolean;
   tool: InkTool;
+  /** When false, ink still renders but does not capture touches. */
+  enabled?: boolean;
   onChange: (next: InkDocument) => void;
-  onDrawingActiveChange?: (active: boolean) => void;
+  /** Live ink bottom Y while stroking (0 when idle) — used to grow the page. */
+  onLiveBottomChange?: (bottom: number) => void;
 };
 
-const MIN_SCALE = 0.4;
-const MAX_SCALE = 4;
-const BASE_WIDTH = 3.2;
 const ERASE_HIT = 18;
 
-type ViewState = InkView;
-
-function pointsToPath(points: InkPoint[]) {
-  const path = Skia.Path.Make();
-  if (points.length === 0) return path;
-  path.moveTo(points[0]!.x, points[0]!.y);
-  for (let index = 1; index < points.length; index += 1) {
-    path.lineTo(points[index]!.x, points[index]!.y);
+/** Smooth quadratic path through stroke points (midpoint technique). */
+function pointsToSvgPath(points: InkPoint[]): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) {
+    const point = points[0]!;
+    return `M ${point.x} ${point.y} L ${point.x + 0.01} ${point.y}`;
   }
-  return path;
+  if (points.length === 2) {
+    return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`;
+  }
+
+  let d = `M ${points[0]!.x} ${points[0]!.y}`;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index]!;
+    const next = points[index + 1]!;
+    const midX = (current.x + next.x) / 2;
+    const midY = (current.y + next.y) / 2;
+    d += ` Q ${current.x} ${current.y} ${midX} ${midY}`;
+  }
+  const last = points[points.length - 1]!;
+  d += ` L ${last.x} ${last.y}`;
+  return d;
 }
 
 function strokeWidthForPressure(base: number, pressure?: number) {
@@ -46,120 +60,148 @@ function strokeWidthForPressure(base: number, pressure?: number) {
   return Math.max(1, base * (0.45 + 0.7 * Math.min(1, Math.max(0, pressure))));
 }
 
-function screenToWorld(x: number, y: number, view: ViewState) {
-  return {
-    x: (x - view.x) / view.scale,
-    y: (y - view.y) / view.scale,
-  };
-}
-
 export function InkCanvas({
   document,
-  inkColor,
+  strokeColor,
+  strokeWidth,
+  strokeOpacity,
   penOnly,
   tool,
+  enabled = true,
   onChange,
-  onDrawingActiveChange,
+  onLiveBottomChange,
 }: Props) {
-  const [strokes, setStrokes] = useState<InkStroke[]>(() => document.strokes);
-  const [view, setView] = useState<ViewState>(() => document.view ?? { x: 0, y: 0, scale: 1 });
+  const strokes = document.strokes;
   const [livePoints, setLivePoints] = useState<InkPoint[]>([]);
-  const [liveWidth, setLiveWidth] = useState(BASE_WIDTH);
+  const [liveWidth, setLiveWidth] = useState(strokeWidth);
+  const [liveOpacity, setLiveOpacity] = useState(strokeOpacity);
   const [layout, setLayout] = useState({ width: 1, height: 1 });
 
   const strokesRef = useRef(strokes);
-  const viewRef = useRef(view);
-  const liveWidthRef = useRef(liveWidth);
-  const sessionRef = useRef<'idle' | 'drawing'>('idle');
-  const panOrigin = useRef({ tx: 0, ty: 0 });
-  const pinchOrigin = useRef({ scale: 1, tx: 0, ty: 0, fx: 0, fy: 0 });
+  const livePointsRef = useRef<InkPoint[]>([]);
+  const liveWidthRef = useRef(strokeWidth);
+  const liveOpacityRef = useRef(strokeOpacity);
+  const strokeColorRef = useRef(strokeColor);
+  const strokeWidthRef = useRef(strokeWidth);
+  const strokeOpacityRef = useRef(strokeOpacity);
+  const sessionRef = useRef(false);
+  const penOnlyRef = useRef(penOnly);
+  const onChangeRef = useRef(onChange);
+  const onLiveBottomChangeRef = useRef(onLiveBottomChange);
 
-  strokesRef.current = strokes;
-  viewRef.current = view;
-  liveWidthRef.current = liveWidth;
+  useEffect(() => {
+    strokesRef.current = strokes;
+  }, [strokes]);
 
-  const emit = useCallback(
-    (nextStrokes: InkStroke[], nextView: ViewState) => {
-      onChange({ version: 1, strokes: nextStrokes, view: nextView });
-    },
-    [onChange],
-  );
+  useEffect(() => {
+    strokeColorRef.current = strokeColor;
+    strokeWidthRef.current = strokeWidth;
+    strokeOpacityRef.current = strokeOpacity;
+  }, [strokeColor, strokeOpacity, strokeWidth]);
 
-  const setActive = useCallback(
-    (active: boolean) => {
-      onDrawingActiveChange?.(active);
-    },
-    [onDrawingActiveChange],
-  );
+  useEffect(() => {
+    penOnlyRef.current = penOnly;
+  }, [penOnly]);
 
-  const allowPointer = useCallback(
-    (pointerType: PointerType) => {
-      if (!penOnly) return true;
-      return pointerType === PointerType.STYLUS;
-    },
-    [penOnly],
-  );
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    onLiveBottomChangeRef.current = onLiveBottomChange;
+  }, [onLiveBottomChange]);
+
+  const reportLiveBottom = useCallback((points: InkPoint[], width: number) => {
+    if (points.length === 0) {
+      onLiveBottomChangeRef.current?.(0);
+      return;
+    }
+    onLiveBottomChangeRef.current?.(inkContentBottom([], points, width));
+  }, []);
+
+  const emit = useCallback((nextStrokes: InkStroke[]) => {
+    onChangeRef.current({
+      version: 1,
+      strokes: nextStrokes,
+      view: { x: 0, y: 0, scale: 1 },
+    });
+  }, []);
+
+  const allowPointer = useCallback((pointerType: number) => {
+    if (!penOnlyRef.current) return true;
+    return pointerType === PointerType.STYLUS;
+  }, []);
 
   const beginStroke = useCallback(
-    (x: number, y: number, pointerType: PointerType, pressure?: number) => {
+    (x: number, y: number, pointerType: number, pressure?: number) => {
       if (!allowPointer(pointerType)) return;
-      const world = screenToWorld(x, y, viewRef.current);
-      const width = strokeWidthForPressure(BASE_WIDTH, pressure);
-      setLiveWidth(width);
+      const width = strokeWidthForPressure(strokeWidthRef.current, pressure);
       liveWidthRef.current = width;
-      setLivePoints([{ ...world, p: pressure }]);
-      sessionRef.current = 'drawing';
-      setActive(true);
+      liveOpacityRef.current = strokeOpacityRef.current;
+      setLiveWidth(width);
+      setLiveOpacity(strokeOpacityRef.current);
+      const points = [{ x, y, p: pressure }];
+      livePointsRef.current = points;
+      setLivePoints(points);
+      sessionRef.current = true;
+      reportLiveBottom(points, width);
     },
-    [allowPointer, setActive],
+    [allowPointer, reportLiveBottom],
   );
 
   const moveStroke = useCallback(
-    (x: number, y: number, pointerType: PointerType, pressure?: number) => {
-      if (sessionRef.current !== 'drawing') return;
+    (x: number, y: number, pointerType: number, pressure?: number) => {
+      if (!sessionRef.current) return;
       if (!allowPointer(pointerType)) return;
-      const world = screenToWorld(x, y, viewRef.current);
-      setLivePoints((current) => {
-        const last = current.at(-1);
-        if (last && Math.hypot(last.x - world.x, last.y - world.y) < 0.7) return current;
-        return [...current, { ...world, p: pressure }];
-      });
+      const last = livePointsRef.current.at(-1);
+      if (last && Math.hypot(last.x - x, last.y - y) < 0.45) return;
+      const next = [...livePointsRef.current, { x, y, p: pressure }];
+      livePointsRef.current = next;
+      // Keep width reactive to pressure for a more natural pen feel.
+      const width = strokeWidthForPressure(strokeWidthRef.current, pressure);
+      liveWidthRef.current = width;
+      setLiveWidth(width);
+      setLivePoints(next);
+      reportLiveBottom(next, width);
     },
-    [allowPointer],
+    [allowPointer, reportLiveBottom],
   );
 
   const endStroke = useCallback(() => {
-    if (sessionRef.current !== 'drawing') return;
-    sessionRef.current = 'idle';
-    setLivePoints((points) => {
-      if (points.length > 0) {
-        const stroke = createStroke(inkColor, liveWidthRef.current, points);
-        const next = [...strokesRef.current, stroke];
-        strokesRef.current = next;
-        setStrokes(next);
-        emit(next, viewRef.current);
-      }
-      return [];
-    });
-    setActive(false);
-  }, [emit, inkColor, setActive]);
+    if (!sessionRef.current) return;
+    sessionRef.current = false;
+    const points = livePointsRef.current;
+    livePointsRef.current = [];
+    setLivePoints([]);
+    reportLiveBottom([], 0);
+    if (points.length === 0) return;
+    emit([
+      ...strokesRef.current,
+      createStroke(
+        strokeColorRef.current,
+        liveWidthRef.current,
+        points,
+        liveOpacityRef.current,
+      ),
+    ]);
+  }, [emit, reportLiveBottom]);
 
   const cancelStroke = useCallback(() => {
-    if (sessionRef.current !== 'drawing') return;
-    sessionRef.current = 'idle';
+    if (!sessionRef.current) return;
+    sessionRef.current = false;
+    livePointsRef.current = [];
     setLivePoints([]);
-    setActive(false);
-  }, [setActive]);
+    reportLiveBottom([], 0);
+  }, [reportLiveBottom]);
 
   const eraseAt = useCallback(
-    (x: number, y: number, pointerType: PointerType) => {
+    (x: number, y: number, pointerType: number) => {
       if (!allowPointer(pointerType)) return;
-      const world = screenToWorld(x, y, viewRef.current);
       const current = strokesRef.current;
       let hitId: string | null = null;
       let best = ERASE_HIT;
       for (const stroke of current) {
-        const distance = distanceToStroke(stroke, world.x, world.y);
+        const distance = distanceToStroke(stroke, x, y);
         const threshold = Math.max(ERASE_HIT, stroke.width * 2.5);
         if (distance <= threshold && distance < best) {
           best = distance;
@@ -167,147 +209,113 @@ export function InkCanvas({
         }
       }
       if (!hitId) return;
-      const next = current.filter((stroke) => stroke.id !== hitId);
-      strokesRef.current = next;
-      setStrokes(next);
-      emit(next, viewRef.current);
+      emit(current.filter((stroke) => stroke.id !== hitId));
     },
     [allowPointer, emit],
   );
 
-  const updatePan = useCallback((translationX: number, translationY: number) => {
-    const next = {
-      x: panOrigin.current.tx + translationX,
-      y: panOrigin.current.ty + translationY,
-      scale: viewRef.current.scale,
-    };
-    viewRef.current = next;
-    setView(next);
-  }, []);
-
-  const updatePinch = useCallback((scaleFactor: number) => {
-    const origin = pinchOrigin.current;
-    const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, origin.scale * scaleFactor));
-    const ratio = nextScale / origin.scale;
-    const next = {
-      scale: nextScale,
-      x: origin.fx - (origin.fx - origin.tx) * ratio,
-      y: origin.fy - (origin.fy - origin.ty) * ratio,
-    };
-    viewRef.current = next;
-    setView(next);
-  }, []);
-
-  const persistView = useCallback(() => {
-    emit(strokesRef.current, viewRef.current);
-  }, [emit]);
-
-  const drawGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(tool === 'pen')
-        .maxPointers(1)
-        .averageTouches(false)
-        .activeOffsetX([-3, 3])
-        .activeOffsetY([-3, 3])
-        .onBegin((event) => {
-          runOnJS(beginStroke)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
-        })
-        .onUpdate((event) => {
-          runOnJS(moveStroke)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
-        })
-        .onEnd(() => {
-          runOnJS(endStroke)();
-        })
-        .onTouchesCancelled(() => {
-          runOnJS(cancelStroke)();
-        }),
-    [beginStroke, cancelStroke, endStroke, moveStroke, tool],
+  // Stable bridges so gestures are not rebuilt every stroke.
+  const beginStrokeJS = useCallback(
+    (x: number, y: number, pointerType: number, pressure?: number) => {
+      beginStroke(x, y, pointerType, pressure);
+    },
+    [beginStroke],
+  );
+  const moveStrokeJS = useCallback(
+    (x: number, y: number, pointerType: number, pressure?: number) => {
+      moveStroke(x, y, pointerType, pressure);
+    },
+    [moveStroke],
+  );
+  const endStrokeJS = useCallback(() => {
+    endStroke();
+  }, [endStroke]);
+  const cancelStrokeJS = useCallback(() => {
+    cancelStroke();
+  }, [cancelStroke]);
+  const eraseAtJS = useCallback(
+    (x: number, y: number, pointerType: number) => {
+      eraseAt(x, y, pointerType);
+    },
+    [eraseAt],
   );
 
-  const eraseGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(tool === 'eraser')
-        .maxPointers(1)
-        .averageTouches(false)
-        .activeOffsetX([-3, 3])
-        .activeOffsetY([-3, 3])
-        .onBegin((event) => {
-          runOnJS(setActive)(true);
-          runOnJS(eraseAt)(event.x, event.y, event.pointerType);
-        })
-        .onUpdate((event) => {
-          runOnJS(eraseAt)(event.x, event.y, event.pointerType);
-        })
-        .onEnd(() => {
-          runOnJS(setActive)(false);
-        })
-        .onFinalize(() => {
-          runOnJS(setActive)(false);
-        }),
-    [eraseAt, setActive, tool],
-  );
+  const inkGesture = useMemo(() => {
+    const isInk = tool === 'pen' || tool === 'highlighter';
+    const isErase = tool === 'eraser';
 
-  const panGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .minPointers(2)
-        .averageTouches(true)
-        .onBegin(() => {
-          panOrigin.current = {
-            tx: viewRef.current.x,
-            ty: viewRef.current.y,
-          };
-        })
-        .onUpdate((event) => {
-          runOnJS(updatePan)(event.translationX, event.translationY);
-        })
-        .onEnd(() => {
-          runOnJS(persistView)();
-        }),
-    [persistView, updatePan],
-  );
+    return Gesture.Pan()
+      .enabled(enabled && (isInk || isErase))
+      .maxPointers(1)
+      .averageTouches(false)
+      .manualActivation(true)
+      .onTouchesDown((event, state) => {
+        'worklet';
+        if (event.numberOfTouches < 1) {
+          state.fail();
+          return;
+        }
+        // Pen-only: let finger pass through to scroll / type.
+        if (penOnly && event.pointerType !== PointerType.STYLUS) {
+          state.fail();
+          return;
+        }
+        state.activate();
+      })
+      .onStart((event) => {
+        'worklet';
+        if (isErase) {
+          runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
+          return;
+        }
+        runOnJS(beginStrokeJS)(
+          event.x,
+          event.y,
+          event.pointerType,
+          event.stylusData?.pressure,
+        );
+      })
+      .onUpdate((event) => {
+        'worklet';
+        if (isErase) {
+          runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
+          return;
+        }
+        runOnJS(moveStrokeJS)(
+          event.x,
+          event.y,
+          event.pointerType,
+          event.stylusData?.pressure,
+        );
+      })
+      .onEnd(() => {
+        'worklet';
+        if (!isErase) runOnJS(endStrokeJS)();
+      })
+      .onFinalize((_event, success) => {
+        'worklet';
+        if (!success && !isErase) runOnJS(cancelStrokeJS)();
+      });
+  }, [
+    beginStrokeJS,
+    cancelStrokeJS,
+    enabled,
+    endStrokeJS,
+    eraseAtJS,
+    moveStrokeJS,
+    penOnly,
+    tool,
+  ]);
 
-  const pinchGesture = useMemo(
-    () =>
-      Gesture.Pinch()
-        .onBegin((event) => {
-          pinchOrigin.current = {
-            scale: viewRef.current.scale,
-            tx: viewRef.current.x,
-            ty: viewRef.current.y,
-            fx: event.focalX,
-            fy: event.focalY,
-          };
-        })
-        .onUpdate((event) => {
-          runOnJS(updatePinch)(event.scale);
-        })
-        .onEnd(() => {
-          runOnJS(persistView)();
-        }),
-    [persistView, updatePinch],
-  );
-
-  const composed = useMemo(
-    () =>
-      Gesture.Simultaneous(
-        Gesture.Exclusive(drawGesture, eraseGesture),
-        panGesture,
-        pinchGesture,
-      ),
-    [drawGesture, eraseGesture, panGesture, pinchGesture],
-  );
-
-  const livePath = useMemo(() => pointsToPath(livePoints), [livePoints]);
+  const livePath = useMemo(() => pointsToSvgPath(livePoints), [livePoints]);
   const committed = useMemo(
     () =>
       strokes.map((stroke) => ({
         id: stroke.id,
         color: stroke.color,
         width: stroke.width,
-        path: pointsToPath(stroke.points),
+        opacity: stroke.opacity ?? 1,
+        d: pointsToSvgPath(stroke.points),
       })),
     [strokes],
   );
@@ -315,51 +323,47 @@ export function InkCanvas({
   return (
     <View
       style={styles.root}
+      pointerEvents={enabled ? 'auto' : 'none'}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) setLayout({ width, height });
       }}
     >
-      <GestureDetector gesture={composed}>
+      <GestureDetector gesture={inkGesture}>
         <View style={styles.hit} collapsable={false}>
-          <Canvas style={{ width: layout.width, height: layout.height }}>
-            <Group
-              transform={[
-                { translateX: view.x },
-                { translateY: view.y },
-                { scale: view.scale },
-              ]}
-            >
-              {committed.map((stroke) => (
+          <Svg width={layout.width} height={layout.height} style={styles.svg}>
+            {committed.map((stroke) =>
+              stroke.d ? (
                 <Path
                   key={stroke.id}
-                  path={stroke.path}
-                  color={stroke.color}
-                  style="stroke"
+                  d={stroke.d}
+                  stroke={stroke.color}
                   strokeWidth={stroke.width}
-                  strokeCap="round"
-                  strokeJoin="round"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeOpacity={stroke.opacity}
+                  fill="none"
                 />
-              ))}
-              {livePoints.length > 0 ? (
-                <Path
-                  path={livePath}
-                  color={inkColor}
-                  style="stroke"
-                  strokeWidth={liveWidth}
-                  strokeCap="round"
-                  strokeJoin="round"
-                />
-              ) : null}
-            </Group>
-          </Canvas>
+              ) : null,
+            )}
+            {livePath ? (
+              <Path
+                d={livePath}
+                stroke={strokeColor}
+                strokeWidth={liveWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeOpacity={liveOpacity}
+                fill="none"
+              />
+            ) : null}
+          </Svg>
         </View>
       </GestureDetector>
     </View>
   );
 }
 
-/** Imperative helpers used by the page shell. */
 export function undoInkDocument(doc: InkDocument): InkDocument {
   if (doc.strokes.length === 0) return doc;
   return { ...doc, strokes: doc.strokes.slice(0, -1) };
@@ -371,11 +375,17 @@ export function clearInkDocument(doc: InkDocument): InkDocument {
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    minHeight: 256,
-    overflow: 'hidden',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
   },
   hit: {
+    flex: 1,
+  },
+  svg: {
     flex: 1,
   },
 });

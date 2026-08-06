@@ -518,6 +518,7 @@ export default function PlannerScreen() {
   }, [router]);
 
   const {
+    scrollRef,
     composedGesture,
     onScroll,
     onScrollEndDrag,
@@ -528,6 +529,7 @@ export default function PlannerScreen() {
   } = usePlannerGestures({
     onShiftDay: shiftDay,
     onPullAdd: openQuickAdd,
+    gesturesEnabled: !drawingActive,
   });
 
   const setMode = useCallback(
@@ -591,6 +593,7 @@ export default function PlannerScreen() {
 
           <GestureDetector gesture={composedGesture}>
             <Animated.ScrollView
+              ref={scrollRef}
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               scrollEventThrottle={16}
@@ -819,6 +822,7 @@ export default function PlannerScreen() {
                     </View>
 
                     <TodaysPage
+                      key={ui.selectedDate}
                       date={ui.selectedDate}
                       repos={repos}
                       settings={settings}
@@ -951,39 +955,6 @@ function SpaceFilter({
         {label}
       </Text>
     </AnimatedPressable>
-  );
-}
-
-function MarkdownPreview({
-  body,
-  fontFamily,
-  fontSize,
-}: {
-  body: string;
-  fontFamily?: string;
-  fontSize: number;
-}) {
-  const { styles } = usePlannerTheme();
-  if (!body.trim()) return <Text style={styles.markdownPlaceholder}>Write something...</Text>;
-  return (
-    <View style={styles.markdownPreview}>
-      {body.split('\n').map((line, index) => {
-        const heading = /^(#{1,3})\s+(.+)$/.exec(line);
-        const bullet = /^[-*]\s+(.+)$/.exec(line);
-        return (
-          <Text
-            key={`${index}-${line}`}
-            style={[
-              styles.markdownLine,
-              { fontFamily, fontSize, lineHeight: Math.round(fontSize * 1.4) },
-              heading && styles.markdownHeading,
-            ]}
-          >
-            {heading ? heading[2] : bullet ? `•  ${bullet[1]}` : line || ' '}
-          </Text>
-        );
-      })}
-    </View>
   );
 }
 
@@ -1693,35 +1664,6 @@ function createStyles(theme: AgendaTheme) {
       fontFamily: fonts.sansSemi,
       color: C.accent,
     },
-
-    noteHeader: {
-      height: 44,
-      paddingLeft: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    noteHeading: {
-      fontFamily: fonts.serifItalic,
-      fontSize: 20,
-      lineHeight: 20,
-      color: C.text,
-    },
-    noteInput: {
-      height: 256,
-      padding: 16,
-      ...continuousCorner(16),
-      backgroundColor: C.card,
-      fontFamily: fonts.sans,
-      fontSize: 16,
-      lineHeight: 22,
-      color: C.text,
-      outlineStyle: 'none',
-    } as any,
-    markdownPreview: { gap: 2 },
-    markdownLine: { color: C.text },
-    markdownHeading: { fontFamily: fonts.sansSemi, fontSize: 22 },
-    markdownPlaceholder: { color: C.placeholder, fontFamily: fonts.sans, fontSize: 16 },
 
     pressed: {
       opacity: 0.72,

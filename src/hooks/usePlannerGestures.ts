@@ -1,10 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import {
+import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
+  runOnUI,
+  scrollTo,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -20,10 +23,17 @@ export const PULL_ADD_MAX = 120;
 type Options = {
   onShiftDay: (delta: number) => void;
   onPullAdd: () => void;
+  /** When false, day-swipe / pull-add gestures are disabled (e.g. finger drawing). */
+  gesturesEnabled?: boolean;
 };
 
-export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
+export function usePlannerGestures({
+  onShiftDay,
+  onPullAdd,
+  gesturesEnabled = true,
+}: Options) {
   const [isAtTop, setIsAtTop] = useState(true);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const pullY = useSharedValue(0);
   const pullArmed = useSharedValue(false);
@@ -43,6 +53,17 @@ export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
     pullY.value = withSpring(0, motion.settle);
     pullArmed.value = false;
   };
+
+  const scrollBy = useCallback(
+    (delta: number) => {
+      if (delta <= 0) return;
+      runOnUI(() => {
+        'worklet';
+        scrollTo(scrollRef, 0, Math.max(0, scrollY.value + delta), false);
+      })();
+    },
+    [scrollRef, scrollY],
+  );
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -82,6 +103,7 @@ export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
 
   const composedGesture = useMemo(() => {
     const daySwipe = Gesture.Pan()
+      .enabled(gesturesEnabled)
       .maxPointers(1)
       .activeOffsetX([-36, 36])
       .failOffsetY([-22, 22])
@@ -93,7 +115,7 @@ export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
       });
 
     const pullAdd = Gesture.Pan()
-      .enabled(Platform.OS === 'android' && isAtTop)
+      .enabled(gesturesEnabled && Platform.OS === 'android' && isAtTop)
       .maxPointers(1)
       .activeOffsetY(18)
       .failOffsetX([-24, 24])
@@ -123,7 +145,7 @@ export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
 
     return Gesture.Simultaneous(Gesture.Native(), Gesture.Exclusive(daySwipe, pullAdd));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pull shared values are stable
-  }, [hapticJS, isAtTop, onPullAdd, onShiftDay]);
+  }, [gesturesEnabled, hapticJS, isAtTop, onPullAdd, onShiftDay]);
 
   const pullContentStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: Platform.OS === 'android' ? pullY.value : 0 }],
@@ -175,6 +197,8 @@ export function usePlannerGestures({ onShiftDay, onPullAdd }: Options) {
   }));
 
   return {
+    scrollRef,
+    scrollBy,
     composedGesture,
     onScroll,
     onScrollEndDrag,

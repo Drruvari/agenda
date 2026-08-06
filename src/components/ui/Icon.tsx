@@ -18,6 +18,7 @@ import IconDownload from '@tabler/icons-react-native/IconDownload';
 import IconEraser from '@tabler/icons-react-native/IconEraser';
 import IconFileExport from '@tabler/icons-react-native/IconFileExport';
 import IconFileTypePdf from '@tabler/icons-react-native/IconFileTypePdf';
+import IconHighlight from '@tabler/icons-react-native/IconHighlight';
 import IconInfoCircle from '@tabler/icons-react-native/IconInfoCircle';
 import IconMinus from '@tabler/icons-react-native/IconMinus';
 import IconPencil from '@tabler/icons-react-native/IconPencil';
@@ -52,6 +53,7 @@ const icons = {
   fileExport: IconFileExport,
   /** @deprecated Prefer `orbit` — alias for the Agenda mark. */
   galaxy: OrbitLogo,
+  highlight: IconHighlight,
   info: IconInfoCircle,
   expand: IconArrowsMaximize,
   minimize: IconArrowsMinimize,

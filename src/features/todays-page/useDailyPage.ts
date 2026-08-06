@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Repositories } from '@/data/repositories';
-import { EMPTY_INK, type InkDocument, parseInk, serializeInk } from '@/features/todays-page/inkFormat';
+import {
+  EMPTY_INK,
+  type InkDocument,
+  parseInk,
+  serializeInk,
+} from '@/features/todays-page/inkFormat';
 import { triggerHaptic } from '@/lib/haptics';
 
 type Options = {
@@ -18,7 +23,7 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
   const [ink, setInk] = useState<InkDocument>({ ...EMPTY_INK, strokes: [] });
   const [noteId, setNoteId] = useState<string | null>(null);
   const [drawingId, setDrawingId] = useState<string | undefined>();
-  const [ready, setReady] = useState(false);
+  const [loadedDate, setLoadedDate] = useState<string | null>(null);
 
   const bodyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -26,9 +31,18 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
   const drawingIdRef = useRef<string | undefined>(undefined);
   const onErrorRef = useRef(onError);
   const onPersistedRef = useRef(onPersisted);
-  onErrorRef.current = onError;
-  onPersistedRef.current = onPersisted;
-  drawingIdRef.current = drawingId;
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    onPersistedRef.current = onPersisted;
+  }, [onPersisted]);
+
+  useEffect(() => {
+    drawingIdRef.current = drawingId;
+  }, [drawingId]);
 
   const fail = useCallback((error: unknown, fallback: string) => {
     triggerHaptic('error');
@@ -42,32 +56,25 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     if (bodyTimer.current) clearTimeout(bodyTimer.current);
     if (inkTimer.current) clearTimeout(inkTimer.current);
 
-    setReady(false);
-    setBody('');
-    setInk({ ...EMPTY_INK, strokes: [] });
-    setNoteId(null);
-    setDrawingId(undefined);
-
     void (async () => {
       try {
         const note = await repos.notes.getOrCreateForDate(date);
         if (cancelled || dateRef.current !== date) return;
 
-        setNoteId(note.id);
-        setBody(note.bodyText);
-        setDrawingId(note.drawingId);
-
+        let nextInk: InkDocument = { ...EMPTY_INK, strokes: [] };
         if (note.drawingId) {
           const drawing = await repos.notes.getDrawing(note.drawingId);
           if (cancelled || dateRef.current !== date) return;
-          setInk(parseInk(drawing?.data));
-        } else {
-          setInk({ ...EMPTY_INK, strokes: [] });
+          nextInk = parseInk(drawing?.data);
         }
+
+        setNoteId(note.id);
+        setBody(note.bodyText);
+        setDrawingId(note.drawingId);
+        setInk(nextInk);
+        setLoadedDate(date);
       } catch (error) {
         if (!cancelled) fail(error, 'Could not open today’s page');
-      } finally {
-        if (!cancelled && dateRef.current === date) setReady(true);
       }
     })();
 
@@ -155,7 +162,7 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
   );
 
   return {
-    ready,
+    ready: loadedDate === date,
     body,
     ink,
     noteId,
