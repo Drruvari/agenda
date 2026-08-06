@@ -1,9 +1,10 @@
-import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheet, Button, Column, Host, Row, Spacer, Text } from '@expo/ui';
+import { DatePicker } from '@expo/ui/swift-ui';
+import { datePickerStyle } from '@expo/ui/swift-ui/modifiers';
+import { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native';
 
-import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance } from '@/theme';
 
 type Props = {
   onChange: (date: Date) => void;
@@ -14,64 +15,84 @@ type Props = {
   weekStartsOn?: 'sunday' | 'monday';
 };
 
+/** Native iOS calendar sheet — SwiftUI graphical DatePicker in Expo UI BottomSheet. */
 export function CalendarPickerModal({ onChange, onClose, onToday, value, visible }: Props) {
-  const insets = useSafeAreaInsets();
-  const theme = useAppTheme();
-  const { colorScheme } = useAppAppearance();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { accent, colorScheme } = useAppAppearance();
+  const [selection, setSelection] = useState(value);
+  const [presented, setPresented] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setSelection(value);
+      setPresented(true);
+    }
+  }, [visible, value]);
+
+  if (!visible && !presented) {
+    return null;
+  }
+
+  const dismiss = () => {
+    setPresented(false);
+    onClose();
+  };
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
-      <View style={styles.modal}>
-        <Pressable accessibilityLabel="Close calendar" onPress={onClose} style={styles.backdrop} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <View style={styles.topBar}>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={onToday}>
-              <Text style={styles.actionLabel}>Today</Text>
-            </Pressable>
-            <Text style={styles.title}>Choose a date</Text>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={onClose}>
-              <Text style={styles.actionLabel}>Done</Text>
-            </Pressable>
-          </View>
-          <View style={styles.picker}>
-            <DateTimePicker
-              accentColor={theme.primary}
-              display="inline"
-              mode="date"
-              onValueChange={(_, date) => onChange(date)}
-              style={styles.nativePicker}
-              themeVariant={colorScheme}
-              value={value}
+    <Host colorScheme={colorScheme} seedColor={accent} style={styles.host}>
+      <BottomSheet isPresented={presented} onDismiss={dismiss}>
+        <Column spacing={8} style={styles.content}>
+          <Row alignment="center" spacing={4} style={styles.topBar}>
+            <Button
+              label="Today"
+              onPress={() => {
+                const today = new Date();
+                setSelection(today);
+                onToday();
+                dismiss();
+              }}
+              variant="text"
             />
-          </View>
-        </View>
-      </View>
-    </Modal>
+            <Spacer />
+            <Text textStyle={{ fontSize: 17, fontWeight: '600' }}>Choose a date</Text>
+            <Spacer />
+            <Button
+              label="Done"
+              onPress={() => {
+                onChange(selection);
+                dismiss();
+              }}
+              variant="text"
+            />
+          </Row>
+
+          <DatePicker
+            displayedComponents={['date']}
+            modifiers={[datePickerStyle('graphical')]}
+            onDateChange={(date) => {
+              setSelection(date);
+              onChange(date);
+            }}
+            selection={selection}
+          />
+        </Column>
+      </BottomSheet>
+    </Host>
   );
 }
 
-function createStyles(theme: AgendaTheme) {
-  return StyleSheet.create({
-    modal: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: theme.overlay },
-    sheet: {
-      overflow: 'hidden',
-      backgroundColor: theme.card,
-      ...continuousCorner(20),
-    },
-    topBar: {
-      minHeight: 54,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.separator,
-    },
-    title: { color: theme.text, fontFamily: fonts.sansSemi, fontSize: 16 },
-    actionLabel: { color: theme.primary, fontFamily: fonts.sansSemi, fontSize: 15 },
-    picker: { paddingVertical: 8 },
-    nativePicker: { width: '100%' },
-  });
-}
+const styles = StyleSheet.create({
+  host: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 80,
+    elevation: 80,
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  topBar: {
+    height: 44,
+    paddingHorizontal: 4,
+  },
+});
