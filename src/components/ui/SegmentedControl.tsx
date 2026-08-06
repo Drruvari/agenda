@@ -61,10 +61,11 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
           <AnimatedPressable
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            disabled={active}
             haptic="selection"
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!active) onChange(option.value);
+            }}
             pressedStyle={styles.pressed}
             style={styles.segment}
           >

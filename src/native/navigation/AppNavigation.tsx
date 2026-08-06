@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { OnboardingGate } from '@/features/onboarding/OnboardingGate';
 import { useAppTheme } from '@/theme';
 
 /**
@@ -8,17 +9,20 @@ import { useAppTheme } from '@/theme';
 export default function AppNavigation() {
   const theme = useAppTheme();
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: theme.section },
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="routines" />
-      <Stack.Screen name="settings" />
-      <Stack.Screen name="tasks" />
-    </Stack>
+    <OnboardingGate>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.section },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="routines" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="tasks" />
+      </Stack>
+    </OnboardingGate>
   );
 }

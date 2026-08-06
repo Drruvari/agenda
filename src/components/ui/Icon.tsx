@@ -3,9 +3,11 @@ import IconAlertCircle from '@tabler/icons-react-native/IconAlertCircle';
 import IconArrowBackUp from '@tabler/icons-react-native/IconArrowBackUp';
 import IconArrowsMaximize from '@tabler/icons-react-native/IconArrowsMaximize';
 import IconArrowsMinimize from '@tabler/icons-react-native/IconArrowsMinimize';
+import IconBell from '@tabler/icons-react-native/IconBell';
 import IconCake from '@tabler/icons-react-native/IconCake';
 import IconCalendar from '@tabler/icons-react-native/IconCalendar';
 import IconCheck from '@tabler/icons-react-native/IconCheck';
+import IconChecklist from '@tabler/icons-react-native/IconChecklist';
 import IconChevronDown from '@tabler/icons-react-native/IconChevronDown';
 import IconChevronLeft from '@tabler/icons-react-native/IconChevronLeft';
 import IconChevronRight from '@tabler/icons-react-native/IconChevronRight';
@@ -38,9 +40,11 @@ const icons = {
   add: IconPlus,
   alert: IconAlertCircle,
   back: IconChevronLeft,
+  bell: IconBell,
   birthday: IconCake,
   calendar: IconCalendar,
   check: IconCheck,
+  checklist: IconChecklist,
   chevronDown: IconChevronDown,
   chevronRight: IconChevronRight,
   chevronUp: IconChevronUp,

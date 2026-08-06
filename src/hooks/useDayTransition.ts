@@ -16,6 +16,11 @@ const OUT_MS = motion.duration.fast;
 const IN_MS = motion.duration.normal;
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 
+type PendingTransition = {
+  direction: -1 | 0 | 1;
+  commit: () => void;
+};
+
 export function useDayTransition() {
   const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
@@ -23,11 +28,20 @@ export function useDayTransition() {
   const opacity = useSharedValue(1);
   const busy = useSharedValue(false);
   const hasMounted = useRef(false);
+  const pendingRef = useRef<PendingTransition | null>(null);
+  const runRef = useRef<(direction: -1 | 0 | 1, commit: () => void) => void>(() => {});
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.get(),
     transform: [{ translateX: slide.get() }],
   }));
+
+  const flushPending = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    pendingRef.current = null;
+    runRef.current(pending.direction, pending.commit);
+  }, []);
 
   const run = useCallback(
     (direction: -1 | 0 | 1, commit: () => void) => {
@@ -42,7 +56,12 @@ export function useDayTransition() {
         return;
       }
 
-      if (busy.get()) return;
+      // Keep only the latest request while a transition is playing so tab taps
+      // (and quick swipes) are not swallowed.
+      if (busy.get()) {
+        pendingRef.current = { direction, commit };
+        return;
+      }
 
       const exitX = direction > 0 ? -Math.min(36, width * 0.08) : Math.min(36, width * 0.08);
       const enterX = -exitX;
@@ -53,6 +72,7 @@ export function useDayTransition() {
         withTiming(exitX, { duration: OUT_MS, easing: easeOut }, (finished) => {
           if (!finished) {
             busy.set(false);
+            runOnJS(flushPending)();
             return;
           }
           runOnJS(commit)();
@@ -62,14 +82,17 @@ export function useDayTransition() {
           slide.set(
             withSpring(0, motion.soft, () => {
               busy.set(false);
+              runOnJS(flushPending)();
             }),
           );
         }),
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- shared values are stable
-    [reduceMotion, width],
+    [flushPending, reduceMotion, width],
   );
+
+  runRef.current = run;
 
   return { style, run };
 }
