@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AgendaToaster } from '@/components/ui/ToastProvider';
 import { DataProvider } from '@/data';
+import { ItemEditorHost, ItemEditorProvider } from '@/features/item-editor';
 import { AppLockProvider } from '@/features/privacy';
 import { configureReminders } from '@/native/notifications/reminders';
 import { fontAssets, useAppAppearance } from '@/theme';
@@ -33,7 +34,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <DataProvider>
         <AppLockProvider>
-          <ThemedNavigation />
+          <ItemEditorProvider>
+            <ThemedNavigation />
+            <ItemEditorHost />
+          </ItemEditorProvider>
         </AppLockProvider>
       </DataProvider>
     </GestureHandlerRootView>

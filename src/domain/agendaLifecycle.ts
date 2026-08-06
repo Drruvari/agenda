@@ -1,5 +1,5 @@
-import type { CreateEventInput, CreateTaskInput } from '@/data/repositories/agenda.repository';
 import type { Repositories } from '@/data/repositories';
+import type { CreateEventInput, CreateTaskInput } from '@/data/repositories/agenda.repository';
 import { localDateTime } from '@/data/schema/ids';
 import type { AgendaItem, EventItem, TaskItem } from '@/data/schema/types';
 import {
@@ -84,9 +84,8 @@ export async function updateAgendaItem(
   }
 
   const shouldRemind =
-    cleaned.type === 'task' || cleaned.type === 'event'
-      ? Boolean(cleaned.time || cleaned.reminderAt)
-      : false;
+    (cleaned.type === 'task' || cleaned.type === 'event') &&
+    Boolean(cleaned.time && cleaned.reminderAt);
 
   let notificationId: string | undefined;
   let reminderAt: string | undefined;
@@ -166,7 +165,7 @@ export async function createAgendaEvent(
   if (input.remind) {
     const when = input.time
       ? localDateTime(input.date, input.time)
-      : input.device?.startDate ?? null;
+      : (input.device?.startDate ?? null);
     if (when) {
       notificationId = (await scheduleReminder(input.title, input.details, when)) ?? undefined;
       if (notificationId) reminderAt = when.toISOString();

@@ -40,6 +40,7 @@ import {
   uncompleteAgendaTask,
 } from '@/domain/agendaLifecycle';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
+import { useItemEditor } from '@/features/item-editor';
 import { TodaysPage } from '@/features/todays-page/TodaysPage';
 import { useDayTransition } from '@/hooks/useDayTransition';
 import { usePlannerGestures } from '@/hooks/usePlannerGestures';
@@ -162,6 +163,9 @@ export default function PlannerScreen() {
   const params = useLocalSearchParams<{ date?: string | string[] }>();
   const { repos, revision, refresh, settings, settingsStore, ui, setUI } = useData();
   const { showToast } = useToast();
+  const { session: editorSession, openCreate, openEdit, openQuickAdd: openQuickAddEditor } =
+    useItemEditor();
+  const editorOpen = Boolean(editorSession);
   const insets = useSafeAreaInsets();
   const { style: dayTransitionStyle, run: runDayTransition } = useDayTransition();
   const blurTarget = useRef<View | null>(null);
@@ -446,8 +450,8 @@ export default function PlannerScreen() {
   };
 
   const editTask = (task: Task) => {
-    if (task.item?.type !== 'task') return;
-    router.push(`/tasks/${task.item.id}`);
+    if (!task.item) return;
+    openEdit(task.item.id);
   };
 
   const toggleTaskCompletion = (task: Task) => {
@@ -547,8 +551,8 @@ export default function PlannerScreen() {
 
   const openQuickAdd = useCallback(() => {
     triggerHaptic('medium');
-    router.push('/quick-add');
-  }, [router]);
+    openQuickAddEditor();
+  }, [openQuickAddEditor]);
 
   const {
     scrollRef,
@@ -881,8 +885,8 @@ export default function PlannerScreen() {
 
       <View
         onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-        pointerEvents="box-none"
-        style={styles.stickyHeader}
+        pointerEvents={editorOpen ? 'none' : 'box-none'}
+        style={[styles.stickyHeader, editorOpen && styles.chromeHidden]}
       >
         <BlurSurface
           blurTarget={blurTarget}
@@ -913,13 +917,15 @@ export default function PlannerScreen() {
         </BlurSurface>
       </View>
 
-      <BottomBar
-        blurTarget={blurTarget}
-        bottom={Math.max(16, insets.bottom + 10)}
-        onAdd={() => router.push('/task-create')}
-        onMore={() => router.push('/quick-add')}
-        onSearch={() => router.push('/search')}
-      />
+      {!editorOpen ? (
+        <BottomBar
+          blurTarget={blurTarget}
+          bottom={Math.max(16, insets.bottom + 10)}
+          onAdd={() => openCreate('task')}
+          onMore={openQuickAdd}
+          onSearch={() => router.push('/search')}
+        />
+      ) : null}
 
       {calendarPickerOpen ? (
         <CalendarPickerModal
@@ -1287,6 +1293,9 @@ function createStyles(theme: AgendaTheme) {
       left: 0,
       right: 0,
       zIndex: 20,
+    },
+    chromeHidden: {
+      opacity: 0,
     },
     stickyHeaderBlur: {
       borderBottomWidth: StyleSheet.hairlineWidth,

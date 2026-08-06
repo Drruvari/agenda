@@ -1,6 +1,6 @@
 import type { DatabaseClient } from '@/data/database/types';
 import { createId, nowIso } from '@/data/schema/ids';
-import type { AgendaItem, EventItem, NoteItem, Priority, TaskItem } from '@/data/schema/types';
+import type { AgendaItem, EventItem, NoteItem, Priority, RecurrenceRule, TaskItem } from '@/data/schema/types';
 
 export type CreateTaskInput = {
   title: string;
@@ -11,6 +11,7 @@ export type CreateTaskInput = {
   time?: string;
   reminderAt?: string;
   notificationId?: string;
+  recurrence?: RecurrenceRule;
 };
 
 export type CreateEventInput = CreateTaskInput & {
@@ -63,6 +64,7 @@ export function createAgendaRepository(db: DatabaseClient) {
         time: input.time,
         reminderAt: input.reminderAt,
         notificationId: input.notificationId,
+        recurrence: input.recurrence,
         completed: false,
         createdAt: now,
         updatedAt: now,
@@ -86,6 +88,7 @@ export function createAgendaRepository(db: DatabaseClient) {
         notificationId: input.notificationId,
         deviceEventId: input.deviceEventId,
         durationMinutes: input.durationMinutes,
+        recurrence: input.recurrence,
         createdAt: now,
         updatedAt: now,
       };

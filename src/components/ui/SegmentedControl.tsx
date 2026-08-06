@@ -82,7 +82,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
     control: {
-      flex: 1,
+      alignSelf: 'stretch',
       minHeight: 40,
       flexDirection: 'row',
       alignItems: 'center',
