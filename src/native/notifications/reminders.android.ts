@@ -1,5 +1,6 @@
-import { isRunningInExpoGo } from 'expo';
 import type { NotificationPermissionsStatus } from 'expo-notifications';
+
+import { applyNotificationPrivacy } from '@/features/privacy/notificationPrivacy';
 
 import type { ReminderAccessState } from './reminders';
 
@@ -8,11 +9,10 @@ const CHANNEL_ID = 'agenda-reminders';
 type NotificationsModule = typeof import('expo-notifications');
 
 /**
- * Expo Go on Android throws on import of expo-notifications (push APIs removed in SDK 53).
- * Load the module only in development/production builds.
+ * Local notifications remain available in Expo Go on Android; only remote push was removed.
+ * @see https://docs.expo.dev/versions/v57.0.0/sdk/notifications/
  */
 function getNotifications(): NotificationsModule | null {
-  if (isRunningInExpoGo()) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-notifications') as NotificationsModule;
@@ -79,8 +79,15 @@ export async function scheduleReminder(
   if (when.getTime() <= Date.now()) return null;
   if ((await requestReminderAccess()) !== 'granted') return null;
 
+  const preview = applyNotificationPrivacy(title, body);
+
   return Notifications.scheduleNotificationAsync({
-    content: { title, body, data: { source: 'agenda' }, sound: 'default' },
+    content: {
+      title: preview.title,
+      body: preview.body,
+      data: { source: 'agenda' },
+      sound: 'default',
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: when,

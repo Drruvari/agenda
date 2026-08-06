@@ -10,7 +10,6 @@ import {
 import { StyleSheet, Text, View } from 'react-native';
 
 import { OrbitLogo } from '@/components/ui/OrbitLogo';
-import { ToastProvider } from '@/components/ui/ToastProvider';
 import { openDatabase } from '@/data/database/database';
 import type { DatabaseClient } from '@/data/database/types';
 import { createRepositories, type Repositories } from '@/data/repositories';
@@ -174,9 +173,7 @@ export function DataProvider({ children }: PropsWithChildren) {
 
   return (
     <DataContext.Provider value={value}>
-      <AppThemeProvider settings={settings}>
-        <ToastProvider>{children}</ToastProvider>
-      </AppThemeProvider>
+      <AppThemeProvider settings={settings}>{children}</AppThemeProvider>
     </DataContext.Provider>
   );
 }

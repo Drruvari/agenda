@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Repositories } from '@/data/repositories';
@@ -18,6 +19,9 @@ type Options = {
 
 const SAVE_MS = 500;
 
+type PendingBody = { value: string; date: string };
+type PendingInk = { value: InkDocument; date: string; noteId: string | null };
+
 export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
   const [body, setBody] = useState('');
   const [ink, setInk] = useState<InkDocument>({ ...EMPTY_INK, strokes: [] });
@@ -27,10 +31,16 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
 
   const bodyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingBody = useRef<PendingBody | null>(null);
+  const pendingInk = useRef<PendingInk | null>(null);
   const dateRef = useRef(date);
   const drawingIdRef = useRef<string | undefined>(undefined);
   const onErrorRef = useRef(onError);
   const onPersistedRef = useRef(onPersisted);
+  const saveBodyNowRef = useRef<(nextBody: string, forDate: string) => Promise<void>>(async () => {});
+  const saveInkNowRef = useRef<
+    (nextInk: InkDocument, forDate: string, forNoteId: string | null) => Promise<void>
+  >(async () => {});
 
   useEffect(() => {
     onErrorRef.current = onError;
@@ -48,48 +58,6 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     triggerHaptic('error');
     onErrorRef.current?.(error instanceof Error ? error.message : fallback);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    dateRef.current = date;
-
-    if (bodyTimer.current) clearTimeout(bodyTimer.current);
-    if (inkTimer.current) clearTimeout(inkTimer.current);
-
-    void (async () => {
-      try {
-        const note = await repos.notes.getOrCreateForDate(date);
-        if (cancelled || dateRef.current !== date) return;
-
-        let nextInk: InkDocument = { ...EMPTY_INK, strokes: [] };
-        if (note.drawingId) {
-          const drawing = await repos.notes.getDrawing(note.drawingId);
-          if (cancelled || dateRef.current !== date) return;
-          nextInk = parseInk(drawing?.data);
-        }
-
-        setNoteId(note.id);
-        setBody(note.bodyText);
-        setDrawingId(note.drawingId);
-        setInk(nextInk);
-        setLoadedDate(date);
-      } catch (error) {
-        if (!cancelled) fail(error, 'Could not open today’s page');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [date, fail, repos.notes]);
-
-  useEffect(
-    () => () => {
-      if (bodyTimer.current) clearTimeout(bodyTimer.current);
-      if (inkTimer.current) clearTimeout(inkTimer.current);
-    },
-    [],
-  );
 
   const saveBodyNow = useCallback(
     async (nextBody: string, forDate: string) => {
@@ -129,6 +97,72 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     [fail, repos.notes],
   );
 
+  saveBodyNowRef.current = saveBodyNow;
+  saveInkNowRef.current = saveInkNow;
+
+  const flushPending = useCallback(() => {
+    if (bodyTimer.current) {
+      clearTimeout(bodyTimer.current);
+      bodyTimer.current = null;
+    }
+    if (inkTimer.current) {
+      clearTimeout(inkTimer.current);
+      inkTimer.current = null;
+    }
+
+    const bodyPending = pendingBody.current;
+    const inkPending = pendingInk.current;
+    pendingBody.current = null;
+    pendingInk.current = null;
+
+    if (bodyPending) void saveBodyNowRef.current(bodyPending.value, bodyPending.date);
+    if (inkPending) {
+      void saveInkNowRef.current(inkPending.value, inkPending.date, inkPending.noteId);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    flushPending();
+    dateRef.current = date;
+
+    void (async () => {
+      try {
+        const note = await repos.notes.getOrCreateForDate(date);
+        if (cancelled || dateRef.current !== date) return;
+
+        let nextInk: InkDocument = { ...EMPTY_INK, strokes: [] };
+        if (note.drawingId) {
+          const drawing = await repos.notes.getDrawing(note.drawingId);
+          if (cancelled || dateRef.current !== date) return;
+          nextInk = parseInk(drawing?.data);
+        }
+
+        setNoteId(note.id);
+        setBody(note.bodyText);
+        setDrawingId(note.drawingId);
+        setInk(nextInk);
+        setLoadedDate(date);
+      } catch (error) {
+        if (!cancelled) fail(error, 'Could not open today’s page');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [date, fail, flushPending, repos.notes]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') flushPending();
+    });
+    return () => {
+      subscription.remove();
+      flushPending();
+    };
+  }, [flushPending]);
+
   const changeBody = useCallback(
     (value: string, options?: { continueNumberedLists?: boolean }) => {
       let nextValue = value;
@@ -140,8 +174,10 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
 
       setBody(nextValue);
       const forDate = dateRef.current;
+      pendingBody.current = { value: nextValue, date: forDate };
       if (bodyTimer.current) clearTimeout(bodyTimer.current);
       bodyTimer.current = setTimeout(() => {
+        pendingBody.current = null;
         void saveBodyNow(nextValue, forDate);
       }, SAVE_MS);
     },
@@ -153,8 +189,10 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
       setInk(next);
       const forDate = dateRef.current;
       const forNoteId = noteId;
+      pendingInk.current = { value: next, date: forDate, noteId: forNoteId };
       if (inkTimer.current) clearTimeout(inkTimer.current);
       inkTimer.current = setTimeout(() => {
+        pendingInk.current = null;
         void saveInkNow(next, forDate, forNoteId);
       }, SAVE_MS);
     },

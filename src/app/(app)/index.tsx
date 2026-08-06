@@ -35,6 +35,10 @@ import {
   toLocalDateString,
   useData,
 } from '@/data';
+import {
+  completeAgendaTask,
+  uncompleteAgendaTask,
+} from '@/domain/agendaLifecycle';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
 import { TodaysPage } from '@/features/todays-page/TodaysPage';
 import { useDayTransition } from '@/hooks/useDayTransition';
@@ -53,7 +57,6 @@ import {
   getBirthdayAccessState,
   listDeviceBirthdays,
 } from '@/native/contacts/deviceBirthdays';
-import { cancelReminder } from '@/native/notifications/reminders';
 import {
   completeSystemReminder,
   type DeviceSystemReminder,
@@ -176,6 +179,12 @@ export default function PlannerScreen() {
     ui.selectedDate < today ? 'Recent' : ui.selectedDate > today ? 'Upcoming' : 'Today';
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const mode = pendingMode ?? derivedMode;
+  const selectedDateRef = useRef(ui.selectedDate);
+  const reloadRequestId = useRef(0);
+
+  useEffect(() => {
+    selectedDateRef.current = ui.selectedDate;
+  }, [ui.selectedDate]);
 
   useEffect(() => {
     setPendingMode((current) => (current != null && current === derivedMode ? null : current));
@@ -199,13 +208,16 @@ export default function PlannerScreen() {
   }, [params.date, setUI, settingsStore]);
 
   const reload = useCallback(async () => {
-    const next = await loadTodayView(
-      repos,
-      ui.selectedDate,
-      ui.activeSpaceId,
-      settings.general.showCompleted,
-    );
-    const start = parseLocalDate(ui.selectedDate);
+    const requestId = ++reloadRequestId.current;
+    const selectedDate = ui.selectedDate;
+    const activeSpaceId = ui.activeSpaceId;
+    const showCompleted = settings.general.showCompleted;
+
+    const next = await loadTodayView(repos, selectedDate, activeSpaceId, {
+      includeCompleted: true,
+      separateCompleted: showCompleted,
+    });
+    const start = parseLocalDate(selectedDate);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
     const [calendarState, birthdayState, reminderState] = await Promise.all([
@@ -226,6 +238,9 @@ export default function PlannerScreen() {
         ? listSystemReminders(start, end).catch(() => [])
         : Promise.resolve([]),
     ]);
+
+    if (requestId !== reloadRequestId.current) return;
+
     setView(next);
     setCalendarAccess(calendarState);
     setReminderAccess(reminderState);
@@ -380,16 +395,15 @@ export default function PlannerScreen() {
   const completeTask = async (task: Task) => {
     if (task.item?.type !== 'task') return;
     try {
-      await cancelReminder(task.item.notificationId).catch(() => undefined);
-      await repos.agenda.complete(task.item.id);
+      await completeAgendaTask(repos, task.item);
       triggerHaptic('success');
       refresh();
       showToast(`Completed “${task.title}”`, {
         subtitle: 'Task is completed',
         actionLabel: 'Undo',
         onAction: () => {
-          void repos.agenda
-            .uncomplete(task.item!.id)
+          if (task.item?.type !== 'task') return;
+          void uncompleteAgendaTask(repos, { ...task.item, completed: true })
             .then(refresh)
             .catch(() => undefined);
         },
@@ -406,7 +420,7 @@ export default function PlannerScreen() {
   const uncompleteTask = async (task: Task) => {
     if (task.item?.type !== 'task') return;
     try {
-      await repos.agenda.uncomplete(task.item.id);
+      await uncompleteAgendaTask(repos, task.item);
       triggerHaptic('selection');
       refresh();
     } catch (error) {
@@ -502,8 +516,13 @@ export default function PlannerScreen() {
       const nextMode: Mode =
         selectedDate < today ? 'Recent' : selectedDate > today ? 'Upcoming' : 'Today';
       const direction: -1 | 0 | 1 =
-        selectedDate > ui.selectedDate ? 1 : selectedDate < ui.selectedDate ? -1 : 0;
+        selectedDate > selectedDateRef.current
+          ? 1
+          : selectedDate < selectedDateRef.current
+            ? -1
+            : 0;
 
+      selectedDateRef.current = selectedDate;
       setPendingMode(nextMode);
       runDayTransition(direction, () => {
         setUI({
@@ -513,17 +532,17 @@ export default function PlannerScreen() {
         });
       });
     },
-    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays, ui.selectedDate],
+    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays],
   );
 
   const shiftDay = useCallback(
     (delta: number) => {
-      const next = parseLocalDate(ui.selectedDate);
+      const next = parseLocalDate(selectedDateRef.current);
       next.setDate(next.getDate() + delta);
       triggerHaptic('selection');
       chooseDate(next);
     },
-    [chooseDate, ui.selectedDate],
+    [chooseDate],
   );
 
   const openQuickAdd = useCallback(() => {
@@ -552,9 +571,13 @@ export default function PlannerScreen() {
       const selectedDate =
         next === 'Recent' ? addDays(today, -1) : next === 'Upcoming' ? addDays(today, 1) : today;
       const direction: -1 | 0 | 1 =
-        selectedDate > ui.selectedDate ? 1 : selectedDate < ui.selectedDate ? -1 : 0;
+        selectedDate > selectedDateRef.current
+          ? 1
+          : selectedDate < selectedDateRef.current
+            ? -1
+            : 0;
 
-      // Reflect the tab immediately; the day transition may still be animating.
+      selectedDateRef.current = selectedDate;
       setPendingMode(next);
       runDayTransition(direction, () => {
         setUI({
@@ -564,7 +587,7 @@ export default function PlannerScreen() {
         });
       });
     },
-    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays, ui.selectedDate],
+    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays],
   );
 
   const dateHeading =
@@ -658,19 +681,19 @@ export default function PlannerScreen() {
 
                   <View style={styles.connectStack}>
                     <PermissionCard
-                      title="Device calendar"
+                      title="Bring your schedule together"
                       state={calendarAccess}
-                      undetermined="Allow calendar access to show meetings, events, and birthdays from your Birthdays calendar."
-                      denied="Calendar access is off. Enable Calendar for Agenda in system settings."
+                      undetermined="See meetings and events alongside today’s tasks — including birthdays from your Birthdays calendar."
+                      denied="Calendar access is off. Enable Calendar for Agenda in system settings to bring meetings into your day."
                       unavailable="Calendar sync needs a development build. Run: npx expo run:ios"
                       button="Connect calendar"
                       onPress={() => void connectCalendar()}
                     />
                     {systemRemindersSupported ? (
                       <PermissionCard
-                        title="Apple Reminders"
+                        title="Already use Apple Reminders?"
                         state={reminderAccess}
-                        undetermined="Allow Reminders access to show incomplete Apple Reminders on the day they’re due."
+                        undetermined="Bring reminders due today into Agenda, next to your tasks."
                         denied="Reminders access is off. Enable Reminders for Agenda in system settings."
                         unavailable="Apple Reminders need the iOS app."
                         button="Connect Reminders"

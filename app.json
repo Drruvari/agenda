@@ -61,7 +61,13 @@
         }
       ],
       "expo-notifications",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Agenda to use Face ID to unlock your private agenda."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

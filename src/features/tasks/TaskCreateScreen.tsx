@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTimeField';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
-import { localDateTime, type Priority, useData } from '@/data';
+import { useToast } from '@/components/ui/ToastProvider';
+import { type Priority, useData } from '@/data';
+import { createAgendaTask } from '@/domain/agendaLifecycle';
 import { parseSmartInput } from '@/lib/smart-parse/parseSmartInput';
-import { scheduleReminder } from '@/native/notifications/reminders';
+import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
 import { type AgendaTheme, continuousCorner, useAppAppearance, useThemeStyles } from '@/theme';
 
 const PRIORITIES: Priority[] = ['none', 'low', 'medium', 'high'];
@@ -16,6 +18,7 @@ export function TaskCreateScreen() {
   const { styles, theme } = useThemeStyles(createStyles);
   const { accent, colorScheme } = useAppAppearance();
   const { repos, ui, settings, refresh } = useData();
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [date, setDate] = useState(ui.selectedDate);
@@ -79,22 +82,21 @@ export function TaskCreateScreen() {
     try {
       const finalDate = parsed.date ?? date;
       const finalTime = parsed.time ?? (time.trim() || undefined);
-      const reminderDate = remindAtTime && finalTime ? localDateTime(finalDate, finalTime) : null;
-      const notificationId = reminderDate
-        ? await scheduleReminder(finalTitle, details.trim() || undefined, reminderDate)
-        : null;
-      await repos.agenda.createTask({
+      await createAgendaTask(repos, {
         title: finalTitle,
         details: details.trim() || undefined,
         date: finalDate,
         time: finalTime,
         spaceId,
         priority: parsed.priority ?? priority,
-        reminderAt: notificationId && reminderDate ? reminderDate.toISOString() : undefined,
-        notificationId: notificationId ?? undefined,
+        remind: Boolean(remindAtTime && finalTime),
       });
       refresh();
       dismiss();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not create task', {
+        tone: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -174,12 +176,20 @@ export function TaskCreateScreen() {
 
         <Field label="Reminder">
           <View style={styles.reminderRow}>
-            <Text style={styles.reminderLabel}>Remind at task time</Text>
+            <Text style={styles.reminderLabel}>Remind me at this time</Text>
             <NativeSwitch
               accent={accent}
               colorScheme={colorScheme}
               disabled={!time.trim()}
-              onValueChange={setRemindAtTime}
+              onValueChange={(value) => {
+                if (!value) {
+                  setRemindAtTime(false);
+                  return;
+                }
+                void ensureNotificationPermissionForReminders().then((allowed) => {
+                  setRemindAtTime(allowed);
+                });
+              }}
               value={remindAtTime}
             />
           </View>

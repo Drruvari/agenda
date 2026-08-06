@@ -1,5 +1,7 @@
 import type { NotificationPermissionsStatus } from 'expo-notifications';
 
+import { applyNotificationPrivacy } from '@/features/privacy/notificationPrivacy';
+
 import type { ReminderAccessState } from './reminders';
 
 type NotificationsModule = typeof import('expo-notifications');
@@ -72,8 +74,15 @@ export async function scheduleReminder(
   if (when.getTime() <= Date.now()) return null;
   if ((await requestReminderAccess()) !== 'granted') return null;
 
+  const preview = applyNotificationPrivacy(title, body);
+
   return Notifications.scheduleNotificationAsync({
-    content: { title, body, data: { source: 'agenda' }, sound: 'default' },
+    content: {
+      title: preview.title,
+      body: preview.body,
+      data: { source: 'agenda' },
+      sound: 'default',
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: when,

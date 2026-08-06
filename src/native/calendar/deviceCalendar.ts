@@ -37,3 +37,6 @@ export async function listDeviceEvents(
 export async function createDeviceEvent(_input: CreateDeviceEventInput): Promise<string | null> {
   return null;
 }
+
+export async function deleteDeviceEvent(_id: string): Promise<void> {}
+

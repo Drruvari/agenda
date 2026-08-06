@@ -6,9 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTimeField';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { useToast } from '@/components/ui/ToastProvider';
 import { type ItemType, localDateTime, parseLocalDate, useData } from '@/data';
-import { createDeviceEvent } from '@/native/calendar/deviceCalendar';
-import { scheduleReminder } from '@/native/notifications/reminders';
+import { createAgendaEvent, createAgendaTask } from '@/domain/agendaLifecycle';
+import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
 import { type AgendaTheme, continuousCorner, useAppAppearance, useThemeStyles } from '@/theme';
 
 type QuickType = ItemType | 'routine';
@@ -24,6 +25,7 @@ export function QuickAddScreen() {
   const { styles, theme } = useThemeStyles(createStyles);
   const { accent, colorScheme } = useAppAppearance();
   const { repos, refresh, ui, settings } = useData();
+  const { showToast } = useToast();
   const [type, setType] = useState<QuickType>(settings.editor.defaultAddType);
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
@@ -47,18 +49,13 @@ export function QuickAddScreen() {
       if (type === 'routine') {
         await repos.routines.create({ name: cleanTitle });
       } else if (type === 'task') {
-        const when = remindAtTime && time ? localDateTime(date, time) : null;
-        const notificationId = when
-          ? await scheduleReminder(cleanTitle, details.trim() || undefined, when)
-          : null;
-        await repos.agenda.createTask({
+        await createAgendaTask(repos, {
           title: cleanTitle,
           details: details.trim() || undefined,
           date,
           time: time || undefined,
           spaceId: settings.editor.defaultSpaceId ?? undefined,
-          reminderAt: notificationId && when ? when.toISOString() : undefined,
-          notificationId: notificationId ?? undefined,
+          remind: Boolean(remindAtTime && time),
         });
       } else if (type === 'event') {
         const start = time ? localDateTime(date, time) : parseLocalDate(date);
@@ -66,26 +63,21 @@ export function QuickAddScreen() {
         const end = time
           ? new Date(start.getTime() + Math.max(1, Number(duration) || 30) * 60_000)
           : new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
-        const deviceEventId = await createDeviceEvent({
-          title: cleanTitle,
-          details: details.trim() || undefined,
-          startDate: start,
-          endDate: end,
-          allDay: !time,
-        }).catch(() => null);
-        const notificationId = remindAtTime
-          ? await scheduleReminder(cleanTitle, details.trim() || undefined, start)
-          : null;
-        await repos.agenda.createEvent({
+        await createAgendaEvent(repos, {
           title: cleanTitle,
           details: details.trim() || undefined,
           date,
           time: time || undefined,
           spaceId: settings.editor.defaultSpaceId ?? undefined,
           durationMinutes: Math.max(1, Number(duration) || 30),
-          deviceEventId: deviceEventId ?? undefined,
-          reminderAt: notificationId ? start.toISOString() : undefined,
-          notificationId: notificationId ?? undefined,
+          remind: remindAtTime,
+          device: {
+            title: cleanTitle,
+            details: details.trim() || undefined,
+            startDate: start,
+            endDate: end,
+            allDay: !time,
+          },
         });
       } else {
         await repos.agenda.createNote({
@@ -98,6 +90,10 @@ export function QuickAddScreen() {
       }
       refresh();
       dismiss();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not save item', {
+        tone: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -158,12 +154,20 @@ export function QuickAddScreen() {
             />
             {type === 'task' || type === 'event' ? (
               <View style={styles.reminderRow}>
-                <Text style={styles.reminderText}>Remind at item time</Text>
+                <Text style={styles.reminderText}>Remind me at this time</Text>
                 <NativeSwitch
                   accent={accent}
                   colorScheme={colorScheme}
                   disabled={!time.trim()}
-                  onValueChange={setRemindAtTime}
+                  onValueChange={(value) => {
+                    if (!value) {
+                      setRemindAtTime(false);
+                      return;
+                    }
+                    void ensureNotificationPermissionForReminders().then((allowed) => {
+                      setRemindAtTime(allowed);
+                    });
+                  }}
                   value={remindAtTime}
                 />
               </View>

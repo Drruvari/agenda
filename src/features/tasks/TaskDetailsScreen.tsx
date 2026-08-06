@@ -5,19 +5,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui/Icon';
 import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTimeField';
+import { useToast } from '@/components/ui/ToastProvider';
 import { type AgendaItem, useData } from '@/data';
+import { deleteAgendaItem, updateAgendaItem } from '@/domain/agendaLifecycle';
 import { type AgendaTheme, continuousCorner, useThemeStyles } from '@/theme';
 
 export function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const itemId = Array.isArray(id) ? id[0] : id;
   const { refresh, repos } = useData();
+  const { showToast } = useToast();
   const { styles, theme } = useThemeStyles(createStyles);
   const [item, setItem] = useState<AgendaItem | null>(null);
+  const [original, setOriginal] = useState<AgendaItem | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (itemId) void repos.agenda.getById(itemId).then(setItem);
+    if (!itemId) return;
+    void repos.agenda.getById(itemId).then((next) => {
+      setItem(next);
+      setOriginal(next);
+    });
   }, [itemId, repos.agenda]);
 
   const update = (patch: Partial<AgendaItem>) => {
@@ -25,10 +33,10 @@ export function TaskDetailsScreen() {
   };
 
   const save = async () => {
-    if (!item?.title.trim() || saving) return;
+    if (!item?.title.trim() || !original || saving) return;
     setSaving(true);
     try {
-      await repos.agenda.update({
+      await updateAgendaItem(repos, original, {
         ...item,
         title: item.title.trim(),
         details: item.details?.trim() || undefined,
@@ -36,6 +44,10 @@ export function TaskDetailsScreen() {
       });
       refresh();
       router.back();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not save item', {
+        tone: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -49,10 +61,16 @@ export function TaskDetailsScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: () =>
-          void repos.agenda.delete(item.id).then(() => {
-            refresh();
-            router.back();
-          }),
+          void deleteAgendaItem(repos, item)
+            .then(() => {
+              refresh();
+              router.back();
+            })
+            .catch((error) => {
+              showToast(error instanceof Error ? error.message : 'Could not delete item', {
+                tone: 'error',
+              });
+            }),
       },
     ]);
   };

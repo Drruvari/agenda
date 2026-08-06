@@ -98,3 +98,8 @@ export async function createDeviceEvent(input: CreateDeviceEventInput): Promise<
   });
   return event.id;
 }
+
+export async function deleteDeviceEvent(id: string): Promise<void> {
+  const event = await Calendar.ExpoCalendarEvent.get(id);
+  await event.delete();
+}

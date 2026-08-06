@@ -26,6 +26,16 @@ export type AgendaBackup = {
   };
 };
 
+/** Reject absurdly large plaintext backups before JSON.parse. */
+export const MAX_BACKUP_CHARS = 40_000_000;
+
+const MAX_SPACES = 10_000;
+const MAX_AGENDA_ITEMS = 100_000;
+const MAX_ROUTINES = 10_000;
+const MAX_COMPLETIONS = 500_000;
+const MAX_NOTES = 100_000;
+const MAX_DRAWINGS = 50_000;
+
 export async function createBackup(
   db: DatabaseClient,
   settings: AppSettings,
@@ -48,27 +58,60 @@ export async function createBackup(
   };
 }
 
+function assertArrayMax(value: unknown, name: string, max: number): asserts value is unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`This is not a valid Agenda backup (${name}).`);
+  }
+  if (value.length > max) {
+    throw new Error(`Backup ${name} exceeds the supported size.`);
+  }
+}
+
+/** Strip OS-local identifiers that do not travel with a backup. */
+export function sanitizeAgendaItemForRestore(item: AgendaItem): AgendaItem {
+  const { notificationId: _notificationId, deviceEventId: _deviceEventId, ...rest } = item;
+  return rest;
+}
+
 export function parseBackup(raw: string): AgendaBackup {
-  const parsed = JSON.parse(raw) as Partial<AgendaBackup>;
-  const data = parsed.data;
-  if (
-    parsed.version !== 1 ||
-    !parsed.settings ||
-    !data ||
-    !Array.isArray(data.spaces) ||
-    !Array.isArray(data.agendaItems) ||
-    !Array.isArray(data.routines) ||
-    !Array.isArray(data.routineCompletions) ||
-    !Array.isArray(data.dailyNotes) ||
-    !Array.isArray(data.drawings)
-  ) {
+  if (raw.length > MAX_BACKUP_CHARS) {
+    throw new Error('This backup file is too large to import.');
+  }
+
+  let parsed: Partial<AgendaBackup>;
+  try {
+    parsed = JSON.parse(raw) as Partial<AgendaBackup>;
+  } catch {
     throw new Error('This is not a valid Agenda backup.');
   }
+
+  const data = parsed.data;
+  if (parsed.version !== 1 || !parsed.settings || !data) {
+    throw new Error('This is not a valid Agenda backup.');
+  }
+
+  assertArrayMax(data.spaces, 'spaces', MAX_SPACES);
+  assertArrayMax(data.agendaItems, 'agenda items', MAX_AGENDA_ITEMS);
+  assertArrayMax(data.routines, 'routines', MAX_ROUTINES);
+  assertArrayMax(data.routineCompletions, 'routine completions', MAX_COMPLETIONS);
+  assertArrayMax(data.dailyNotes, 'daily notes', MAX_NOTES);
+  assertArrayMax(data.drawings, 'drawings', MAX_DRAWINGS);
+
   return {
-    ...(parsed as AgendaBackup),
+    version: 1,
+    exportedAt:
+      typeof parsed.exportedAt === 'string' ? parsed.exportedAt : new Date().toISOString(),
     settings: {
       general: { ...DEFAULT_SETTINGS.general, ...parsed.settings.general },
       editor: { ...DEFAULT_SETTINGS.editor, ...parsed.settings.editor },
+    },
+    data: {
+      spaces: data.spaces as Space[],
+      agendaItems: (data.agendaItems as AgendaItem[]).map(sanitizeAgendaItemForRestore),
+      routines: data.routines as Routine[],
+      routineCompletions: data.routineCompletions as RoutineCompletion[],
+      dailyNotes: data.dailyNotes as DailyNote[],
+      drawings: data.drawings as Drawing[],
     },
   };
 }
@@ -96,7 +139,9 @@ export async function restoreBackup(db: DatabaseClient, backup: AgendaBackup): P
     for (const space of spaces) await db.delete('spaces', space.id);
 
     for (const space of backup.data.spaces) await db.put('spaces', space);
-    for (const item of backup.data.agendaItems) await db.put('agenda_items', item);
+    for (const item of backup.data.agendaItems) {
+      await db.put('agenda_items', sanitizeAgendaItemForRestore(item));
+    }
     for (const routine of backup.data.routines) await db.put('routines', routine);
     for (const completion of backup.data.routineCompletions) {
       await db.put('routine_completions', completion);

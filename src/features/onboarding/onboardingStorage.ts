@@ -1,4 +1,4 @@
-export const ONBOARDING_COMPLETED_KEY = 'onboarding.completed';
+export const ONBOARDING_COMPLETED_KEY = 'onboarding.v2.completed';
 
 export async function isOnboardingCompleted(
   getItem: (key: string) => Promise<string | null>,

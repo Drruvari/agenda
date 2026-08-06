@@ -21,8 +21,16 @@ export function createNotesRepository(db: DatabaseClient) {
         bodyText: '',
         updatedAt: nowIso(),
       };
-      await db.put('daily_notes', note);
-      return note;
+
+      try {
+        await db.put('daily_notes', note);
+        return note;
+      } catch {
+        // Another writer may have inserted the UNIQUE date first.
+        const raced = await this.getByDate(date);
+        if (raced) return raced;
+        throw new Error(`Could not create daily note for ${date}`);
+      }
     },
 
     async saveBody(date: string, bodyText: string): Promise<DailyNote> {

@@ -1,19 +1,8 @@
-import { BlurTargetView } from 'expo-blur';
 import { router } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BlurSurface } from '@/components/ui/BlurSurface';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -25,6 +14,7 @@ import {
   useData,
 } from '@/data';
 import type { AgendaItem, DailyNote, Drawing, Space } from '@/data/schema/types';
+import { PrivacySettings } from '@/features/privacy';
 import {
   type AgendaTheme,
   continuousCorner,
@@ -35,6 +25,7 @@ import {
 } from '@/theme';
 
 import { SettingPicker } from './SettingPicker';
+import { SettingsScaffold, SettingsSection, SettingsTabBar } from './SettingsChrome';
 import {
   createBackup,
   createDiagnostic,
@@ -45,7 +36,7 @@ import {
 } from './settingsData';
 import { pickBackupFile, printPage, saveBackupFile } from './settingsFiles';
 
-type SettingsTab = 'general' | 'editor' | 'export' | 'sync';
+type SettingsTab = 'general' | 'editor' | 'export' | 'sync' | 'privacy';
 
 const ACCENTS: AccentColor[] = [
   'blue',
@@ -63,6 +54,7 @@ const TABS: { value: SettingsTab; label: string; icon: IconName }[] = [
   { value: 'editor', label: 'Editor', icon: 'typography' },
   { value: 'export', label: 'Export', icon: 'fileExport' },
   { value: 'sync', label: 'Sync', icon: 'cloud' },
+  { value: 'privacy', label: 'Privacy', icon: 'lock' },
 ];
 
 type Diagnostic = Awaited<ReturnType<typeof createDiagnostic>>;
@@ -81,8 +73,6 @@ export function SettingsScreen() {
 
   const { accent, colorScheme } = useAppAppearance();
   const { showToast } = useToast();
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const reloadDiagnostic = useCallback(async () => {
     setDiagnostic(await createDiagnostic(db));
@@ -156,16 +146,21 @@ export function SettingsScreen() {
       db.getAll<DailyNote>('daily_notes'),
       db.getAll<AgendaItem>('agenda_items'),
     ]);
+
+    let latestUpdatedAt: string | null = null;
+    for (const item of items) {
+      if (!latestUpdatedAt || item.updatedAt > latestUpdatedAt) latestUpdatedAt = item.updatedAt;
+    }
+    for (const note of notes) {
+      if (!latestUpdatedAt || note.updatedAt > latestUpdatedAt) latestUpdatedAt = note.updatedAt;
+    }
+
+    // Metadata only — never duplicate note bodies / task titles into the KV store.
     const index = {
       generatedAt: new Date().toISOString(),
-      notes: folderSync ? notes.map(({ date, bodyText }) => ({ date, bodyText })) : [],
-      agenda: items.map(({ id, date, title, details, type }) => ({
-        id,
-        date,
-        title,
-        details,
-        type,
-      })),
+      noteCount: folderSync ? notes.length : 0,
+      itemCount: items.length,
+      latestUpdatedAt,
     };
     const completedAt = new Date().toISOString();
     await settingsStore.setItem('sync.localIndex', JSON.stringify(index));
@@ -195,7 +190,9 @@ export function SettingsScreen() {
   };
 
   const content =
-    tab === 'general' ? (
+    tab === 'privacy' ? (
+      <PrivacySettings />
+    ) : tab === 'general' ? (
       <GeneralSettings
         accent={accent}
         colorScheme={colorScheme}
@@ -279,65 +276,15 @@ export function SettingsScreen() {
     );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-      <BlurTargetView ref={blurTarget} style={styles.blurTarget}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Back"
-            onPress={() => router.back()}
-            style={styles.roundButton}
-          >
-            <Icon name="back" size={24} color={theme.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.doneButton, { backgroundColor: `${accent}1A` }]}
-          >
-            <Text style={[styles.doneLabel, { color: accent }]}>Done</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]}
-        >
-          {content}
-        </ScrollView>
-      </BlurTargetView>
-
-      <View
-        style={[
-          styles.tabBarWrap,
-          { bottom: Math.max(insets.bottom + (Platform.OS === 'android' ? 8 : 0), 12) },
-        ]}
-      >
-        <BlurSurface
-          blurTarget={blurTarget}
-          intensity={85}
-          overlayColor={theme.floating}
-          tint="systemChromeMaterialDark"
-          style={styles.tabBarSurface}
-          contentStyle={styles.tabBar}
-        >
-          {TABS.map((item) => {
-            const selected = tab === item.value;
-            return (
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                key={item.value}
-                onPress={() => setTab(item.value)}
-                style={[styles.tab, selected && styles.tabActive]}
-              >
-                <Icon name={item.icon} size={24} color={theme.floatingText} stroke={1.8} />
-                <Text style={styles.tabLabel}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </BlurSurface>
-      </View>
-    </SafeAreaView>
+    <SettingsScaffold
+      title="Settings"
+      showDone
+      blurTargetRef={blurTarget}
+      bottomInset={insets.bottom + 110}
+      footer={<SettingsTabBar tabs={TABS} value={tab} onChange={setTab} blurTarget={blurTarget} />}
+    >
+      {content}
+    </SettingsScaffold>
   );
 }
 
@@ -359,10 +306,10 @@ function GeneralSettings({
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.sections}>
-      <Section title="Date">
+      <SettingsSection title="Date & calendar">
         <SettingPicker
-          title="Date Format"
-          subtitle="Changes the page heading."
+          title="Date format"
+          subtitle="How the big date heading looks on Today (e.g. Thursday, 6 August vs Thu 6 Aug)."
           value={general.dateFormat}
           options={[
             { label: 'Long', value: 'long' },
@@ -373,6 +320,7 @@ function GeneralSettings({
         <SettingPicker
           last
           title="Week starts on"
+          subtitle="First day shown in the calendar picker."
           value={general.weekStartsOn}
           options={[
             { label: 'Monday', value: 'monday' },
@@ -380,11 +328,12 @@ function GeneralSettings({
           ]}
           onValueChange={(weekStartsOn) => onGeneral({ weekStartsOn })}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section title="Appearance">
+      <SettingsSection title="Look & feel">
         <SettingPicker
-          title="Mode"
+          title="Appearance"
+          subtitle="Follow the system, or lock Agenda to light or dark."
           value={general.mode}
           options={[
             { label: 'System', value: 'system' },
@@ -395,8 +344,10 @@ function GeneralSettings({
         />
         <View style={styles.accentBlock}>
           <View style={styles.rowCopy}>
-            <Text style={styles.rowTitle}>Accent</Text>
-            <Text style={styles.rowSubtitle}>Applied across controls and indicators.</Text>
+            <Text style={styles.rowTitle}>Accent color</Text>
+            <Text style={styles.rowSubtitle}>
+              Used for buttons, checkmarks, and highlights throughout the app.
+            </Text>
           </View>
           <Text style={styles.rowValue}>{titleCase(general.accent)}</Text>
         </View>
@@ -423,27 +374,28 @@ function GeneralSettings({
         <SettingToggle
           accent={accent}
           title="Show Spaces"
-          subtitle="Optional context filters above the stream."
+          subtitle="Show Space chips above your day so you can filter Work, Personal, and other contexts."
           value={general.showSpaces}
           onValueChange={(showSpaces) => onGeneral({ showSpaces })}
         />
         <SettingToggle
           accent={accent}
-          title="Completed"
-          subtitle="Keep completed as a separate section."
+          title="Separate completed section"
+          subtitle="On: finished tasks move into a Completed section. Off: they stay checked in All day and Scheduled."
           value={general.showCompleted}
           onValueChange={(showCompleted) => onGeneral({ showCompleted })}
         />
         <SettingToggle
           accent={accent}
-          title="Compact stream"
-          subtitle="Tighter cards when the day is busy."
+          title="Compact day list"
+          subtitle="Use tighter rows when you have a busy day with lots of items."
           value={general.compactStream}
           onValueChange={(compactStream) => onGeneral({ compactStream })}
         />
         <SettingToggle
           accent={accent}
-          title="Keep filter while changing days"
+          title="Keep Space filter when changing days"
+          subtitle="On: the Space you selected stays as you swipe days. Off: each day resets to All."
           value={general.keepFilterWhileChangingDays}
           onValueChange={(keepFilterWhileChangingDays) =>
             onGeneral({ keepFilterWhileChangingDays })
@@ -451,45 +403,55 @@ function GeneralSettings({
         />
         <SettingToggle
           accent={accent}
-          title="Calendar indicators"
-          subtitle="Show dots for agenda items and daily notes."
+          title="Calendar dots"
+          subtitle="Show a small indicator on the calendar icon when the day has tasks or a daily note."
           value={general.calendarIndicators}
           onValueChange={(calendarIndicators) => onGeneral({ calendarIndicators })}
         />
         <SettingToggle
           accent={accent}
           last
-          title="Click to edit"
-          subtitle="On: tap opens edit, circle completes. Off: tap completes, hold to edit."
+          title="Tap to edit"
+          subtitle="On: tap a task to edit it; use the circle to complete. Off: tap completes; press and hold to edit."
           value={general.clickToEdit}
           onValueChange={(clickToEdit) => onGeneral({ clickToEdit })}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section title="Manage">
+      <SettingsSection title="Organize">
         <SettingRow
-          title={`${spaces.length} Spaces`}
-          subtitle={`${spaces.length} contexts`}
+          title="Spaces"
+          subtitle={`${spaces.length} contexts for filtering your day (Work, Personal, …).`}
           onPress={() => router.push('/settings/spaces')}
         />
         <SettingRow
-          last
           title="Routines"
-          subtitle="Reusable packs"
+          subtitle="Habits you repeat daily — track them separately from one-off tasks."
           onPress={() => router.push('/routines')}
         />
-      </Section>
+        <SettingRow
+          title="Notifications"
+          subtitle="Local alerts for timed tasks — asked only when you turn on Remind me."
+          onPress={() => router.push('/settings/notifications')}
+        />
+        <SettingRow
+          last
+          title="About Agenda"
+          subtitle="Your agenda belongs on your phone — local, private, no account."
+          onPress={() => router.push('/settings/about')}
+        />
+      </SettingsSection>
 
-      <Section title="Drawing">
+      <SettingsSection title="Drawing">
         <SettingToggle
           accent={accent}
           last
           title="Pen-only drawing"
-          subtitle="When supported, ignore finger/mouse drawing."
+          subtitle="On supported devices, only Apple Pencil / stylus draws on Today’s page — fingers scroll."
           value={general.penOnlyDrawing}
           onValueChange={(penOnlyDrawing) => onGeneral({ penOnlyDrawing })}
         />
-      </Section>
+      </SettingsSection>
     </View>
   );
 }
@@ -513,9 +475,10 @@ function EditorSettings({
   const selectedSpace = editor.defaultSpaceId ?? '__inbox__';
   return (
     <View style={styles.sections}>
-      <Section title="Page">
+      <SettingsSection title="Today’s page">
         <SettingPicker
           title="Font"
+          subtitle="Typeface for the daily note on Today’s page."
           value={editor.font}
           options={[
             { label: 'System', value: 'system' },
@@ -537,11 +500,12 @@ function EditorSettings({
           onDecrease={() => onEditor({ pageMargin: Math.max(8, editor.pageMargin - 2) })}
           onIncrease={() => onEditor({ pageMargin: Math.min(48, editor.pageMargin + 2) })}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section title="Creation">
+      <SettingsSection title="Adding items">
         <SettingPicker
-          title="Default add type"
+          title="Default item type"
+          subtitle="What Quick add opens with (task, event, or note)."
           value={editor.defaultAddType}
           options={
             [
@@ -553,16 +517,18 @@ function EditorSettings({
           onValueChange={(defaultAddType) => onEditor({ defaultAddType })}
         />
         <SettingPicker
-          title="Event duration"
+          title="Default event length"
+          subtitle="Duration pre-filled when you create a calendar event."
           value={editor.defaultEventDurationMinutes}
           options={[15, 30, 45, 60, 90].map((value) => ({ label: `${value} min`, value }))}
           onValueChange={(defaultEventDurationMinutes) => onEditor({ defaultEventDurationMinutes })}
         />
         <SettingPicker
           title="Default Space"
+          subtitle="New tasks and events are filed here unless you pick another Space."
           value={selectedSpace}
           options={[
-            { label: 'Inbox', value: '__inbox__' },
+            { label: 'Inbox (no Space)', value: '__inbox__' },
             ...spaces.map((space) => ({ label: space.name, value: space.id })),
           ]}
           onValueChange={(defaultSpaceId) =>
@@ -572,7 +538,7 @@ function EditorSettings({
         <SettingToggle
           accent={accent}
           title="Smart parsing"
-          subtitle="/event, tomorrow, 7pm, #Work, !!"
+          subtitle="Type shortcuts like “tomorrow 7pm #Work !!” and Agenda fills date, time, Space, and priority."
           value={editor.smartParsingEnabled}
           onValueChange={(smartParsingEnabled) => onEditor({ smartParsingEnabled })}
         />
@@ -580,20 +546,22 @@ function EditorSettings({
           accent={accent}
           last
           title="Continue numbered lists"
+          subtitle="Pressing return after “1. …” starts the next number automatically on Today’s page."
           value={editor.continueNumberedLists}
           onValueChange={(continueNumberedLists) => onEditor({ continueNumberedLists })}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section title="Markdown">
+      <SettingsSection title="Markdown">
         <SettingToggle
           accent={accent}
           last
           title="Render markdown"
+          subtitle="Show bold, lists, and other markdown formatting in the daily note."
           value={editor.renderMarkdown}
           onValueChange={(renderMarkdown) => onEditor({ renderMarkdown })}
         />
-      </Section>
+      </SettingsSection>
 
       <Pressable
         onPress={onReset}
@@ -626,7 +594,7 @@ function ExportSettings({
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.sections} pointerEvents={busy ? 'none' : 'auto'}>
-      <Section title="Today’s page">
+      <SettingsSection title="Today’s page">
         <SettingRow
           title="Copy as text"
           subtitle="Daily note and visible agenda items."
@@ -643,8 +611,15 @@ function ExportSettings({
           subtitle="Uses the system print dialog."
           onPress={onPrint}
         />
-      </Section>
-      <Section title="Backup">
+      </SettingsSection>
+      <SettingsSection title="Backup">
+        <View style={styles.backupWarning}>
+          <Text style={styles.backupWarningTitle}>Keep backups private</Text>
+          <Text style={styles.backupWarningBody}>
+            Agenda backups contain your tasks, notes, and other personal data in readable form.
+            Temporary share files are deleted after export.
+          </Text>
+        </View>
         <SettingRow
           title="Download all data"
           subtitle="Tasks, folders, notes, routines, drawings, and settings."
@@ -658,10 +633,10 @@ function ExportSettings({
         <SettingRow
           last
           title="Import JSON backup"
-          subtitle="Replaces the current local data after confirmation."
+          subtitle="Replaces local data after confirmation. Device notification and calendar IDs are cleared."
           onPress={onImport}
         />
-      </Section>
+      </SettingsSection>
     </View>
   );
 }
@@ -695,7 +670,7 @@ function SyncSettings({
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.sections}>
-      <Section title="Status">
+      <SettingsSection title="Status">
         <View style={[styles.statusCard, styles.lastRow]}>
           <Text style={styles.rowTitle}>Local sync is enabled</Text>
           <Text style={styles.rowSubtitle}>
@@ -708,9 +683,9 @@ function SyncSettings({
             Last sync: {lastSync ? new Date(lastSync).toLocaleString() : 'Not yet synced'}
           </Text>
         </View>
-      </Section>
+      </SettingsSection>
 
-      <Section title="Sync">
+      <SettingsSection title="Sync">
         <SettingToggle
           accent={accent}
           title="Daily Notes folder sync"
@@ -726,9 +701,9 @@ function SyncSettings({
           value={todayShortcut}
           onValueChange={onTodayShortcut}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section>
+      <SettingsSection>
         <SettingRow
           title="Sync now"
           subtitle="Refreshes local indexes and timestamps."
@@ -746,9 +721,9 @@ function SyncSettings({
           subtitle="Deletes saved drawings only."
           onPress={onCleanDrawings}
         />
-      </Section>
+      </SettingsSection>
 
-      <Section title="Diagnostic">
+      <SettingsSection title="Diagnostic">
         <View style={[styles.diagnostic, styles.lastRow]}>
           <Text style={styles.diagnosticText}>
             {diagnostic
@@ -756,18 +731,7 @@ function SyncSettings({
               : 'Loading diagnostics…'}
           </Text>
         </View>
-      </Section>
-    </View>
-  );
-}
-
-function Section({ children, title }: { children: ReactNode; title?: string }) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  return (
-    <View style={styles.sectionWrap}>
-      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
-      <View style={styles.sectionCard}>{children}</View>
+      </SettingsSection>
     </View>
   );
 }
@@ -911,41 +875,26 @@ async function copyText(value: string): Promise<void> {
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background },
-    blurTarget: { flex: 1 },
-    header: {
-      height: 60,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
+    sections: { gap: 16 },
+    backupWarning: {
+      gap: 6,
       paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.separator,
     },
-    roundButton: {
-      width: 44,
-      height: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.section,
-      borderRadius: 22,
-    },
-    headerTitle: {
-      flex: 1,
+    backupWarningTitle: {
       color: theme.text,
       fontFamily: fonts.sansSemi,
-      fontSize: 24,
+      fontSize: 15,
     },
-    doneButton: {
-      height: 44,
-      justifyContent: 'center',
-      paddingHorizontal: 18,
-      ...continuousCorner(22),
+    backupWarningBody: {
+      color: theme.textSecondary,
+      fontFamily: fonts.sans,
+      fontSize: 12.5,
+      lineHeight: 17,
     },
-    doneLabel: { fontFamily: fonts.sansMedium, fontSize: 16 },
-    scrollContent: { paddingHorizontal: 16, paddingTop: 32 },
-    sections: { gap: 16 },
-    sectionWrap: { gap: 13 },
-    sectionTitle: { color: theme.text, fontFamily: fonts.sansSemi, fontSize: 14 },
-    sectionCard: { overflow: 'hidden', backgroundColor: theme.section, ...continuousCorner(16) },
     settingRow: {
       minHeight: 64,
       flexDirection: 'row',
@@ -1051,29 +1000,6 @@ function createStyles(theme: AgendaTheme) {
       fontFamily: 'monospace',
       fontSize: 14,
       lineHeight: 20,
-    },
-    tabBarWrap: { position: 'absolute', left: 16, right: 16 },
-    tabBarSurface: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255, 255, 255, 0.16)',
-    },
-    tabBar: {
-      flexDirection: 'row',
-      padding: 4,
-    },
-    tab: {
-      flex: 1,
-      minHeight: 56,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 2,
-      borderRadius: 28,
-    },
-    tabActive: { backgroundColor: 'rgba(0, 0, 0, 0.24)' },
-    tabLabel: {
-      color: theme.floatingText,
-      fontFamily: fonts.sansMedium,
-      fontSize: 14,
     },
   });
 }

@@ -22,6 +22,7 @@ import IconFileExport from '@tabler/icons-react-native/IconFileExport';
 import IconFileTypePdf from '@tabler/icons-react-native/IconFileTypePdf';
 import IconHighlight from '@tabler/icons-react-native/IconHighlight';
 import IconInfoCircle from '@tabler/icons-react-native/IconInfoCircle';
+import IconLock from '@tabler/icons-react-native/IconLock';
 import IconMinus from '@tabler/icons-react-native/IconMinus';
 import IconPencil from '@tabler/icons-react-native/IconPencil';
 import IconPlus from '@tabler/icons-react-native/IconPlus';
@@ -59,6 +60,7 @@ const icons = {
   galaxy: OrbitLogo,
   highlight: IconHighlight,
   info: IconInfoCircle,
+  lock: IconLock,
   expand: IconArrowsMaximize,
   minimize: IconArrowsMinimize,
   minus: IconMinus,

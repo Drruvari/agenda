@@ -1,13 +1,29 @@
 import type { Repositories } from '@/data/repositories';
 import type { TaskItem, TodayViewModel } from '@/data/schema/types';
 
+export type LoadTodayViewOptions = {
+  includeCompleted?: boolean;
+  separateCompleted?: boolean;
+};
+
 export async function loadTodayView(
   repos: Repositories,
   date: string,
   activeSpaceId: string | null,
-  /** When true, completed tasks move to `completed`. When false, they stay in all-day/scheduled. */
-  separateCompleted = true,
+  options: boolean | LoadTodayViewOptions = true,
 ): Promise<TodayViewModel> {
+  const resolved: Required<LoadTodayViewOptions> =
+    typeof options === 'boolean'
+      ? {
+          // Legacy positional flag meant "separate completed into its own list".
+          includeCompleted: true,
+          separateCompleted: options,
+        }
+      : {
+          includeCompleted: options.includeCompleted ?? true,
+          separateCompleted: options.separateCompleted ?? true,
+        };
+
   const [spaces, items, routines, completions, dailyNote] = await Promise.all([
     repos.spaces.list(),
     repos.agenda.forDate(date, activeSpaceId),
@@ -19,22 +35,27 @@ export async function loadTodayView(
   const completedIds = new Set(completions.map((entry) => entry.routineId));
   const spaceNameById = new Map(spaces.map((space) => [space.id, space.name]));
 
-  const isSeparatedCompleted = (item: (typeof items)[number]) =>
-    separateCompleted && item.type === 'task' && item.completed;
+  const visibleItems = resolved.includeCompleted
+    ? items
+    : items.filter((item) => !(item.type === 'task' && item.completed));
 
-  const allDay = items.filter((item) => {
+  const isSeparatedCompleted = (item: (typeof visibleItems)[number]) =>
+    resolved.separateCompleted && item.type === 'task' && item.completed;
+
+  const allDay = visibleItems.filter((item) => {
     if (isSeparatedCompleted(item)) return false;
     return !item.time;
   });
 
-  const scheduled = items.filter((item) => {
+  const scheduled = visibleItems.filter((item) => {
     if (isSeparatedCompleted(item)) return false;
     return Boolean(item.time);
   });
 
-  const completed = separateCompleted
-    ? items.filter((item): item is TaskItem => item.type === 'task' && item.completed)
-    : [];
+  const completed =
+    resolved.includeCompleted && resolved.separateCompleted
+      ? visibleItems.filter((item): item is TaskItem => item.type === 'task' && item.completed)
+      : [];
 
   return {
     date,

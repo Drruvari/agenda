@@ -6,7 +6,9 @@ import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AgendaToaster } from '@/components/ui/ToastProvider';
 import { DataProvider } from '@/data';
+import { AppLockProvider } from '@/features/privacy';
 import { configureReminders } from '@/native/notifications/reminders';
 import { fontAssets, useAppAppearance } from '@/theme';
 
@@ -30,7 +32,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <DataProvider>
-        <ThemedNavigation />
+        <AppLockProvider>
+          <ThemedNavigation />
+        </AppLockProvider>
       </DataProvider>
     </GestureHandlerRootView>
   );
@@ -45,6 +49,7 @@ function ThemedNavigation() {
         <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
       </Stack>
+      <AgendaToaster />
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </>
   );
