@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
+import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
 import { type AgendaTheme, fonts, useThemeStyles } from '@/theme';
 
@@ -16,7 +16,7 @@ export function AboutScreen() {
       description="Why Agenda is built the way it is — and what that means for you."
     >
       <View style={styles.hero}>
-        <OrbitLogo color={theme.primary} size={36} stroke={1.8} />
+        <AgendaLogo color={theme.primary} size={36} />
         <Text style={styles.brand}>Agenda</Text>
         <Text style={styles.slogan}>Your agenda belongs on your phone.</Text>
         <Text style={styles.version}>Version {VERSION}</Text>

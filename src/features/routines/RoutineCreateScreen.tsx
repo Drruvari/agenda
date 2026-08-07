@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 
-import { useItemEditor } from '@/features/item-editor';
+import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 
 export function RoutineCreateScreen() {
   const { openCreate } = useItemEditor();

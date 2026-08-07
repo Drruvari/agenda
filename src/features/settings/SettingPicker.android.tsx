@@ -1,7 +1,7 @@
-import { BottomSheet, RNHostView } from '@expo/ui';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AgendaBottomSheet } from '@/components/ui/AgendaBottomSheet';
 import { Icon } from '@/components/ui/Icon';
 import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
 
@@ -57,38 +57,40 @@ export function SettingPicker<T extends PickerValue>({
         </Pressable>
       </View>
 
-      <BottomSheet isPresented={open} onDismiss={() => setOpen(false)}>
-        <RNHostView style={{ width: '100%', height: 48 + options.length * 56 }}>
-          <View style={styles.selectorContent}>
-            <Text numberOfLines={1} style={styles.selectorTitle}>
-              {title}
-            </Text>
-            <View style={styles.selectorOptions}>
-              {options.map((option) => {
-                const selected = option.value === value;
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    key={String(option.value)}
-                    onPress={() => selectOption(option.value)}
-                    style={({ pressed }) => [
-                      styles.selectorOption,
-                      selected && styles.selectorOptionSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <Text style={[styles.selectorOptionText, selected && { color: accent }]}>
-                      {option.label}
-                    </Text>
-                    {selected ? <Icon color={accent} name="check" size={20} stroke={2.2} /> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
+      <AgendaBottomSheet
+        height={48 + options.length * 56}
+        isPresented={open}
+        onDismiss={() => setOpen(false)}
+      >
+        <View style={styles.selectorContent}>
+          <Text numberOfLines={1} style={styles.selectorTitle}>
+            {title}
+          </Text>
+          <View style={styles.selectorOptions}>
+            {options.map((option) => {
+              const selected = option.value === value;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  key={String(option.value)}
+                  onPress={() => selectOption(option.value)}
+                  style={({ pressed }) => [
+                    styles.selectorOption,
+                    selected && styles.selectorOptionSelected,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.selectorOptionText, selected && { color: accent }]}>
+                    {option.label}
+                  </Text>
+                  {selected ? <Icon color={accent} name="check" size={20} stroke={2.2} /> : null}
+                </Pressable>
+              );
+            })}
           </View>
-        </RNHostView>
-      </BottomSheet>
+        </View>
+      </AgendaBottomSheet>
     </>
   );
 }

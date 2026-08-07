@@ -1,5 +1,6 @@
 import type { Repositories } from '@/data/repositories';
 import type { TaskItem, TodayViewModel } from '@/data/schema/types';
+import { matchesRoutineSpaceFilter } from '@/data/spaces/spaceFilter';
 
 export type LoadTodayViewOptions = {
   includeCompleted?: boolean;
@@ -57,13 +58,17 @@ export async function loadTodayView(
       ? visibleItems.filter((item): item is TaskItem => item.type === 'task' && item.completed)
       : [];
 
+  const visibleRoutines = routines.filter((routine) =>
+    matchesRoutineSpaceFilter(routine.spaceId, activeSpaceId),
+  );
+
   return {
     date,
     spaces,
     allDay,
     scheduled,
     completed,
-    routines: routines.map((routine) => ({
+    routines: visibleRoutines.map((routine) => ({
       routine,
       completed: completedIds.has(routine.id),
       spaceName: routine.spaceId ? spaceNameById.get(routine.spaceId) : undefined,

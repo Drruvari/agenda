@@ -1,17 +1,30 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Screen } from '@/components/layout/Screen';
+import {
+  AgendaBottomSheet,
+  AgendaSheetHeader,
+  SHEET_DISMISS_MS,
+} from '@/components/ui/AgendaBottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import { type Routine, useData } from '@/data';
-import { type AgendaTheme, continuousCorner, useThemeStyles } from '@/theme';
+import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
+import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
+import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
 
-export function RoutinesScreen() {
-  const { styles } = useThemeStyles(createStyles);
+export function RoutinesSheet({ onDismiss }: { onDismiss: () => void }) {
+  const { styles, theme } = useThemeStyles(createStyles);
   const { repos, revision, refresh, ui } = useData();
+  const { openCreate, openEditRoutine } = useItemEditor();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [presented, setPresented] = useState(true);
+  const closed = useRef(false);
+  const sheetHeight = useMemo(
+    () => Math.min(520, 58 + 32 + Math.max(64, routines.length * 72)),
+    [routines.length],
+  );
 
   useEffect(() => {
     void Promise.all([
@@ -23,56 +36,97 @@ export function RoutinesScreen() {
     });
   }, [repos.routines, revision, ui.selectedDate]);
 
+  const finishClose = () => {
+    if (closed.current) return;
+    closed.current = true;
+    onDismiss();
+  };
+
+  const close = () => {
+    setPresented(false);
+    setTimeout(finishClose, SHEET_DISMISS_MS);
+  };
+
+  const handOff = (action: () => void) => {
+    setPresented(false);
+    setTimeout(() => {
+      finishClose();
+      action();
+    }, SHEET_DISMISS_MS);
+  };
+
   const toggle = async (id: string) => {
     await repos.routines.toggleCompletion(id, ui.selectedDate);
     refresh();
   };
 
   return (
-    <Screen title="Routines" description="Daily routines are stored privately on this device.">
-      <View style={styles.list}>
-        {routines.length === 0 ? (
-          <EmptyState message="No routines yet. Create one to build a habit." />
-        ) : (
-          routines.map((routine) => (
-            <View key={routine.id} style={[styles.row, !routine.active && styles.inactive]}>
-              <Pressable
-                onPress={() => void toggle(routine.id)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: completedIds.has(routine.id) }}
-                style={[styles.check, completedIds.has(routine.id) && styles.checked]}
-              >
-                <Text style={styles.checkMark}>{completedIds.has(routine.id) ? '✓' : ''}</Text>
-              </Pressable>
-              <Pressable
-                style={styles.rowCopy}
-                onPress={() => router.push(`/routines/${routine.id}`)}
-              >
-                <Text style={styles.name}>{routine.name}</Text>
-                <Text style={styles.meta}>{routine.active ? 'Active' : 'Paused'}</Text>
-              </Pressable>
-            </View>
-          ))
-        )}
-        <Pressable onPress={() => router.push('/routine-create')} style={styles.addButton}>
-          <Text style={styles.addLabel}>Add routine</Text>
-        </Pressable>
+    <AgendaBottomSheet height={sheetHeight} isPresented={presented} onDismiss={finishClose}>
+      <View style={styles.root}>
+        <AgendaSheetHeader
+          title="Routines"
+          onCancel={close}
+          action={{
+            label: 'Add routine',
+            icon: 'add',
+            onPress: () => handOff(() => openCreate('routine')),
+          }}
+        />
+
+        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          {routines.length === 0 ? (
+            <EmptyState message="No routines yet. Create one to build a habit." />
+          ) : (
+            routines.map((routine) => {
+              const completed = completedIds.has(routine.id);
+              return (
+                <View key={routine.id} style={[styles.row, !routine.active && styles.inactive]}>
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: completed }}
+                    hitSlop={8}
+                    onPress={() => void toggle(routine.id)}
+                    style={[styles.check, completed && styles.checked]}
+                  >
+                    {completed ? (
+                      <Icon name="check" size={17} color={theme.onPrimary} stroke={2.5} />
+                    ) : null}
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handOff(() => openEditRoutine(routine.id))}
+                    style={styles.rowCopy}
+                  >
+                    <Text style={styles.name}>{routine.name}</Text>
+                    <Text style={styles.meta}>{routine.active ? 'Every day' : 'Paused'}</Text>
+                  </Pressable>
+                  <Icon name="chevronRight" size={18} color={theme.textSecondary} />
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       </View>
-    </Screen>
+    </AgendaBottomSheet>
   );
+}
+
+export function RoutinesScreen() {
+  const { close } = useAppSheets();
+  return <RoutinesSheet onDismiss={close} />;
 }
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    list: { gap: 10 },
+    root: { flex: 1 },
+    list: { padding: 16, gap: 8 },
     row: {
       minHeight: 64,
+      paddingHorizontal: 14,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      backgroundColor: theme.card,
-      padding: 14,
-      ...continuousCorner(14),
+      backgroundColor: theme.section,
+      ...continuousCorner(16),
     },
     inactive: { opacity: 0.55 },
     check: {
@@ -85,17 +139,8 @@ function createStyles(theme: AgendaTheme) {
       justifyContent: 'center',
     },
     checked: { backgroundColor: theme.primary, borderColor: theme.primary },
-    checkMark: { color: theme.onPrimary, fontWeight: '800' },
-    rowCopy: { flex: 1 },
-    name: { color: theme.text, fontSize: 16, fontWeight: '600' },
-    meta: { color: theme.textSecondary, fontSize: 13, marginTop: 2 },
-    addButton: {
-      minHeight: 48,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.primary,
-      ...continuousCorner(14),
-    },
-    addLabel: { color: theme.onPrimary, fontSize: 15, fontWeight: '700' },
+    rowCopy: { flex: 1, paddingVertical: 12 },
+    name: { fontFamily: fonts.sansMedium, fontSize: 16, color: theme.text },
+    meta: { marginTop: 2, fontFamily: fonts.sans, fontSize: 13, color: theme.textSecondary },
   });
 }

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
+import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
 
 type Props = {
@@ -29,7 +29,7 @@ export function AppLockScreen({ authenticating, onUnlock }: Props) {
       ]}
     >
       <View style={styles.hero}>
-        <OrbitLogo color={accent} size={44} stroke={1.8} />
+        <AgendaLogo color={accent} size={44} />
         <Text style={styles.brand}>Agenda</Text>
         <Text style={styles.slogan}>Your agenda belongs on your phone.</Text>
         <Text style={styles.hint}>Unlock to continue.</Text>

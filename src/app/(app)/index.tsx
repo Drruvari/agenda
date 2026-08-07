@@ -2,8 +2,8 @@ import { BlurTargetView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
-import { GestureDetector, ScrollView as GHScrollView, TouchableOpacity } from 'react-native-gesture-handler';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector, TouchableOpacity } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   FadeInDown,
@@ -24,10 +24,14 @@ import { PermissionCard } from '@/components/ui/PermissionCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import {
   addDays,
   type AgendaItem,
   formatLongDate,
+  INBOX_FILTER_ID,
+  isInboxSpaceFilter,
+  isSpaceUuidFilter,
   loadTodayView,
   parseLocalDate,
   priorityLabel,
@@ -35,14 +39,11 @@ import {
   toLocalDateString,
   useData,
 } from '@/data';
-import {
-  completeAgendaTask,
-  uncompleteAgendaTask,
-} from '@/domain/agendaLifecycle';
+import { completeAgendaTask, uncompleteAgendaTask } from '@/domain/agendaLifecycle';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
 import { useItemEditor } from '@/features/item-editor';
+import { useLibrary } from '@/features/library';
 import { TodaysPage } from '@/features/todays-page/TodaysPage';
-import { useDayTransition } from '@/hooks/useDayTransition';
 import { usePlannerGestures } from '@/hooks/usePlannerGestures';
 import { triggerHaptic } from '@/lib/haptics';
 import {
@@ -77,8 +78,61 @@ import {
   useAppTheme,
 } from '@/theme';
 
-/** Gesture-handler ScrollView so row touchables work under day-swipe on iOS. */
-const PlannerScrollView = Animated.createAnimatedComponent(GHScrollView);
+function PlannerGestureScroll({
+  scrollGesture,
+  scrollRef,
+  scrollEnabled,
+  onScroll,
+  onScrollEndDrag,
+  contentContainerStyle,
+  pullContentStyle,
+  pageStyle,
+  children,
+}: {
+  scrollGesture: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  scrollRef: any;
+  scrollEnabled: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onScroll: any;
+  onScrollEndDrag?: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
+  contentContainerStyle: object | object[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pullContentStyle: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pageStyle: any;
+  children: React.ReactNode;
+}) {
+  const body = (
+    <Animated.View style={pullContentStyle} collapsable={false}>
+      <Animated.View style={pageStyle}>{children}</Animated.View>
+    </Animated.View>
+  );
+
+  const scroll = (
+    <Animated.ScrollView
+      ref={scrollRef}
+      style={gestureScrollStyles.scrollView}
+      showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      scrollEnabled={scrollEnabled}
+      bounces={Platform.OS === 'ios'}
+      alwaysBounceVertical={Platform.OS === 'ios'}
+      overScrollMode="never"
+      nestedScrollEnabled
+      onScroll={onScroll}
+      onScrollEndDrag={onScrollEndDrag}
+      contentContainerStyle={contentContainerStyle}
+    >
+      {body}
+    </Animated.ScrollView>
+  );
+
+  return <GestureDetector gesture={scrollGesture}>{scroll}</GestureDetector>;
+}
+const gestureScrollStyles = StyleSheet.create({
+  scrollView: { flex: 1 },
+});
 
 const ALL_DAY_PREVIEW_COUNT = 2;
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
@@ -168,11 +222,16 @@ export default function PlannerScreen() {
   const params = useLocalSearchParams<{ date?: string | string[] }>();
   const { repos, revision, refresh, settings, settingsStore, ui, setUI } = useData();
   const { showToast } = useToast();
-  const { session: editorSession, openCreate, openEdit, openQuickAdd: openQuickAddEditor } =
-    useItemEditor();
+  const {
+    session: editorSession,
+    openCreate,
+    openEdit,
+    openQuickAdd: openQuickAddEditor,
+  } = useItemEditor();
+  const { openLibrary } = useLibrary();
+  const { openRoutines, openSearch } = useAppSheets();
   const editorOpen = Boolean(editorSession);
   const insets = useSafeAreaInsets();
-  const { style: dayTransitionStyle, run: runDayTransition } = useDayTransition();
   const blurTarget = useRef<View | null>(null);
   const [view, setView] = useState<TodayViewModel | null>(null);
   const [deviceEvents, setDeviceEvents] = useState<DeviceCalendarEvent[]>([]);
@@ -281,6 +340,21 @@ export default function PlannerScreen() {
     [view?.spaces],
   );
 
+  /** Device calendar / reminders are unmapped — only show under All. */
+  const showExternalItems = !ui.activeSpaceId;
+
+  const activeSpaceLabel = useMemo(() => {
+    if (isInboxSpaceFilter(ui.activeSpaceId)) return 'Inbox';
+    if (isSpaceUuidFilter(ui.activeSpaceId)) {
+      return spacesById.get(ui.activeSpaceId!) ?? 'this Space';
+    }
+    return null;
+  }, [spacesById, ui.activeSpaceId]);
+
+  const filteredEmptyHint = activeSpaceLabel
+    ? `Nothing scheduled for ${activeSpaceLabel} today.`
+    : null;
+
   const mapItem = useCallback(
     (item: AgendaItem): Task => {
       const spaceName = item.spaceId ? spacesById.get(item.spaceId) : undefined;
@@ -311,35 +385,39 @@ export default function PlannerScreen() {
   const allDay = useMemo<Task[]>(
     () => [
       ...(view?.allDay.map(mapItem) ?? []),
-      ...deviceEvents
-        .filter(
-          (event) =>
-            event.kind === 'event' &&
-            event.allDay &&
-            !view?.allDay.some((item) => item.deviceEventId === event.id),
-        )
-        .map((event) => ({
-          id: `device:${event.id}`,
-          title: event.title,
-          subtitle: event.calendarTitle ?? 'Device calendar',
-          special: 'calendar' as const,
-        })),
-      ...birthdays.map((birthday) => ({
-        id: birthday.id,
-        title: birthday.title,
-        subtitle: birthday.subtitle,
-        special: 'birthday' as const,
-      })),
-      ...systemReminders
-        .filter((reminder) => reminder.allDay)
-        .map((reminder) => ({
-          id: `system-reminder:${reminder.id}`,
-          title: reminder.title,
-          subtitle: reminder.listTitle ?? 'Apple Reminders',
-          systemReminderId: reminder.id,
-        })),
+      ...(showExternalItems
+        ? [
+            ...deviceEvents
+              .filter(
+                (event) =>
+                  event.kind === 'event' &&
+                  event.allDay &&
+                  !view?.allDay.some((item) => item.deviceEventId === event.id),
+              )
+              .map((event) => ({
+                id: `device:${event.id}`,
+                title: event.title,
+                subtitle: event.calendarTitle ?? 'Device calendar',
+                special: 'calendar' as const,
+              })),
+            ...birthdays.map((birthday) => ({
+              id: birthday.id,
+              title: birthday.title,
+              subtitle: birthday.subtitle,
+              special: 'birthday' as const,
+            })),
+            ...systemReminders
+              .filter((reminder) => reminder.allDay)
+              .map((reminder) => ({
+                id: `system-reminder:${reminder.id}`,
+                title: reminder.title,
+                subtitle: reminder.listTitle ?? 'Apple Reminders',
+                systemReminderId: reminder.id,
+              })),
+          ]
+        : []),
     ],
-    [birthdays, deviceEvents, mapItem, systemReminders, view?.allDay],
+    [birthdays, deviceEvents, mapItem, showExternalItems, systemReminders, view?.allDay],
   );
 
   const scheduled = useMemo<ScheduledTask[]>(
@@ -350,48 +428,51 @@ export default function PlannerScreen() {
           time: item.time ?? '',
           icon: item.type === 'event' ? ('clock' as const) : undefined,
         })) ?? []),
-        ...deviceEvents
-          .filter((event) => {
-            if (event.kind !== 'event' || event.allDay) return false;
-            // Prefer the Agenda-owned row when we already mirror this calendar event.
-            return !view?.scheduled.some((item) => {
-              if (item.deviceEventId && item.deviceEventId === event.id) return true;
-              if (item.type !== 'event' || !item.time) return false;
-              const start = new Date(event.startDate);
-              const hh = String(start.getHours()).padStart(2, '0');
-              const mm = String(start.getMinutes()).padStart(2, '0');
-              return item.title === event.title && item.time === `${hh}:${mm}`;
-            });
-          })
-          .map((event) => ({
-            id: `device:${event.id}`,
-            title: event.title,
-            subtitle: event.calendarTitle ?? 'Device calendar',
-            time: new Date(event.startDate).toLocaleTimeString(undefined, {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }),
-            icon: 'clock' as const,
-            special: 'calendar' as const,
-            deviceEventId: event.id,
-          })),
-        ...systemReminders
-          .filter((reminder) => !reminder.allDay && reminder.dueDate)
-          .map((reminder) => ({
-            id: `system-reminder:${reminder.id}`,
-            title: reminder.title,
-            subtitle: reminder.listTitle ?? 'Apple Reminders',
-            time: new Date(reminder.dueDate as string).toLocaleTimeString(undefined, {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }),
-            icon: 'clock' as const,
-            systemReminderId: reminder.id,
-          })),
+        ...(showExternalItems
+          ? [
+              ...deviceEvents
+                .filter((event) => {
+                  if (event.kind !== 'event' || event.allDay) return false;
+                  return !view?.scheduled.some((item) => {
+                    if (item.deviceEventId && item.deviceEventId === event.id) return true;
+                    if (item.type !== 'event' || !item.time) return false;
+                    const start = new Date(event.startDate);
+                    const hh = String(start.getHours()).padStart(2, '0');
+                    const mm = String(start.getMinutes()).padStart(2, '0');
+                    return item.title === event.title && item.time === `${hh}:${mm}`;
+                  });
+                })
+                .map((event) => ({
+                  id: `device:${event.id}`,
+                  title: event.title,
+                  subtitle: event.calendarTitle ?? 'Device calendar',
+                  time: new Date(event.startDate).toLocaleTimeString(undefined, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  }),
+                  icon: 'clock' as const,
+                  special: 'calendar' as const,
+                  deviceEventId: event.id,
+                })),
+              ...systemReminders
+                .filter((reminder) => !reminder.allDay && reminder.dueDate)
+                .map((reminder) => ({
+                  id: `system-reminder:${reminder.id}`,
+                  title: reminder.title,
+                  subtitle: reminder.listTitle ?? 'Apple Reminders',
+                  time: new Date(reminder.dueDate as string).toLocaleTimeString(undefined, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  }),
+                  icon: 'clock' as const,
+                  systemReminderId: reminder.id,
+                })),
+            ]
+          : []),
       ].sort((a, b) => a.time.localeCompare(b.time)),
-    [deviceEvents, mapItem, systemReminders, view?.scheduled],
+    [deviceEvents, mapItem, showExternalItems, systemReminders, view?.scheduled],
   );
 
   const completed = useMemo(() => view?.completed.map(mapItem) ?? [], [mapItem, view?.completed]);
@@ -490,8 +571,7 @@ export default function PlannerScreen() {
     const canToggle = isAgendaTask || Boolean(task.systemReminderId);
 
     const edit = canEdit ? () => editTask(task) : undefined;
-    const onSwipeComplete =
-      canToggle && !task.completed ? () => swipeComplete(task) : undefined;
+    const onSwipeComplete = canToggle && !task.completed ? () => swipeComplete(task) : undefined;
 
     // Read-only Apple Calendar rows — still tappable so the user gets feedback.
     if (!canEdit && !canToggle) {
@@ -550,29 +630,52 @@ export default function PlannerScreen() {
   };
 
   const chooseDate = useCallback(
-    (date: Date) => {
+    async (date: Date) => {
       const selectedDate = toLocalDateString(date);
       const today = toLocalDateString();
       const nextMode: Mode =
         selectedDate < today ? 'Recent' : selectedDate > today ? 'Upcoming' : 'Today';
-      const direction: -1 | 0 | 1 =
-        selectedDate > selectedDateRef.current
-          ? 1
-          : selectedDate < selectedDateRef.current
-            ? -1
-            : 0;
+      if (selectedDate === selectedDateRef.current) return;
 
       selectedDateRef.current = selectedDate;
       setPendingMode(nextMode);
-      runDayTransition(direction, () => {
+      const requestId = ++reloadRequestId.current;
+      const activeSpaceId = settings.general.keepFilterWhileChangingDays ? ui.activeSpaceId : null;
+
+      try {
+        const nextView = await loadTodayView(repos, selectedDate, activeSpaceId, {
+          includeCompleted: true,
+          separateCompleted: settings.general.showCompleted,
+        });
+        if (requestId !== reloadRequestId.current) return;
+
+        setView(nextView);
+        setDeviceEvents([]);
+        setDeviceBirthdays([]);
+        setSystemReminders([]);
         setUI({
           selectedDate,
           mode: nextMode.toLowerCase() as 'recent' | 'today' | 'upcoming',
           ...(settings.general.keepFilterWhileChangingDays ? {} : { activeSpaceId: null }),
         });
-      });
+      } catch (error) {
+        if (requestId !== reloadRequestId.current) return;
+        selectedDateRef.current = ui.selectedDate;
+        setPendingMode(null);
+        showToast(error instanceof Error ? error.message : 'Could not load that day', {
+          tone: 'error',
+        });
+      }
     },
-    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays],
+    [
+      repos,
+      setUI,
+      settings.general.keepFilterWhileChangingDays,
+      settings.general.showCompleted,
+      showToast,
+      ui.activeSpaceId,
+      ui.selectedDate,
+    ],
   );
 
   const shiftDay = useCallback(
@@ -580,7 +683,7 @@ export default function PlannerScreen() {
       const next = parseLocalDate(selectedDateRef.current);
       next.setDate(next.getDate() + delta);
       triggerHaptic('selection');
-      chooseDate(next);
+      void chooseDate(next);
     },
     [chooseDate],
   );
@@ -592,7 +695,7 @@ export default function PlannerScreen() {
 
   const {
     scrollRef,
-    composedGesture,
+    scrollGesture,
     onScroll,
     onScrollEndDrag,
     pullContentStyle,
@@ -603,6 +706,8 @@ export default function PlannerScreen() {
     onShiftDay: shiftDay,
     onPullAdd: openQuickAdd,
     gesturesEnabled: !drawingActive,
+    pullDownToAdd: settings.general.pullDownToAdd,
+    swipeToChangeDay: settings.general.swipeToChangeDay,
   });
 
   const setMode = useCallback(
@@ -610,24 +715,9 @@ export default function PlannerScreen() {
       const today = toLocalDateString();
       const selectedDate =
         next === 'Recent' ? addDays(today, -1) : next === 'Upcoming' ? addDays(today, 1) : today;
-      const direction: -1 | 0 | 1 =
-        selectedDate > selectedDateRef.current
-          ? 1
-          : selectedDate < selectedDateRef.current
-            ? -1
-            : 0;
-
-      selectedDateRef.current = selectedDate;
-      setPendingMode(next);
-      runDayTransition(direction, () => {
-        setUI({
-          selectedDate,
-          mode: next.toLowerCase() as 'recent' | 'today' | 'upcoming',
-          ...(settings.general.keepFilterWhileChangingDays ? {} : { activeSpaceId: null }),
-        });
-      });
+      void chooseDate(parseLocalDate(selectedDate));
     },
-    [runDayTransition, setUI, settings.general.keepFilterWhileChangingDays],
+    [chooseDate],
   );
 
   const dateHeading =
@@ -654,61 +744,73 @@ export default function PlannerScreen() {
 
       <BlurTargetView ref={blurTarget} style={styles.blurTarget}>
         <Animated.View style={styles.blurTarget}>
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.pullHintWrap, { top: headerHeight - 4 }, pullHintStyle]}
-          >
-            <View style={styles.pullHint}>
-              <Animated.Text style={[styles.pullHintText, pullLabelStyle]}>
-                Pull to add
-              </Animated.Text>
-              <Animated.Text
-                style={[styles.pullHintText, styles.pullHintOverlay, releaseLabelStyle]}
-              >
-                Release to add
-              </Animated.Text>
-            </View>
-          </Animated.View>
-
-          <GestureDetector gesture={composedGesture}>
-            <PlannerScrollView
-              ref={scrollRef}
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-              scrollEventThrottle={16}
-              scrollEnabled={!drawingActive}
-              bounces
-              alwaysBounceVertical
-              overScrollMode="always"
-              onScroll={onScroll}
-              onScrollEndDrag={onScrollEndDrag}
-              contentContainerStyle={[
-                styles.scrollContent,
-                {
-                  paddingTop: headerHeight,
-                  paddingBottom: Math.max(128, insets.bottom + 108),
-                },
-              ]}
+          {settings.general.pullDownToAdd ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.pullHintWrap, { top: headerHeight - 4 }, pullHintStyle]}
             >
-              <Animated.View style={pullContentStyle}>
-                <Animated.View style={[styles.page, dayTransitionStyle]}>
+              <View style={styles.pullHint}>
+                <Animated.Text style={[styles.pullHintText, pullLabelStyle]}>
+                  Pull to add
+                </Animated.Text>
+                <Animated.Text
+                  style={[styles.pullHintText, styles.pullHintOverlay, releaseLabelStyle]}
+                >
+                  Release to add
+                </Animated.Text>
+              </View>
+            </Animated.View>
+          ) : null}
+
+          <PlannerGestureScroll
+            scrollGesture={scrollGesture}
+            scrollRef={scrollRef}
+            scrollEnabled={!drawingActive}
+            onScroll={onScroll}
+            onScrollEndDrag={onScrollEndDrag}
+            pullContentStyle={pullContentStyle}
+            pageStyle={styles.page}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingTop: headerHeight,
+                paddingBottom: Math.max(128, insets.bottom + 108),
+              },
+            ]}
+          >
                   <View style={styles.dateBlock}>
                     <Text style={styles.dateTitle}>{dateHeading}</Text>
-                    <Text style={styles.dateSubtitle}>Swipe to change day • pull down to add</Text>
+                    <Text style={styles.dateSubtitle}>
+                      {[
+                        settings.general.swipeToChangeDay ? 'Swipe to change day' : null,
+                        settings.general.pullDownToAdd ? 'pull down to add' : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' • ') || 'Your day'}
+                    </Text>
                   </View>
 
-                  {settings.general.showSpaces && view?.spaces.length ? (
-                    <Animated.ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.spaceFilters}
-                    >
-                      <SpaceFilter
-                        active={!ui.activeSpaceId}
-                        label="All"
-                        onPress={() => setUI({ activeSpaceId: null })}
-                      />
-                      {view.spaces.map((space) => (
+                  <Animated.ScrollView
+                    horizontal
+                    directionalLockEnabled
+                    nestedScrollEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.spaceFilterScroll}
+                    contentContainerStyle={styles.spaceFilters}
+                  >
+                    <SpaceFilter
+                      active={!ui.activeSpaceId}
+                      label="All"
+                      onPress={() => setUI({ activeSpaceId: null })}
+                    />
+                    <SpaceFilter
+                      active={isInboxSpaceFilter(ui.activeSpaceId)}
+                      label="Inbox"
+                      onPress={() => setUI({ activeSpaceId: INBOX_FILTER_ID })}
+                    />
+                    {(view?.spaces ?? [])
+                      .filter((space) => space.isPinned && space.name.toLowerCase() !== 'inbox')
+                      .map((space) => (
                         <SpaceFilter
                           active={ui.activeSpaceId === space.id}
                           key={space.id}
@@ -716,8 +818,7 @@ export default function PlannerScreen() {
                           onPress={() => setUI({ activeSpaceId: space.id })}
                         />
                       ))}
-                    </Animated.ScrollView>
-                  ) : null}
+                  </Animated.ScrollView>
 
                   <View style={styles.connectStack}>
                     <PermissionCard
@@ -746,7 +847,7 @@ export default function PlannerScreen() {
                     <View style={styles.groupCard}>
                       <View style={styles.allDayHeader}>
                         <View style={styles.headerLabelRow}>
-                          <Icon name="orbit" color={C.accent} size={24} stroke={1.7} />
+                          <Icon name="agenda" color={C.accent} size={24} />
                           <Text style={[styles.sectionLabel, styles.accentLabel]}>ALL DAY</Text>
                         </View>
 
@@ -780,7 +881,9 @@ export default function PlannerScreen() {
                           );
                         })
                       ) : (
-                        <EmptyState message="Nothing all day. Add a task or event." />
+                        <EmptyState
+                          message={filteredEmptyHint ?? 'Nothing all day. Add a task or event.'}
+                        />
                       )}
 
                       {hiddenAllDayCount > 0 ? (
@@ -825,7 +928,7 @@ export default function PlannerScreen() {
                               );
                             })
                           ) : (
-                            <EmptyState message="No scheduled items yet." />
+                            <EmptyState message={filteredEmptyHint ?? 'No scheduled items yet.'} />
                           )}
                         </Animated.View>
                       ) : null}
@@ -885,7 +988,7 @@ export default function PlannerScreen() {
                           <SquareIconButton
                             name="more"
                             tone="accentSoft"
-                            onPress={() => router.push('/routines')}
+                            onPress={openRoutines}
                             accessibilityLabel="Routine options"
                           />
                         </View>
@@ -902,7 +1005,13 @@ export default function PlannerScreen() {
                           ))}
                         </View>
                       ) : (
-                        <EmptyState message="No routines yet. Create one to build a habit." />
+                        <EmptyState
+                          message={
+                            activeSpaceLabel
+                              ? `No routines for ${activeSpaceLabel}.`
+                              : 'No routines yet. Create one to build a habit.'
+                          }
+                        />
                       )}
                     </View>
 
@@ -916,10 +1025,7 @@ export default function PlannerScreen() {
                       onPersisted={refresh}
                     />
                   </View>
-                </Animated.View>
-              </Animated.View>
-            </PlannerScrollView>
-          </GestureDetector>
+          </PlannerGestureScroll>
         </Animated.View>
       </BlurTargetView>
 
@@ -962,8 +1068,11 @@ export default function PlannerScreen() {
           blurTarget={blurTarget}
           bottom={Math.max(16, insets.bottom + 10)}
           onAdd={() => openCreate('task')}
-          onMore={openQuickAdd}
-          onSearch={() => router.push('/search')}
+          onMore={() => {
+            triggerHaptic('selection');
+            openLibrary();
+          }}
+          onSearch={openSearch}
         />
       ) : null}
 
@@ -1031,6 +1140,7 @@ function SpaceFilter({
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       disabled={active}
       haptic="selection"
@@ -1443,6 +1553,10 @@ function createStyles(theme: AgendaTheme) {
     spaceFilters: {
       gap: 8,
       paddingBottom: 16,
+    },
+    spaceFilterScroll: {
+      width: '100%',
+      flexGrow: 0,
     },
     spaceFilter: {
       minHeight: 34,

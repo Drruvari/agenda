@@ -4,10 +4,10 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-nati
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Icon } from '@/components/ui/Icon';
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
 import { formatLongDate, toLocalDateString, useData } from '@/data';
 import { createAgendaTask } from '@/domain/agendaLifecycle';
 import { markOnboardingCompleted } from '@/features/onboarding/onboardingStorage';
@@ -70,7 +70,7 @@ export function OnboardingScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
       <View style={styles.top}>
-        <OrbitLogo color={theme.primary} size={28} stroke={1.8} />
+        <AgendaLogo color={theme.primary} size={28} />
         <View style={styles.progressTrack}>
           <View
             style={[styles.progressFill, { width: `${((stepIndex + 1) / STEPS.length) * 100}%` }]}
@@ -213,7 +213,7 @@ function TodayPreview({
 
       <View style={styles.previewSection}>
         <View style={styles.previewHeader}>
-          <Icon name="orbit" color={theme.primary} size={18} stroke={1.8} />
+          <Icon name="agenda" color={theme.primary} size={18} />
           <Text style={[styles.previewLabel, { color: theme.primary }]}>ALL DAY</Text>
         </View>
         {allDay.length ? (

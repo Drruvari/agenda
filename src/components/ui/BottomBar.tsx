@@ -59,7 +59,7 @@ export function BottomBar({
         {onMore ? (
           <AnimatedPressable
             accessibilityRole="button"
-            accessibilityLabel="More actions"
+            accessibilityLabel="Open Library"
             onPress={onMore}
             pressedStyle={styles.pressedSoft}
             style={styles.iconHit}

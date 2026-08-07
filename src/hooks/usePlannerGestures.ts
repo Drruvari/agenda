@@ -1,12 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
-  runOnUI,
-  scrollTo,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -17,161 +15,198 @@ import Animated, {
 import { triggerHaptic } from '@/lib/haptics';
 import { motion } from '@/theme/motion';
 
-export const PULL_ADD_THRESHOLD = 72;
-export const PULL_ADD_MAX = 120;
+export const PULL_ADD_THRESHOLD = 64;
+export const PULL_ADD_MAX = 112;
 
 type Options = {
   onShiftDay: (delta: number) => void;
   onPullAdd: () => void;
-  /** When false, day-swipe / pull-add gestures are disabled (e.g. finger drawing). */
+  /** Master kill (e.g. finger drawing active). */
   gesturesEnabled?: boolean;
+  /** Horizontal swipe between days. */
+  swipeToChangeDay?: boolean;
+  /** Pull down at top to open quick add. */
+  pullDownToAdd?: boolean;
 };
 
+/**
+ * Planner scroll + day-swipe + pull-to-add.
+ *
+ * A single simultaneous composition keeps native scrolling, horizontal day
+ * navigation, and Android pull-to-add on the UI thread without making one
+ * recognizer wait for another to fail.
+ */
 export function usePlannerGestures({
   onShiftDay,
   onPullAdd,
   gesturesEnabled = true,
+  swipeToChangeDay = true,
+  pullDownToAdd = true,
 }: Options) {
-  const [isAtTop, setIsAtTop] = useState(true);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollY = useSharedValue(0);
   const pullY = useSharedValue(0);
   const pullArmed = useSharedValue(false);
-  const wasAtTop = useSharedValue(true);
   const wasRubberBanding = useSharedValue(false);
+  const isAtTopSV = useSharedValue(true);
+  const touchStartX = useSharedValue(0);
+  const touchStartY = useSharedValue(0);
 
   const hapticJS = useCallback((type: 'selection' | 'medium') => {
     triggerHaptic(type);
   }, []);
 
-  const syncAtTop = useCallback((atTop: boolean) => {
-    setIsAtTop(atTop);
-  }, []);
-
-  const settlePull = () => {
-    'worklet';
-    pullY.value = withSpring(0, motion.settle);
-    pullArmed.value = false;
-  };
-
-  const scrollBy = useCallback(
-    (delta: number) => {
-      if (delta <= 0) return;
-      runOnUI(() => {
-        'worklet';
-        scrollTo(scrollRef, 0, Math.max(0, scrollY.value + delta), false);
-      })();
-    },
-    [scrollRef, scrollY],
-  );
-
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
       const y = event.contentOffset.y;
-      scrollY.value = y;
-      const atTop = y <= 4;
-      if (atTop !== wasAtTop.value) {
-        wasAtTop.value = atTop;
-        runOnJS(syncAtTop)(atTop);
-      }
+      isAtTopSV.set(y <= 4);
 
-      if (Platform.OS === 'ios' && y < 0) {
-        wasRubberBanding.value = true;
+      if (Platform.OS === 'ios' && pullDownToAdd && y < 0) {
+        wasRubberBanding.set(true);
         const next = Math.min(-y, PULL_ADD_MAX);
-        pullY.value = next;
+        pullY.set(next);
         const armed = next >= PULL_ADD_THRESHOLD;
-        if (armed !== pullArmed.value) {
-          pullArmed.value = armed;
+        if (armed !== pullArmed.get()) {
+          pullArmed.set(armed);
           if (armed) runOnJS(hapticJS)('selection');
         }
-      } else if (wasRubberBanding.value && y >= 0) {
-        wasRubberBanding.value = false;
-        settlePull();
+      } else if (wasRubberBanding.get() && y >= 0) {
+        wasRubberBanding.set(false);
+        pullY.set(withSpring(0, motion.settle));
+        pullArmed.set(false);
       }
     },
   });
 
   const onScrollEndDrag = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-      if (Platform.OS !== 'ios') return;
+      if (!pullDownToAdd || Platform.OS !== 'ios') return;
       if (event.nativeEvent.contentOffset.y <= -PULL_ADD_THRESHOLD) {
         onPullAdd();
       }
     },
-    [onPullAdd],
+    [onPullAdd, pullDownToAdd],
   );
 
-  const composedGesture = useMemo(() => {
-    const daySwipe = Gesture.Pan()
-      .enabled(gesturesEnabled)
+  const makeDaySwipe = useCallback(() => {
+    return Gesture.Pan()
+      .enabled(gesturesEnabled && swipeToChangeDay)
       .maxPointers(1)
-      // High horizontal threshold so vertical taps on rows aren't claimed on iOS.
-      .activeOffsetX([-72, 72])
-      .failOffsetY([-18, 18])
+      .averageTouches(true)
+      .activeOffsetX([-20, 20])
+      .failOffsetY([-16, 16])
       .onEnd((event) => {
-        const wentLeft = event.translationX <= -52 || event.velocityX < -650;
-        const wentRight = event.translationX >= 52 || event.velocityX > 650;
+        const wentLeft = event.translationX <= -44 || event.velocityX < -520;
+        const wentRight = event.translationX >= 44 || event.velocityX > 520;
         if (wentLeft) runOnJS(onShiftDay)(1);
         else if (wentRight) runOnJS(onShiftDay)(-1);
       });
+  }, [gesturesEnabled, onShiftDay, swipeToChangeDay]);
+
+  /** Android pull uses manual activation so vertical scrolling remains native. */
+  const scrollGesture = useMemo(() => {
+    const nativeScroll = Gesture.Native();
+    const daySwipe = makeDaySwipe();
+    if (Platform.OS !== 'android') {
+      return Gesture.Simultaneous(nativeScroll, daySwipe);
+    }
 
     const pullAdd = Gesture.Pan()
-      .enabled(gesturesEnabled && Platform.OS === 'android' && isAtTop)
+      .enabled(gesturesEnabled && pullDownToAdd)
       .maxPointers(1)
-      .activeOffsetY(18)
-      .failOffsetX([-24, 24])
+      .averageTouches(true)
+      .manualActivation(true)
+      .onTouchesDown((event) => {
+        const t = event.allTouches[0];
+        if (!t) return;
+        touchStartX.set(t.absoluteX);
+        touchStartY.set(t.absoluteY);
+      })
+      .onTouchesMove((event, state) => {
+        if (!isAtTopSV.get()) {
+          state.fail();
+          return;
+        }
+        const t = event.allTouches[0];
+        if (!t) {
+          state.fail();
+          return;
+        }
+        const dx = t.absoluteX - touchStartX.get();
+        const dy = t.absoluteY - touchStartY.get();
+        if (Math.abs(dx) > 14) {
+          state.fail();
+          return;
+        }
+        // Finger up → let the ScrollView scroll the list.
+        if (dy < -8) {
+          state.fail();
+          return;
+        }
+        if (dy > 10) {
+          state.activate();
+        }
+      })
       .onUpdate((event) => {
         if (event.translationY <= 0) {
-          pullY.value = 0;
-          pullArmed.value = false;
+          pullY.set(0);
+          pullArmed.set(false);
           return;
         }
         const raw = event.translationY;
-        const next = Math.min(raw * 0.52 - raw * raw * 0.00035, PULL_ADD_MAX);
-        pullY.value = Math.max(0, next);
-        const armed = pullY.value >= PULL_ADD_THRESHOLD;
-        if (armed !== pullArmed.value) {
-          pullArmed.value = armed;
+        const next = Math.min(raw * 0.72 - raw * raw * 0.00035, PULL_ADD_MAX);
+        pullY.set(Math.max(0, next));
+        const armed = pullY.get() >= PULL_ADD_THRESHOLD;
+        if (armed !== pullArmed.get()) {
+          pullArmed.set(armed);
           if (armed) runOnJS(hapticJS)('selection');
         }
       })
       .onEnd(() => {
-        if (pullArmed.value) runOnJS(onPullAdd)();
-        settlePull();
+        if (pullArmed.get()) runOnJS(onPullAdd)();
       })
       .onFinalize(() => {
-        if (pullY.value > 0) settlePull();
-        else pullArmed.value = false;
+        pullY.set(withSpring(0, motion.settle));
+        pullArmed.set(false);
       });
 
-    return Gesture.Simultaneous(Gesture.Native(), Gesture.Exclusive(daySwipe, pullAdd));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pull shared values are stable
-  }, [gesturesEnabled, hapticJS, isAtTop, onPullAdd, onShiftDay]);
+    return Gesture.Simultaneous(nativeScroll, pullAdd, daySwipe);
+  }, [
+    gesturesEnabled,
+    hapticJS,
+    isAtTopSV,
+    makeDaySwipe,
+    onPullAdd,
+    pullDownToAdd,
+    pullArmed,
+    pullY,
+    touchStartX,
+    touchStartY,
+  ]);
 
   const pullContentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: Platform.OS === 'android' ? pullY.value : 0 }],
+    transform: [{ translateY: Platform.OS === 'android' ? pullY.get() : 0 }],
   }));
 
   const pullHintStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(pullY.value, [8, 26], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(pullY.get(), [8, 26], [0, 1], Extrapolation.CLAMP),
     transform: [
       {
         translateY: interpolate(
-          pullY.value,
+          pullY.get(),
           [0, PULL_ADD_THRESHOLD],
           [-8, 12],
           Extrapolation.CLAMP,
         ),
       },
       {
-        scale: interpolate(pullY.value, [0, PULL_ADD_THRESHOLD], [0.92, 1], Extrapolation.CLAMP),
+        scale: interpolate(pullY.get(), [0, PULL_ADD_THRESHOLD], [0.92, 1], Extrapolation.CLAMP),
       },
     ],
   }));
 
   const pullLabelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
-      pullY.value,
+      pullY.get(),
       [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
       [1, 0],
       Extrapolation.CLAMP,
@@ -180,7 +215,7 @@ export function usePlannerGestures({
 
   const releaseLabelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
-      pullY.value,
+      pullY.get(),
       [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
       [0, 1],
       Extrapolation.CLAMP,
@@ -188,7 +223,7 @@ export function usePlannerGestures({
     transform: [
       {
         scale: interpolate(
-          pullY.value,
+          pullY.get(),
           [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
           [0.96, 1],
           Extrapolation.CLAMP,
@@ -199,8 +234,7 @@ export function usePlannerGestures({
 
   return {
     scrollRef,
-    scrollBy,
-    composedGesture,
+    scrollGesture,
     onScroll,
     onScrollEndDrag,
     pullContentStyle,

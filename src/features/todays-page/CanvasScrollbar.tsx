@@ -149,7 +149,7 @@ function createStyles(theme: AgendaTheme) {
       zIndex: 8,
     },
     trackHit: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     thumbHit: {
       position: 'absolute',

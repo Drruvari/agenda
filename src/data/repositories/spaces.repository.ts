@@ -29,7 +29,7 @@ export function createSpacesRepository(db: DatabaseClient) {
         name: input.name.trim(),
         color: input.color,
         icon: input.icon,
-        isPinned: input.isPinned ?? false,
+        isPinned: input.isPinned ?? true,
         isSystem: input.isSystem,
         order: input.order ?? spaces.length,
         createdAt: nowIso(),

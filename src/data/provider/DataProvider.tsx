@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { OrbitLogo } from '@/components/ui/OrbitLogo';
+import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { openDatabase } from '@/data/database/database';
 import type { DatabaseClient } from '@/data/database/types';
 import { SCHEMA_VERSION } from '@/data/database/types';
@@ -169,7 +169,7 @@ export function DataProvider({ children }: PropsWithChildren) {
   if (!ready || !value) {
     return (
       <View style={styles.centered}>
-        <OrbitLogo size={28} color="#5856D6" spin />
+        <AgendaLogo size={28} color="#5856D6" spin />
       </View>
     );
   }

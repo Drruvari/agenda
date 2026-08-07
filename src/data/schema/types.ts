@@ -117,6 +117,10 @@ export interface AppSettings {
     calendarIndicators: boolean;
     clickToEdit: boolean;
     penOnlyDrawing: boolean;
+    /** Pull down at top of Today to open quick add. */
+    pullDownToAdd: boolean;
+    /** Horizontal swipe on Today to move between days. */
+    swipeToChangeDay: boolean;
   };
   editor: {
     font: 'system' | string;
@@ -144,6 +148,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     calendarIndicators: true,
     clickToEdit: true,
     penOnlyDrawing: false,
+    pullDownToAdd: true,
+    swipeToChangeDay: true,
   },
   editor: {
     font: 'system',

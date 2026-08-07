@@ -19,6 +19,7 @@ export default function AppNavigation() {
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="library" />
         <Stack.Screen name="routines" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="tasks" />

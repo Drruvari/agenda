@@ -32,6 +32,13 @@ export function createNotesRepository(db: DatabaseClient) {
       return notes[0] ?? null;
     },
 
+    async list(): Promise<DailyNote[]> {
+      const notes = await db.getAll<DailyNote>('daily_notes');
+      return notes
+        .filter((note) => note.bodyText.trim().length > 0 || note.drawingId)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    },
+
     async getOrCreateForDate(date: string): Promise<DailyNote> {
       const existing = await this.getByDate(date);
       if (existing) {

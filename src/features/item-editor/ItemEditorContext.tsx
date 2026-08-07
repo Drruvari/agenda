@@ -14,6 +14,7 @@ type ItemEditorContextValue = {
   open: (mode: ItemEditorMode) => void;
   openCreate: (kind?: EditorKind) => void;
   openEdit: (itemId: string) => void;
+  openEditRoutine: (routineId: string) => void;
   openQuickAdd: () => void;
   close: () => void;
 };
@@ -41,6 +42,13 @@ export function ItemEditorProvider({ children }: PropsWithChildren) {
     [open],
   );
 
+  const openEditRoutine = useCallback(
+    (routineId: string) => {
+      open({ type: 'edit-routine', routineId });
+    },
+    [open],
+  );
+
   const openQuickAdd = useCallback(() => {
     open({ type: 'quick-add' });
   }, [open]);
@@ -50,8 +58,8 @@ export function ItemEditorProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo(
-    () => ({ session, open, openCreate, openEdit, openQuickAdd, close }),
-    [session, open, openCreate, openEdit, openQuickAdd, close],
+    () => ({ session, open, openCreate, openEdit, openEditRoutine, openQuickAdd, close }),
+    [session, open, openCreate, openEdit, openEditRoutine, openQuickAdd, close],
   );
 
   return <ItemEditorContext.Provider value={value}>{children}</ItemEditorContext.Provider>;

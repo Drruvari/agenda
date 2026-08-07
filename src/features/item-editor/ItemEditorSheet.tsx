@@ -1,10 +1,11 @@
-import { BottomSheet, RNHostView } from '@expo/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Dimensions, Platform } from 'react-native';
+import { Alert, Dimensions } from 'react-native';
 
+import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/AgendaBottomSheet';
 import { useToast } from '@/components/ui/ToastProvider';
 import { localDateTime, parseLocalDate, useData } from '@/data';
-import type { AgendaItem } from '@/data/schema/types';
+import type { AgendaItem, Routine } from '@/data/schema/types';
+import { resolveCreateSpaceId } from '@/data/spaces/spaceFilter';
 import {
   createAgendaEvent,
   createAgendaTask,
@@ -16,17 +17,14 @@ import { parseSmartInput } from '@/lib/smart-parse/parseSmartInput';
 import { useItemEditor } from './ItemEditorContext';
 import { ItemEditorForm } from './ItemEditorForm';
 import {
-  type EditorKind,
   draftFromItem,
+  type EditorKind,
   editorTitle,
   emptyDraft,
   type ItemEditorDraft,
   type ItemEditorMode,
   recurrenceToRule,
 } from './types';
-
-/** Approximate iOS sheet dismiss duration — universal BottomSheet skips onDismiss on programmatic close. */
-const IOS_SHEET_DISMISS_MS = 320;
 
 export function ItemEditorHost() {
   const { session, close } = useItemEditor();
@@ -37,54 +35,58 @@ export function ItemEditorHost() {
 
 function sessionKey(mode: ItemEditorMode): string {
   if (mode.type === 'edit') return `edit-${mode.itemId}`;
+  if (mode.type === 'edit-routine') return `edit-routine-${mode.routineId}`;
   if (mode.type === 'create') return `create-${mode.kind ?? 'task'}`;
   return 'quick-add';
 }
 
 function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss: () => void }) {
-  const { repos, ui, settings, refresh } = useData();
+  const { repos, ui, settings, refresh, revision } = useData();
   const { showToast } = useToast();
   const sheetHeight = useMemo(() => Math.round(Dimensions.get('window').height * 0.92), []);
-  /** Transparent so the BottomSheet’s native surface is the only sheet bg. */
-  const sheetHostStyle = useMemo(
-    () => ({
-      width: '100%' as const,
-      height: sheetHeight,
-      backgroundColor: 'transparent',
-    }),
-    [sheetHeight],
-  );
 
   const initialKind: EditorKind =
     mode.type === 'create'
       ? (mode.kind ?? 'task')
       : mode.type === 'quick-add'
         ? settings.editor.defaultAddType
-        : 'task';
+        : mode.type === 'edit-routine'
+          ? 'routine'
+          : 'task';
 
   const [draft, setDraft] = useState<ItemEditorDraft>(() =>
     emptyDraft(
       ui.selectedDate,
       initialKind,
-      ui.activeSpaceId ?? settings.editor.defaultSpaceId ?? '',
+      resolveCreateSpaceId(ui.activeSpaceId, settings.editor.defaultSpaceId) ?? '',
       settings.editor.defaultEventDurationMinutes,
     ),
   );
   const [original, setOriginal] = useState<AgendaItem | null>(null);
+  const [originalRoutine, setOriginalRoutine] = useState<Routine | null>(null);
   const [spaces, setSpaces] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
-  const [ready, setReady] = useState(mode.type !== 'edit');
+  const [ready, setReady] = useState(mode.type !== 'edit' && mode.type !== 'edit-routine');
   const [presented, setPresented] = useState(true);
   const closedRef = useRef(false);
   const pendingRefreshRef = useRef(false);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputKey = mode.type === 'edit' ? `edit-${mode.itemId}-${ready}` : `new-${draft.kind}`;
+  const inputKey =
+    mode.type === 'edit'
+      ? `edit-${mode.itemId}-${ready}`
+      : mode.type === 'edit-routine'
+        ? `edit-routine-${mode.routineId}-${ready}`
+        : `new-${draft.kind}`;
 
   useEffect(() => {
     void repos.spaces.list().then((list) => {
-      setSpaces(list.map((space) => ({ id: space.id, name: space.name })));
+      setSpaces(
+        list
+          .filter((space) => space.name.toLowerCase() !== 'inbox')
+          .map((space) => ({ id: space.id, name: space.name })),
+      );
     });
-  }, [repos.spaces]);
+  }, [repos.spaces, revision]);
 
   useEffect(() => {
     if (mode.type !== 'edit') return;
@@ -104,6 +106,31 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       cancelled = true;
     };
   }, [mode, onDismiss, repos.agenda, showToast]);
+
+  useEffect(() => {
+    if (mode.type !== 'edit-routine') return;
+    let cancelled = false;
+    void repos.routines.getById(mode.routineId).then((routine) => {
+      if (cancelled) return;
+      if (!routine) {
+        showToast('Routine not found', { tone: 'error' });
+        onDismiss();
+        return;
+      }
+      setOriginalRoutine(routine);
+      setDraft((current) => ({
+        ...current,
+        kind: 'routine',
+        title: routine.name,
+        spaceId: routine.spaceId ?? '',
+        routineActive: routine.active,
+      }));
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, onDismiss, repos.routines, showToast]);
 
   useEffect(() => {
     return () => {
@@ -131,7 +158,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
   const onTitleChange = (text: string) => {
     patch({ title: text });
 
-    if (mode.type === 'edit' || draft.kind !== 'task') return;
+    if (mode.type === 'edit' || mode.type === 'edit-routine' || draft.kind !== 'task') return;
     if (!settings.editor.smartParsingEnabled) return;
 
     const parsed = parseSmartInput(text, ui.selectedDate);
@@ -158,7 +185,8 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
     (draft.kind === 'note'
       ? Boolean(draft.title.trim() || draft.details.trim())
       : draft.title.trim().length > 0);
-  const showTypePicker = mode.type === 'quick-add' || mode.type === 'create';
+  const showTypePicker =
+    mode.type === 'quick-add' || (mode.type === 'create' && mode.kind !== 'routine');
 
   /** Close the sheet first; tear down only after the dismiss animation. */
   const requestClose = useCallback(
@@ -169,10 +197,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
 
       // Universal BottomSheet often skips onDismiss for programmatic close — finish after the animation.
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-      dismissTimerRef.current = setTimeout(
-        finishClose,
-        Platform.OS === 'ios' ? IOS_SHEET_DISMISS_MS : 250,
-      );
+      dismissTimerRef.current = setTimeout(finishClose, SHEET_DISMISS_MS);
     },
     [finishClose],
   );
@@ -201,7 +226,14 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       const details = rawDetails.trim() || undefined;
       const recurrence = recurrenceToRule(draft.recurrence);
 
-      if (mode.type === 'edit' && original) {
+      if (mode.type === 'edit-routine' && originalRoutine) {
+        await repos.routines.update({
+          ...originalRoutine,
+          name: finalTitle,
+          spaceId,
+          active: draft.routineActive,
+        });
+      } else if (mode.type === 'edit' && original) {
         if (original.type === 'note') {
           await updateAgendaItem(repos, original, {
             ...original,
@@ -314,24 +346,35 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
   };
 
   const remove = () => {
-    if (!original) return;
-    Alert.alert('Delete item?', 'This permanently removes the item.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () =>
-          void deleteAgendaItem(repos, original)
-            .then(() => {
-              requestClose({ refresh: true });
-            })
-            .catch((error) => {
-              showToast(error instanceof Error ? error.message : 'Could not delete', {
-                tone: 'error',
-              });
-            }),
-      },
-    ]);
+    if (!original && !originalRoutine) return;
+    const deletingRoutine = Boolean(originalRoutine);
+    Alert.alert(
+      deletingRoutine ? 'Delete routine?' : 'Delete item?',
+      deletingRoutine
+        ? 'This removes the routine and its completion history.'
+        : 'This permanently removes the item.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            void (
+              originalRoutine
+                ? repos.routines.delete(originalRoutine.id)
+                : deleteAgendaItem(repos, original!)
+            )
+              .then(() => {
+                requestClose({ refresh: true });
+              })
+              .catch((error) => {
+                showToast(error instanceof Error ? error.message : 'Could not delete', {
+                  tone: 'error',
+                });
+              }),
+        },
+      ],
+    );
   };
 
   const form = (
@@ -341,7 +384,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       heading={heading}
       inputKey={inputKey}
       saving={saving}
-      showDelete={mode.type === 'edit'}
+      showDelete={mode.type === 'edit' || mode.type === 'edit-routine'}
       showTypePicker={showTypePicker}
       spaces={spaces}
       onChange={patch}
@@ -360,8 +403,13 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
   // No outer Host — BottomSheet already hosts itself. An absoluteFill Host was
   // painting over the planner on iOS and flashing the page background on open/close.
   return (
-    <BottomSheet isPresented={presented} onDismiss={finishClose} snapPoints={['half', 'full']}>
-      <RNHostView style={sheetHostStyle}>{form}</RNHostView>
-    </BottomSheet>
+    <AgendaBottomSheet
+      height={sheetHeight}
+      isPresented={presented}
+      onDismiss={finishClose}
+      snapPoints={['half', 'full']}
+    >
+      {form}
+    </AgendaBottomSheet>
   );
 }

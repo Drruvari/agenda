@@ -373,13 +373,6 @@ function GeneralSettings({
         </View>
         <SettingToggle
           accent={accent}
-          title="Show Spaces"
-          subtitle="Show Space chips above your day so you can filter Work, Personal, and other contexts."
-          value={general.showSpaces}
-          onValueChange={(showSpaces) => onGeneral({ showSpaces })}
-        />
-        <SettingToggle
-          accent={accent}
           title="Separate completed section"
           subtitle="On: finished tasks move into a Completed section. Off: they stay checked in All day and Scheduled."
           value={general.showCompleted}
@@ -400,6 +393,20 @@ function GeneralSettings({
           onValueChange={(keepFilterWhileChangingDays) =>
             onGeneral({ keepFilterWhileChangingDays })
           }
+        />
+        <SettingToggle
+          accent={accent}
+          title="Pull down to quick add"
+          subtitle="Pull down from the top of Today to open quick add. Turn off if it conflicts with scrolling."
+          value={general.pullDownToAdd}
+          onValueChange={(pullDownToAdd) => onGeneral({ pullDownToAdd })}
+        />
+        <SettingToggle
+          accent={accent}
+          title="Swipe left or right to change day"
+          subtitle="Swipe horizontally on Today to move to the previous or next day."
+          value={general.swipeToChangeDay}
+          onValueChange={(swipeToChangeDay) => onGeneral({ swipeToChangeDay })}
         />
         <SettingToggle
           accent={accent}
@@ -528,7 +535,7 @@ function EditorSettings({
           subtitle="New tasks and events are filed here unless you pick another Space."
           value={selectedSpace}
           options={[
-            { label: 'Inbox (no Space)', value: '__inbox__' },
+            { label: 'Inbox', value: '__inbox__' },
             ...spaces.map((space) => ({ label: space.name, value: space.id })),
           ]}
           onValueChange={(defaultSpaceId) =>

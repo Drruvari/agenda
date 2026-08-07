@@ -17,14 +17,9 @@ import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTime
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import type { Priority } from '@/data/schema/types';
+import { useLibrary } from '@/features/library/LibraryContext';
 import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  useAppAppearance,
-  useAppTheme,
-} from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
 
 import {
   DURATION_OPTIONS,
@@ -32,8 +27,8 @@ import {
   type ItemEditorDraft,
   KIND_OPTIONS,
   PRIORITY_OPTIONS,
-  type RecurrenceChoice,
   RECURRENCE_OPTIONS,
+  type RecurrenceChoice,
   REMINDER_OPTIONS,
 } from './types';
 
@@ -87,7 +82,7 @@ export function ItemEditorForm({
 
   const spaceOptions = useMemo(
     () => [
-      { label: 'No space', value: NONE_SPACE },
+      { label: 'Inbox', value: NONE_SPACE },
       ...spaces.map((space) => ({ label: space.name, value: space.id })),
     ],
     [spaces],
@@ -208,20 +203,31 @@ export function ItemEditorForm({
         ) : null}
 
         {draft.kind === 'note' ? (
-          <NoteFields draft={draft} spaceOptions={spaceOptions} styles={styles} onChange={onChange} />
+          <NoteFields
+            draft={draft}
+            spaceOptions={spaceOptions}
+            styles={styles}
+            onChange={onChange}
+          />
         ) : null}
 
         {draft.kind === 'routine' ? (
           <FormSection title="Organization" styles={styles}>
-            <EditorPickerRow
+            <SpacePickerRow
               label="Space"
-              last
-              options={spaceOptions}
+              spaces={spaceOptions}
               value={draft.spaceId || NONE_SPACE}
-              onChange={(spaceId) =>
-                onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })
-              }
+              onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
+              styles={styles}
             />
+            <EditorRow label="Active" last>
+              <NativeSwitch
+                accent={accent}
+                colorScheme={colorScheme}
+                onValueChange={(routineActive) => onChange({ routineActive })}
+                value={draft.routineActive}
+              />
+            </EditorRow>
           </FormSection>
         ) : null}
 
@@ -243,7 +249,9 @@ export function ItemEditorForm({
             onPress={onDelete}
             style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
           >
-            <Text style={styles.deleteLabel}>Delete item</Text>
+            <Text style={styles.deleteLabel}>
+              {draft.kind === 'routine' ? 'Delete routine' : 'Delete item'}
+            </Text>
           </Pressable>
         ) : null}
       </ScrollView>
@@ -309,11 +317,12 @@ function TaskFields({
       </FormSection>
 
       <FormSection title="Organization" styles={styles}>
-        <EditorPickerRow
+        <SpacePickerRow
           label="Space"
-          options={spaceOptions}
+          spaces={spaceOptions}
           value={draft.spaceId || NONE_SPACE}
           onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
+          styles={styles}
         />
         <EditorPickerRow
           label="Priority"
@@ -423,12 +432,13 @@ function EventFields({
       </FormSection>
 
       <FormSection title="Organization" styles={styles}>
-        <EditorPickerRow
+        <SpacePickerRow
           label="Space"
           last
-          options={spaceOptions}
+          spaces={spaceOptions}
           value={draft.spaceId || NONE_SPACE}
           onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
+          styles={styles}
         />
       </FormSection>
     </>
@@ -451,12 +461,13 @@ function NoteFields({
       <EditorRow label="Date">
         <NativeDateField embedded onChange={(date) => onChange({ date })} value={draft.date} />
       </EditorRow>
-      <EditorPickerRow
+      <SpacePickerRow
         label="Space"
         last
-        options={spaceOptions}
+        spaces={spaceOptions}
         value={draft.spaceId || NONE_SPACE}
         onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
+        styles={styles}
       />
     </FormSection>
   );
@@ -588,6 +599,43 @@ function EditorRow({
       <Text style={styles.rowLabel}>{label}</Text>
       <View style={styles.rowTrailing}>{value ?? children}</View>
     </View>
+  );
+}
+
+function SpacePickerRow({
+  label,
+  last,
+  onChange,
+  spaces,
+  styles,
+  value,
+}: {
+  label: string;
+  last?: boolean;
+  onChange: (value: string) => void;
+  spaces: { label: string; value: string }[];
+  styles: FieldStyles;
+  value: string;
+}) {
+  const { accent } = useAppAppearance();
+  const { openSpacePicker } = useLibrary();
+  const selected = spaces.find((option) => option.value === value)?.label ?? 'Inbox';
+
+  return (
+    <Pressable
+      onPress={() =>
+        openSpacePicker(value === NONE_SPACE ? null : value, (spaceId) =>
+          onChange(spaceId ?? NONE_SPACE),
+        )
+      }
+      style={({ pressed }) => [styles.row, last && styles.rowLast, pressed && styles.pressed]}
+    >
+      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.rowTrailing}>
+        <Text style={[styles.rowPickerValue, { color: accent }]}>{selected}</Text>
+        <Icon name="chevronRight" size={18} color={accent} />
+      </View>
+    </Pressable>
   );
 }
 

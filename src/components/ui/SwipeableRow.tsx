@@ -30,7 +30,7 @@ export function SwipeableRow({ children, enabled = true, onComplete }: Props) {
     .enabled(enabled)
     .maxPointers(1)
     .activeOffsetX([-1000, 10])
-    .failOffsetY([-14, 14])
+    .failOffsetY([-18, 18])
     .onUpdate((event) => {
       translateX.value = Math.min(ACTION_WIDTH, Math.max(0, event.translationX));
       const reached = translateX.value >= COMPLETE_THRESHOLD;

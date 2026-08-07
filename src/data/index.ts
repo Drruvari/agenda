@@ -19,3 +19,12 @@ export type {
   TodayViewModel,
 } from './schema/types';
 export { DEFAULT_SETTINGS } from './schema/types';
+export {
+  INBOX_FILTER_ID,
+  isAllSpaceFilter,
+  isInboxSpaceFilter,
+  isSpaceUuidFilter,
+  matchesRoutineSpaceFilter,
+  matchesSpaceFilter,
+  resolveCreateSpaceId,
+} from './spaces/spaceFilter';

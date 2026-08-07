@@ -1,6 +1,7 @@
 import type { DatabaseClient } from '@/data/database/types';
 import { createId, nowIso } from '@/data/schema/ids';
 import type { AgendaItem, EventItem, NoteItem, Priority, RecurrenceRule, TaskItem } from '@/data/schema/types';
+import { matchesSpaceFilter } from '@/data/spaces/spaceFilter';
 
 export type CreateTaskInput = {
   title: string;
@@ -38,8 +39,7 @@ export function createAgendaRepository(db: DatabaseClient) {
 
     async forDate(date: string, spaceId?: string | null): Promise<AgendaItem[]> {
       const items = await db.findWhere<AgendaItem>('agenda_items', { date });
-      const filtered =
-        spaceId && spaceId !== 'all' ? items.filter((item) => item.spaceId === spaceId) : items;
+      const filtered = items.filter((item) => matchesSpaceFilter(item.spaceId, spaceId));
 
       return filtered.sort((a, b) => {
         if (a.time && b.time) {
@@ -49,6 +49,11 @@ export function createAgendaRepository(db: DatabaseClient) {
         if (b.time) return -1;
         return a.title.localeCompare(b.title);
       });
+    },
+
+    async forSpace(filterId: string | null): Promise<AgendaItem[]> {
+      const items = await this.list();
+      return items.filter((item) => matchesSpaceFilter(item.spaceId, filterId));
     },
 
     async createTask(input: CreateTaskInput): Promise<TaskItem> {

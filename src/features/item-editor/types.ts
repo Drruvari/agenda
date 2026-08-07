@@ -5,6 +5,7 @@ export type EditorKind = 'task' | 'event' | 'note' | 'routine';
 export type ItemEditorMode =
   | { type: 'create'; kind?: EditorKind }
   | { type: 'edit'; itemId: string }
+  | { type: 'edit-routine'; routineId: string }
   | { type: 'quick-add' };
 
 /** UI recurrence — maps to RecurrenceRule when not `never`. */
@@ -23,12 +24,10 @@ export type ItemEditorDraft = {
   priority: Priority;
   durationMinutes: number;
   recurrence: RecurrenceChoice;
+  routineActive: boolean;
 };
 
-export type ItemEditorSession = {
-  mode: ItemEditorMode;
-  item?: AgendaItem | null;
-};
+export type ItemEditorSession = { mode: ItemEditorMode };
 
 export const PRIORITY_OPTIONS: { label: string; value: Priority }[] = [
   { label: 'None', value: 'none' },
@@ -67,7 +66,7 @@ export function kindFromItemType(type: ItemType): EditorKind {
 }
 
 export function editorTitle(mode: ItemEditorMode, kind: EditorKind): string {
-  if (mode.type === 'edit') {
+  if (mode.type === 'edit' || mode.type === 'edit-routine') {
     if (kind === 'event') return 'Edit event';
     if (kind === 'note') return 'Edit note';
     if (kind === 'routine') return 'Edit routine';
@@ -112,14 +111,13 @@ export function emptyDraft(
     priority: 'none',
     durationMinutes,
     recurrence: 'never',
+    routineActive: true,
   };
 }
 
 export function draftFromItem(item: AgendaItem): ItemEditorDraft {
   const recurrence =
-    item.type === 'task' || item.type === 'event'
-      ? recurrenceFromRule(item.recurrence)
-      : 'never';
+    item.type === 'task' || item.type === 'event' ? recurrenceFromRule(item.recurrence) : 'never';
 
   return {
     kind: kindFromItemType(item.type),
@@ -133,5 +131,6 @@ export function draftFromItem(item: AgendaItem): ItemEditorDraft {
     priority: item.type === 'note' ? 'none' : item.priority,
     durationMinutes: item.type === 'event' ? item.durationMinutes : 30,
     recurrence,
+    routineActive: true,
   };
 }
