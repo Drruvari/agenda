@@ -105,8 +105,9 @@ export function usePlannerGestures({
     const daySwipe = Gesture.Pan()
       .enabled(gesturesEnabled)
       .maxPointers(1)
-      .activeOffsetX([-36, 36])
-      .failOffsetY([-22, 22])
+      // High horizontal threshold so vertical taps on rows aren't claimed on iOS.
+      .activeOffsetX([-72, 72])
+      .failOffsetY([-18, 18])
       .onEnd((event) => {
         const wentLeft = event.translationX <= -52 || event.velocityX < -650;
         const wentRight = event.translationX >= 52 || event.velocityX > 650;

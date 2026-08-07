@@ -1,6 +1,29 @@
 import type { DatabaseClient } from '@/data/database/types';
 import { createId, nowIso } from '@/data/schema/ids';
-import type { DailyNote, Drawing } from '@/data/schema/types';
+import type { DailyNote, Drawing, NoteDraft } from '@/data/schema/types';
+
+export class NoteConflictError extends Error {
+  readonly current: DailyNote;
+
+  constructor(current: DailyNote) {
+    super('Note was changed elsewhere');
+    this.name = 'NoteConflictError';
+    this.current = current;
+  }
+}
+
+export function shouldRecoverDraft(note: DailyNote, draft: NoteDraft | null): boolean {
+  if (!draft) return false;
+  if (draft.bodyText === note.bodyText) return false;
+  return draft.updatedAt > note.updatedAt;
+}
+
+/** Ensure each write gets a strictly newer ISO timestamp (avoids same-ms CAS collisions). */
+function nextUpdatedAt(previous?: string): string {
+  const now = nowIso();
+  if (!previous || now > previous) return now;
+  return new Date(Date.parse(previous) + 1).toISOString();
+}
 
 export function createNotesRepository(db: DatabaseClient) {
   return {
@@ -33,15 +56,75 @@ export function createNotesRepository(db: DatabaseClient) {
       }
     },
 
-    async saveBody(date: string, bodyText: string): Promise<DailyNote> {
+    /**
+     * Persist note body. When `expectedUpdatedAt` is provided, rejects with
+     * {@link NoteConflictError} if the stored row has a different timestamp.
+     */
+    async saveBody(
+      date: string,
+      bodyText: string,
+      expectedUpdatedAt?: string,
+    ): Promise<DailyNote> {
       const note = await this.getOrCreateForDate(date);
+
+      if (expectedUpdatedAt !== undefined && note.updatedAt !== expectedUpdatedAt) {
+        throw new NoteConflictError(note);
+      }
+
       const next: DailyNote = {
         ...note,
         bodyText,
-        updatedAt: nowIso(),
+        updatedAt: nextUpdatedAt(note.updatedAt),
       };
       await db.put('daily_notes', next);
       return next;
+    },
+
+    async getDraft(date: string): Promise<NoteDraft | null> {
+      return db.getById<NoteDraft>('note_drafts', date);
+    },
+
+    async upsertDraft(
+      date: string,
+      bodyText: string,
+      baseUpdatedAt: string,
+    ): Promise<NoteDraft> {
+      const existing = await this.getDraft(date);
+      const draft: NoteDraft = {
+        date,
+        bodyText,
+        baseUpdatedAt,
+        updatedAt: nextUpdatedAt(existing?.updatedAt),
+      };
+      await db.put('note_drafts', draft);
+      return draft;
+    },
+
+    async clearDraft(date: string): Promise<void> {
+      await db.delete('note_drafts', date);
+    },
+
+    /**
+     * Load the canonical note plus any recoverable draft for this date.
+     * Returns recovered=true when the draft body should be shown instead.
+     */
+    async loadForDate(date: string): Promise<{
+      note: DailyNote;
+      body: string;
+      recovered: boolean;
+    }> {
+      const note = await this.getOrCreateForDate(date);
+      const draft = await this.getDraft(date);
+
+      if (shouldRecoverDraft(note, draft) && draft) {
+        return { note, body: draft.bodyText, recovered: true };
+      }
+
+      if (draft && draft.bodyText === note.bodyText) {
+        await this.clearDraft(date);
+      }
+
+      return { note, body: note.bodyText, recovered: false };
     },
 
     async getDrawing(drawingId: string): Promise<Drawing | null> {
@@ -74,7 +157,7 @@ export function createNotesRepository(db: DatabaseClient) {
         await db.put('daily_notes', {
           ...note,
           drawingId: drawing.id,
-          updatedAt: now,
+          updatedAt: nextUpdatedAt(note.updatedAt),
         });
       }
 
@@ -95,7 +178,7 @@ export function createNotesRepository(db: DatabaseClient) {
         await db.put('daily_notes', {
           ...note,
           drawingId: undefined,
-          updatedAt: nowIso(),
+          updatedAt: nextUpdatedAt(note.updatedAt),
         });
       }
     },

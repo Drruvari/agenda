@@ -26,6 +26,7 @@ import { clearInkDocument, InkCanvas, undoInkDocument } from '@/features/todays-
 import { inkContentBottom } from '@/features/todays-page/inkFormat';
 import { DEFAULT_BRUSH, type InkBrush, type InkTool } from '@/features/todays-page/inkTools';
 import { useDailyPage } from '@/features/todays-page/useDailyPage';
+import type { SaveStatus } from '@/features/todays-page/dailyNoteSession';
 import { triggerHaptic } from '@/lib/haptics';
 import { type AgendaTheme, continuousCorner, editorFontFamily, fonts, useAppTheme } from '@/theme';
 
@@ -80,12 +81,13 @@ export function TodaysPage({
   const penOnly = settings.general.penOnlyDrawing;
   const locksParent = drawMode && !penOnly;
 
-  const { body, ink, changeBody, changeInk, ready } = useDailyPage({
-    date,
-    repos,
-    onError,
-    onPersisted,
-  });
+  const { body, ink, changeBody, changeInk, ready, saveStatus, recovered, retrySave } =
+    useDailyPage({
+      date,
+      repos,
+      onError,
+      onPersisted,
+    });
 
   const inkBottom = useMemo(() => inkContentBottom(ink.strokes), [ink.strokes]);
 
@@ -283,7 +285,14 @@ export function TodaysPage({
     <>
       <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.heading}>Today’s page</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.heading}>Today’s page</Text>
+            <SaveStatusLabel
+              recovered={recovered}
+              status={saveStatus}
+              onRetry={() => void retrySave()}
+            />
+          </View>
           <View style={styles.actions}>
             <HeaderButton
               name="pencil"
@@ -331,6 +340,11 @@ export function TodaysPage({
                 <Text numberOfLines={1} style={styles.fullTitle}>
                   {formatLongDate(date)}
                 </Text>
+                <SaveStatusLabel
+                  recovered={recovered}
+                  status={saveStatus}
+                  onRetry={() => void retrySave()}
+                />
               </View>
 
               <AnimatedPressable
@@ -515,10 +529,11 @@ function PaperSurface({
       {showMarkdown ? (
         <AnimatedPressable
           accessibilityLabel="Edit today’s page"
-          onPress={onRequestType}
+          onPress={ready ? onRequestType : undefined}
+          disabled={!ready}
           pressScale={0.995}
           style={[styles.textLayer, { padding: margin, minHeight: paperHeight }]}
-          pointerEvents={drawMode ? 'none' : 'auto'}
+          pointerEvents={drawMode || !ready ? 'none' : 'auto'}
         >
           <MarkdownPreview
             body={body}
@@ -530,7 +545,7 @@ function PaperSurface({
         <TextInput
           ref={inputRef}
           value={body}
-          editable={!drawMode}
+          editable={ready && !drawMode}
           onChangeText={onBodyChange}
           onFocus={() => onTextEditingChange(true)}
           onBlur={() => onTextEditingChange(false)}
@@ -582,6 +597,47 @@ function PaperSurface({
       ) : null}
     </View>
   );
+}
+
+function SaveStatusLabel({
+  recovered,
+  status,
+  onRetry,
+}: {
+  recovered: boolean;
+  status: SaveStatus;
+  onRetry: () => void;
+}) {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
+
+  if (status === 'error') {
+    return (
+      <AnimatedPressable
+        accessibilityRole="button"
+        accessibilityLabel="Retry saving today’s page"
+        haptic="warning"
+        pressScale={0.98}
+        onPress={onRetry}
+      >
+        <Text style={styles.saveError}>Couldn’t save — tap to retry</Text>
+      </AnimatedPressable>
+    );
+  }
+
+  if (recovered && (status === 'dirty' || status === 'saving')) {
+    return <Text style={styles.saveMuted}>Recovered unsaved changes</Text>;
+  }
+
+  if (status === 'dirty' || status === 'saving') {
+    return <Text style={styles.saveMuted}>Saving…</Text>;
+  }
+
+  if (status === 'saved') {
+    return <Text style={styles.saveMuted}>Saved</Text>;
+  }
+
+  return null;
 }
 
 function HeaderButton({
@@ -695,12 +751,29 @@ function createStyles(theme: AgendaTheme) {
       justifyContent: 'space-between',
       gap: 8,
     },
+    headerCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
     heading: {
       fontFamily: fonts.serifItalic,
       fontSize: 20,
       lineHeight: 24,
       color: theme.text,
       flexShrink: 1,
+    },
+    saveMuted: {
+      fontFamily: fonts.sans,
+      fontSize: 12,
+      lineHeight: 16,
+      color: theme.textSecondary,
+    },
+    saveError: {
+      fontFamily: fonts.sansMedium,
+      fontSize: 12,
+      lineHeight: 16,
+      color: theme.danger,
     },
     actions: {
       flexDirection: 'row',

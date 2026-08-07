@@ -178,6 +178,23 @@ const dailyNotesMapper: Mapper = {
   }),
 };
 
+const noteDraftsMapper: Mapper = {
+  idField: 'date',
+  columns: ['date', 'body_text', 'base_updated_at', 'updated_at'],
+  toRow: (record) => ({
+    date: record.date,
+    body_text: record.bodyText ?? '',
+    base_updated_at: record.baseUpdatedAt,
+    updated_at: record.updatedAt,
+  }),
+  fromRow: (row) => ({
+    date: row.date,
+    bodyText: row.body_text,
+    baseUpdatedAt: row.base_updated_at,
+    updatedAt: row.updated_at,
+  }),
+};
+
 const drawingsMapper: Mapper = {
   idField: 'id',
   columns: ['id', 'note_id', 'format', 'data', 'created_at', 'updated_at'],
@@ -218,6 +235,7 @@ export const TABLE_MAPPERS: Record<TableName, Mapper> = {
   routines: routinesMapper,
   routine_completions: routineCompletionsMapper,
   daily_notes: dailyNotesMapper,
+  note_drafts: noteDraftsMapper,
   drawings: drawingsMapper,
   meta: metaMapper,
 };
@@ -228,6 +246,9 @@ export function compoundKey(table: TableName, record: Record<string, unknown>): 
   }
   if (table === 'meta') {
     return record.key as string;
+  }
+  if (table === 'note_drafts') {
+    return record.date as string;
   }
   return record.id as string;
 }

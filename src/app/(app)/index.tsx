@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
-import { GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, ScrollView as GHScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   FadeInDown,
@@ -77,6 +77,9 @@ import {
   useAppTheme,
 } from '@/theme';
 
+/** Gesture-handler ScrollView so row touchables work under day-swipe on iOS. */
+const PlannerScrollView = Animated.createAnimatedComponent(GHScrollView);
+
 const ALL_DAY_PREVIEW_COUNT = 2;
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const rowEnter = FadeInDown.duration(motion.duration.normal)
@@ -118,6 +121,8 @@ type Task = {
   special?: 'calendar' | 'note' | 'birthday';
   item?: AgendaItem;
   systemReminderId?: string;
+  /** Present when this row is a read-only Apple Calendar event. */
+  deviceEventId?: string;
 };
 
 type ScheduledTask = Task & {
@@ -217,10 +222,14 @@ export default function PlannerScreen() {
     const activeSpaceId = ui.activeSpaceId;
     const showCompleted = settings.general.showCompleted;
 
+    // Paint SQLite agenda first so creates/deletes feel instant; native extras follow.
     const next = await loadTodayView(repos, selectedDate, activeSpaceId, {
       includeCompleted: true,
       separateCompleted: showCompleted,
     });
+    if (requestId !== reloadRequestId.current) return;
+    setView(next);
+
     const start = parseLocalDate(selectedDate);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
@@ -245,7 +254,6 @@ export default function PlannerScreen() {
 
     if (requestId !== reloadRequestId.current) return;
 
-    setView(next);
     setCalendarAccess(calendarState);
     setReminderAccess(reminderState);
     setDeviceEvents(nativeEvents);
@@ -343,12 +351,18 @@ export default function PlannerScreen() {
           icon: item.type === 'event' ? ('clock' as const) : undefined,
         })) ?? []),
         ...deviceEvents
-          .filter(
-            (event) =>
-              event.kind === 'event' &&
-              !event.allDay &&
-              !view?.scheduled.some((item) => item.deviceEventId === event.id),
-          )
+          .filter((event) => {
+            if (event.kind !== 'event' || event.allDay) return false;
+            // Prefer the Agenda-owned row when we already mirror this calendar event.
+            return !view?.scheduled.some((item) => {
+              if (item.deviceEventId && item.deviceEventId === event.id) return true;
+              if (item.type !== 'event' || !item.time) return false;
+              const start = new Date(event.startDate);
+              const hh = String(start.getHours()).padStart(2, '0');
+              const mm = String(start.getMinutes()).padStart(2, '0');
+              return item.title === event.title && item.time === `${hh}:${mm}`;
+            });
+          })
           .map((event) => ({
             id: `device:${event.id}`,
             title: event.title,
@@ -360,6 +374,7 @@ export default function PlannerScreen() {
             }),
             icon: 'clock' as const,
             special: 'calendar' as const,
+            deviceEventId: event.id,
           })),
         ...systemReminders
           .filter((reminder) => !reminder.allDay && reminder.dueDate)
@@ -471,22 +486,43 @@ export default function PlannerScreen() {
 
   const interactionFor = (task: Task) => {
     const isAgendaTask = task.item?.type === 'task';
+    const canEdit = Boolean(task.item);
     const canToggle = isAgendaTask || Boolean(task.systemReminderId);
-    if (!canToggle) {
+
+    const edit = canEdit ? () => editTask(task) : undefined;
+    const onSwipeComplete =
+      canToggle && !task.completed ? () => swipeComplete(task) : undefined;
+
+    // Read-only Apple Calendar rows — still tappable so the user gets feedback.
+    if (!canEdit && !canToggle) {
+      const explain = () => {
+        triggerHaptic('warning');
+        showToast('Can’t edit this event in Agenda', {
+          subtitle: 'It comes from Apple Calendar',
+        });
+      };
       return {
         onToggleComplete: undefined as (() => void) | undefined,
-        onPress: undefined as (() => void) | undefined,
-        onLongPress: undefined as (() => void) | undefined,
+        onPress: explain,
+        onLongPress: explain,
         onSwipeComplete: undefined as (() => void) | undefined,
       };
     }
 
-    const onSwipeComplete = task.completed ? undefined : () => swipeComplete(task);
+    // Events / notes: always tap or long-press to edit (no complete toggle).
+    if (canEdit && !canToggle) {
+      return {
+        onToggleComplete: undefined as (() => void) | undefined,
+        onPress: edit,
+        onLongPress: edit,
+        onSwipeComplete: undefined as (() => void) | undefined,
+      };
+    }
 
     if (settings.general.clickToEdit) {
       return {
-        onToggleComplete: () => toggleTaskCompletion(task),
-        onPress: isAgendaTask ? () => editTask(task) : () => toggleTaskCompletion(task),
+        onToggleComplete: canToggle ? () => toggleTaskCompletion(task) : undefined,
+        onPress: edit ?? (() => toggleTaskCompletion(task)),
         onLongPress: undefined as (() => void) | undefined,
         onSwipeComplete,
       };
@@ -495,7 +531,7 @@ export default function PlannerScreen() {
     return {
       onToggleComplete: undefined as (() => void) | undefined,
       onPress: () => toggleTaskCompletion(task),
-      onLongPress: isAgendaTask ? () => editTask(task) : undefined,
+      onLongPress: edit,
       onSwipeComplete,
     };
   };
@@ -635,7 +671,7 @@ export default function PlannerScreen() {
           </Animated.View>
 
           <GestureDetector gesture={composedGesture}>
-            <Animated.ScrollView
+            <PlannerScrollView
               ref={scrollRef}
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
@@ -761,7 +797,11 @@ export default function PlannerScreen() {
                       ) : null}
 
                       {ui.allDayExpanded ? (
-                        <Animated.View entering={sectionEnter} exiting={sectionExit}>
+                        <Animated.View
+                          entering={sectionEnter}
+                          exiting={sectionExit}
+                          style={styles.scheduledSection}
+                        >
                           <View style={styles.scheduledHeader}>
                             <Text style={styles.sectionLabel}>SCHEDULED</Text>
                             <Text style={styles.sectionCount}>{scheduled.length}</Text>
@@ -878,7 +918,7 @@ export default function PlannerScreen() {
                   </View>
                 </Animated.View>
               </Animated.View>
-            </Animated.ScrollView>
+            </PlannerScrollView>
           </GestureDetector>
         </Animated.View>
       </BlurTargetView>
@@ -886,7 +926,7 @@ export default function PlannerScreen() {
       <View
         onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
         pointerEvents={editorOpen ? 'none' : 'box-none'}
-        style={[styles.stickyHeader, editorOpen && styles.chromeHidden]}
+        style={styles.stickyHeader}
       >
         <BlurSurface
           blurTarget={blurTarget}
@@ -1096,24 +1136,12 @@ function ScheduledRow({
   const { C, styles } = usePlannerTheme();
   const isDone = completed || Boolean(task.completed);
   const interactive = Boolean(onPress || onLongPress);
-  const content = (
-    <View style={[styles.scheduledRow, compact && styles.scheduledRowCompact]}>
+
+  const body = (
+    <>
       <Text style={[styles.timeText, isDone && styles.taskTitleCompleted]}>{task.time}</Text>
       <View style={styles.timeDivider} />
-
-      <AnimatedPressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        delayLongPress={350}
-        disabled={!interactive}
-        accessibilityRole={onToggleComplete ? 'button' : onPress ? 'checkbox' : undefined}
-        accessibilityState={
-          onToggleComplete ? undefined : onPress ? { checked: isDone } : undefined
-        }
-        pressScale={0.99}
-        pressedStyle={styles.pressed}
-        style={[styles.scheduledTask, compact && styles.scheduledTaskCompact]}
-      >
+      <View style={[styles.scheduledTask, compact && styles.scheduledTaskCompact]}>
         <View style={styles.taskMain}>
           {task.icon === 'clock' ? (
             <View style={styles.checkboxSlot}>
@@ -1122,7 +1150,6 @@ function ScheduledRow({
           ) : (
             <RoundCheckbox checked={isDone} onPress={onToggleComplete} />
           )}
-
           <View style={styles.taskCopy}>
             <View style={styles.titleRow}>
               {!!task.priority && !isDone ? (
@@ -1140,15 +1167,27 @@ function ScheduledRow({
             </Text>
           </View>
         </View>
-      </AnimatedPressable>
-    </View>
+      </View>
+    </>
   );
 
-  return (
-    <Animated.View entering={rowEnter} exiting={rowExit} layout={rowLayout}>
-      {onComplete ? <SwipeableRow onComplete={onComplete}>{content}</SwipeableRow> : content}
-    </Animated.View>
+  // RNGH TouchableOpacity receives taps inside the planner's GestureDetector ScrollView on iOS.
+  const content = (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={task.title}
+      activeOpacity={0.82}
+      delayLongPress={350}
+      disabled={!interactive}
+      onLongPress={onLongPress}
+      onPress={onPress}
+      style={[styles.scheduledRow, compact && styles.scheduledRowCompact]}
+    >
+      {body}
+    </TouchableOpacity>
   );
+
+  return onComplete ? <SwipeableRow onComplete={onComplete}>{content}</SwipeableRow> : content;
 }
 
 function RoundCheckbox({ checked = false, onPress }: { checked?: boolean; onPress?: () => void }) {
@@ -1293,9 +1332,6 @@ function createStyles(theme: AgendaTheme) {
       left: 0,
       right: 0,
       zIndex: 20,
-    },
-    chromeHidden: {
-      opacity: 0,
     },
     stickyHeaderBlur: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1595,6 +1631,9 @@ function createStyles(theme: AgendaTheme) {
       color: C.accent,
     },
 
+    scheduledSection: {
+      gap: 4,
+    },
     scheduledHeader: {
       height: 32,
       paddingVertical: 7,
@@ -1607,7 +1646,6 @@ function createStyles(theme: AgendaTheme) {
       minHeight: 56,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: C.surface,
     },
     scheduledRowCompact: {
       minHeight: 46,

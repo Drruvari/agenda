@@ -71,6 +71,7 @@ export const MIGRATION_001_STATEMENTS: string[] = [
 
 export const DROP_ALL_TABLES_STATEMENTS: string[] = [
   'DROP TABLE IF EXISTS drawings',
+  'DROP TABLE IF EXISTS note_drafts',
   'DROP TABLE IF EXISTS daily_notes',
   'DROP TABLE IF EXISTS routine_completions',
   'DROP TABLE IF EXISTS routines',

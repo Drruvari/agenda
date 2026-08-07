@@ -4,13 +4,14 @@ import {
   DROP_ALL_TABLES_STATEMENTS,
   MIGRATION_001_STATEMENTS,
 } from '@/data/migrations/001_initial';
+import { MIGRATION_002_STATEMENTS } from '@/data/migrations/002_note_drafts';
 
 import { TABLE_MAPPERS } from './mappers';
 import type { DatabaseClient, SqlValue, TableName } from './types';
 import { SCHEMA_VERSION } from './types';
 
-/** Bumped to escape partially migrated simulator DBs from early boots. */
-const DATABASE_NAME = 'agenda.v1.db';
+/** Bumped when schema requires a clean file (v3 adds note_drafts). */
+const DATABASE_NAME = 'agenda.v3.db';
 
 let clientPromise: Promise<DatabaseClient> | null = null;
 
@@ -63,6 +64,7 @@ function camelToSnake(key: string): string {
     drawingId: 'drawing_id',
     noteId: 'note_id',
     routineId: 'routine_id',
+    baseUpdatedAt: 'base_updated_at',
   };
 
   return special[key] ?? key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -78,7 +80,7 @@ function createSqliteClient(db: SQLite.SQLiteDatabase): DatabaseClient {
 
     async getById<T>(table: TableName, id: string): Promise<T | null> {
       const mapper = TABLE_MAPPERS[table];
-      const idColumn = table === 'meta' ? 'key' : 'id';
+      const idColumn = table === 'meta' ? 'key' : table === 'note_drafts' ? '"date"' : 'id';
 
       if (table === 'routine_completions') {
         const [routineId, date] = id.split('::');
@@ -121,7 +123,7 @@ function createSqliteClient(db: SQLite.SQLiteDatabase): DatabaseClient {
         return;
       }
 
-      const idColumn = table === 'meta' ? 'key' : 'id';
+      const idColumn = table === 'meta' ? 'key' : table === 'note_drafts' ? '"date"' : 'id';
       await db.runAsync(`DELETE FROM ${table} WHERE ${idColumn} = ?`, id);
     },
 
@@ -201,6 +203,9 @@ async function applyInitialSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   for (const statement of MIGRATION_001_STATEMENTS) {
     await db.execAsync(`${statement};`);
   }
+  for (const statement of MIGRATION_002_STATEMENTS) {
+    await db.execAsync(`${statement};`);
+  }
 }
 
 async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -213,31 +218,45 @@ async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
   if (!healthy) {
     await resetSchema(db);
     await applyInitialSchema(db);
-  } else if (current < SCHEMA_VERSION) {
-    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(agenda_items)');
-    const names = new Set(columns.map((column) => column.name));
+  } else {
+    if (current < 2) {
+      const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(agenda_items)');
+      const names = new Set(columns.map((column) => column.name));
 
-    if (!names.has('reminder_at')) {
-      await db.execAsync('ALTER TABLE agenda_items ADD COLUMN reminder_at TEXT;');
+      if (!names.has('reminder_at')) {
+        await db.execAsync('ALTER TABLE agenda_items ADD COLUMN reminder_at TEXT;');
+      }
+      if (!names.has('device_event_id')) {
+        await db.execAsync('ALTER TABLE agenda_items ADD COLUMN device_event_id TEXT;');
+      }
+      if (!names.has('notification_id')) {
+        await db.execAsync('ALTER TABLE agenda_items ADD COLUMN notification_id TEXT;');
+      }
     }
-    if (!names.has('device_event_id')) {
-      await db.execAsync('ALTER TABLE agenda_items ADD COLUMN device_event_id TEXT;');
-    }
-    if (!names.has('notification_id')) {
-      await db.execAsync('ALTER TABLE agenda_items ADD COLUMN notification_id TEXT;');
+
+    // Idempotent: also covers Fast Refresh where user_version was bumped without this table.
+    if (current < 3 || !(await tableExists(db, 'note_drafts'))) {
+      for (const statement of MIGRATION_002_STATEMENTS) {
+        await db.execAsync(`${statement};`);
+      }
     }
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
+let sqliteDb: SQLite.SQLiteDatabase | null = null;
+
 export async function openDatabase(): Promise<DatabaseClient> {
   if (!clientPromise) {
     clientPromise = (async () => {
-      const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-      await migrateIfNeeded(db);
-      return createSqliteClient(db);
+      sqliteDb = await SQLite.openDatabaseAsync(DATABASE_NAME);
+      await migrateIfNeeded(sqliteDb);
+      return createSqliteClient(sqliteDb);
     })();
+  } else if (sqliteDb) {
+    // Re-apply idempotent migrations after Metro Fast Refresh loads newer schema code.
+    await migrateIfNeeded(sqliteDb);
   }
 
   return clientPromise;

@@ -9,6 +9,7 @@ const STORE_NAMES: TableName[] = [
   'routines',
   'routine_completions',
   'daily_notes',
+  'note_drafts',
   'drawings',
   'meta',
 ];
@@ -42,6 +43,11 @@ function openIdb(): Promise<IDBDatabase> {
         if (name === 'daily_notes') {
           const store = db.createObjectStore(name, { keyPath: 'id' });
           store.createIndex('by_date', 'date', { unique: true });
+          continue;
+        }
+
+        if (name === 'note_drafts') {
+          db.createObjectStore(name, { keyPath: 'date' });
           continue;
         }
 
@@ -156,6 +162,8 @@ function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
           await requestToPromise(store.delete([record.routineId as string, record.date as string]));
         } else if (table === 'meta') {
           await requestToPromise(store.delete(record.key as string));
+        } else if (table === 'note_drafts') {
+          await requestToPromise(store.delete(record.date as string));
         } else {
           await requestToPromise(store.delete(record.id as string));
         }

@@ -1,6 +1,6 @@
-import { BottomSheet, Host, RNHostView } from '@expo/ui';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, StyleSheet } from 'react-native';
+import { BottomSheet, RNHostView } from '@expo/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Dimensions, Platform } from 'react-native';
 
 import { useToast } from '@/components/ui/ToastProvider';
 import { localDateTime, parseLocalDate, useData } from '@/data';
@@ -12,7 +12,6 @@ import {
   updateAgendaItem,
 } from '@/domain/agendaLifecycle';
 import { parseSmartInput } from '@/lib/smart-parse/parseSmartInput';
-import { useAppAppearance } from '@/theme';
 
 import { useItemEditor } from './ItemEditorContext';
 import { ItemEditorForm } from './ItemEditorForm';
@@ -25,6 +24,9 @@ import {
   type ItemEditorMode,
   recurrenceToRule,
 } from './types';
+
+/** Approximate iOS sheet dismiss duration — universal BottomSheet skips onDismiss on programmatic close. */
+const IOS_SHEET_DISMISS_MS = 320;
 
 export function ItemEditorHost() {
   const { session, close } = useItemEditor();
@@ -40,7 +42,6 @@ function sessionKey(mode: ItemEditorMode): string {
 }
 
 function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss: () => void }) {
-  const { accent, colorScheme } = useAppAppearance();
   const { repos, ui, settings, refresh } = useData();
   const { showToast } = useToast();
   const sheetHeight = useMemo(() => Math.round(Dimensions.get('window').height * 0.92), []);
@@ -74,6 +75,9 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(mode.type !== 'edit');
   const [presented, setPresented] = useState(true);
+  const closedRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputKey = mode.type === 'edit' ? `edit-${mode.itemId}-${ready}` : `new-${draft.kind}`;
 
   useEffect(() => {
@@ -100,6 +104,25 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       cancelled = true;
     };
   }, [mode, onDismiss, repos.agenda, showToast]);
+
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    };
+  }, []);
+
+  const finishClose = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+    const shouldRefresh = pendingRefreshRef.current;
+    pendingRefreshRef.current = false;
+    if (shouldRefresh) refresh();
+    onDismiss();
+  }, [onDismiss, refresh]);
 
   const patch = useCallback((partial: Partial<ItemEditorDraft>) => {
     setDraft((current) => ({ ...current, ...partial }));
@@ -137,10 +160,22 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       : draft.title.trim().length > 0);
   const showTypePicker = mode.type === 'quick-add' || mode.type === 'create';
 
-  const dismiss = () => {
-    setPresented(false);
-    onDismiss();
-  };
+  /** Close the sheet first; tear down only after the dismiss animation. */
+  const requestClose = useCallback(
+    (options?: { refresh?: boolean }) => {
+      if (closedRef.current) return;
+      if (options?.refresh) pendingRefreshRef.current = true;
+      setPresented(false);
+
+      // Universal BottomSheet often skips onDismiss for programmatic close — finish after the animation.
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(
+        finishClose,
+        Platform.OS === 'ios' ? IOS_SHEET_DISMISS_MS : 250,
+      );
+    },
+    [finishClose],
+  );
 
   const save = async () => {
     const rawTitle = draft.title;
@@ -270,8 +305,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
         });
       }
 
-      refresh();
-      dismiss();
+      requestClose({ refresh: true });
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Could not save', { tone: 'error' });
     } finally {
@@ -289,8 +323,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
         onPress: () =>
           void deleteAgendaItem(repos, original)
             .then(() => {
-              refresh();
-              dismiss();
+              requestClose({ refresh: true });
             })
             .catch((error) => {
               showToast(error instanceof Error ? error.message : 'Could not delete', {
@@ -313,29 +346,22 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       spaces={spaces}
       onChange={patch}
       onDelete={remove}
-      onDismiss={dismiss}
+      onDismiss={() => requestClose()}
       onSave={() => void save()}
       onTitleChange={onTitleChange}
     />
   );
 
+  // Wait until edit payload is loaded before mounting the sheet. On iOS, Expo UI
+  // BottomSheet often never presents if it mounts with isPresented=false and later
+  // flips to true (create worked; edit of scheduled events/tasks did not).
+  if (!ready) return null;
+
+  // No outer Host — BottomSheet already hosts itself. An absoluteFill Host was
+  // painting over the planner on iOS and flashing the page background on open/close.
   return (
-    <Host colorScheme={colorScheme} seedColor={accent} style={styles.host}>
-      <BottomSheet
-        isPresented={presented && ready}
-        onDismiss={dismiss}
-        snapPoints={['half', 'full']}
-      >
-        <RNHostView style={sheetHostStyle}>{form}</RNHostView>
-      </BottomSheet>
-    </Host>
+    <BottomSheet isPresented={presented} onDismiss={finishClose} snapPoints={['half', 'full']}>
+      <RNHostView style={sheetHostStyle}>{form}</RNHostView>
+    </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  host: {
-    ...StyleSheet.absoluteFill,
-    zIndex: 100,
-    elevation: 100,
-  },
-});

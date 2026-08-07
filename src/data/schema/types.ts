@@ -86,6 +86,15 @@ export interface DailyNote {
   updatedAt: string;
 }
 
+/** Unsaved body buffered for crash / kill recovery. */
+export interface NoteDraft {
+  date: string;
+  bodyText: string;
+  /** `daily_notes.updatedAt` when the draft was based on the canonical note. */
+  baseUpdatedAt: string;
+  updatedAt: string;
+}
+
 export interface Drawing {
   id: string;
   noteId: string;

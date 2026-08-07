@@ -12,6 +12,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { OrbitLogo } from '@/components/ui/OrbitLogo';
 import { openDatabase } from '@/data/database/database';
 import type { DatabaseClient } from '@/data/database/types';
+import { SCHEMA_VERSION } from '@/data/database/types';
 import { createRepositories, type Repositories } from '@/data/repositories';
 import { toLocalDateString } from '@/data/schema/ids';
 import type { AppSettings, PlannerMode } from '@/data/schema/types';
@@ -63,6 +64,8 @@ export function DataProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let cancelled = false;
+    setReady(false);
+    setError(null);
 
     async function boot() {
       try {
@@ -101,7 +104,7 @@ export function DataProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [SCHEMA_VERSION]);
 
   const setUI = useCallback(
     (patch: Partial<PlannerUIState>) => {

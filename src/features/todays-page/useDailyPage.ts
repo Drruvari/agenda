@@ -1,7 +1,11 @@
 import { AppState } from 'react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { Repositories } from '@/data/repositories';
+import {
+  DailyNoteSession,
+  type SaveStatus,
+} from '@/features/todays-page/dailyNoteSession';
 import {
   EMPTY_INK,
   type InkDocument,
@@ -17,38 +21,43 @@ type Options = {
   onPersisted?: () => void;
 };
 
-const SAVE_MS = 500;
-
-type PendingBody = { value: string; date: string };
 type PendingInk = { value: InkDocument; date: string; noteId: string | null };
 
-export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
-  const [body, setBody] = useState('');
-  const [ink, setInk] = useState<InkDocument>({ ...EMPTY_INK, strokes: [] });
-  const [noteId, setNoteId] = useState<string | null>(null);
-  const [drawingId, setDrawingId] = useState<string | undefined>();
-  const [loadedDate, setLoadedDate] = useState<string | null>(null);
+const INK_SAVE_MS = 500;
 
-  const bodyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingBody = useRef<PendingBody | null>(null);
-  const pendingInk = useRef<PendingInk | null>(null);
-  const dateRef = useRef(date);
-  const drawingIdRef = useRef<string | undefined>(undefined);
+export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
   const onErrorRef = useRef(onError);
   const onPersistedRef = useRef(onPersisted);
-  const saveBodyNowRef = useRef<(nextBody: string, forDate: string) => Promise<void>>(async () => {});
-  const saveInkNowRef = useRef<
-    (nextInk: InkDocument, forDate: string, forNoteId: string | null) => Promise<void>
-  >(async () => {});
-
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
-
   useEffect(() => {
     onPersistedRef.current = onPersisted;
   }, [onPersisted]);
+
+  const session = useRef(
+    new DailyNoteSession({
+      notes: repos.notes,
+      onError: (message) => {
+        triggerHaptic('error');
+        onErrorRef.current?.(message);
+      },
+      onPersisted: () => onPersistedRef.current?.(),
+    }),
+  ).current;
+
+  const note = useSyncExternalStore(
+    (listener) => session.subscribe(listener),
+    () => session.getSnapshot(),
+    () => session.getSnapshot(),
+  );
+
+  const [ink, setInk] = useState<InkDocument>({ ...EMPTY_INK, strokes: [] });
+  const [drawingId, setDrawingId] = useState<string | undefined>();
+  const drawingIdRef = useRef<string | undefined>(undefined);
+  const inkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingInk = useRef<PendingInk | null>(null);
+  const dateRef = useRef(date);
 
   useEffect(() => {
     drawingIdRef.current = drawingId;
@@ -59,26 +68,13 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     onErrorRef.current?.(error instanceof Error ? error.message : fallback);
   }, []);
 
-  const saveBodyNow = useCallback(
-    async (nextBody: string, forDate: string) => {
-      try {
-        await repos.notes.saveBody(forDate, nextBody);
-        if (dateRef.current === forDate) onPersistedRef.current?.();
-      } catch (error) {
-        fail(error, 'Could not save note');
-      }
-    },
-    [fail, repos.notes],
-  );
-
   const saveInkNow = useCallback(
     async (nextInk: InkDocument, forDate: string, forNoteId: string | null) => {
       try {
         let id = forNoteId;
         if (!id) {
-          const note = await repos.notes.getOrCreateForDate(forDate);
-          id = note.id;
-          if (dateRef.current === forDate) setNoteId(note.id);
+          const created = await repos.notes.getOrCreateForDate(forDate);
+          id = created.id;
         }
         const saved = await repos.notes.saveDrawing(
           id,
@@ -97,52 +93,50 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     [fail, repos.notes],
   );
 
-  saveBodyNowRef.current = saveBodyNow;
-  saveInkNowRef.current = saveInkNow;
-
-  const flushPending = useCallback(() => {
-    if (bodyTimer.current) {
-      clearTimeout(bodyTimer.current);
-      bodyTimer.current = null;
-    }
+  const flushInk = useCallback(async () => {
     if (inkTimer.current) {
       clearTimeout(inkTimer.current);
       inkTimer.current = null;
     }
-
-    const bodyPending = pendingBody.current;
     const inkPending = pendingInk.current;
-    pendingBody.current = null;
     pendingInk.current = null;
-
-    if (bodyPending) void saveBodyNowRef.current(bodyPending.value, bodyPending.date);
     if (inkPending) {
-      void saveInkNowRef.current(inkPending.value, inkPending.date, inkPending.noteId);
+      await saveInkNow(inkPending.value, inkPending.date, inkPending.noteId);
     }
-  }, []);
+  }, [saveInkNow]);
 
   useEffect(() => {
     let cancelled = false;
-    flushPending();
     dateRef.current = date;
 
+    // Clear ink immediately so the previous day's drawing cannot be edited into the new date.
+    setInk({ ...EMPTY_INK, strokes: [] });
+    setDrawingId(undefined);
+    drawingIdRef.current = undefined;
+
     void (async () => {
+      await flushInk();
+      if (cancelled) return;
+
+      await session.setDate(date);
+      if (cancelled || dateRef.current !== date) return;
+
       try {
-        const note = await repos.notes.getOrCreateForDate(date);
+        const loaded = await repos.notes.getByDate(date);
         if (cancelled || dateRef.current !== date) return;
 
         let nextInk: InkDocument = { ...EMPTY_INK, strokes: [] };
-        if (note.drawingId) {
-          const drawing = await repos.notes.getDrawing(note.drawingId);
+        let nextDrawingId: string | undefined;
+        if (loaded?.drawingId) {
+          const drawing = await repos.notes.getDrawing(loaded.drawingId);
           if (cancelled || dateRef.current !== date) return;
           nextInk = parseInk(drawing?.data);
+          nextDrawingId = loaded.drawingId;
         }
 
-        setNoteId(note.id);
-        setBody(note.bodyText);
-        setDrawingId(note.drawingId);
+        setDrawingId(nextDrawingId);
+        drawingIdRef.current = nextDrawingId;
         setInk(nextInk);
-        setLoadedDate(date);
       } catch (error) {
         if (!cancelled) fail(error, 'Could not open today’s page');
       }
@@ -151,61 +145,66 @@ export function useDailyPage({ date, repos, onError, onPersisted }: Options) {
     return () => {
       cancelled = true;
     };
-  }, [date, fail, flushPending, repos.notes]);
+  }, [date, fail, flushInk, repos.notes, session]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background' || state === 'inactive') flushPending();
+      if (state === 'background' || state === 'inactive') {
+        void session.flushPending();
+        void flushInk();
+      }
     });
     return () => {
       subscription.remove();
-      flushPending();
+      void session.flushPending();
+      void flushInk();
     };
-  }, [flushPending]);
+  }, [flushInk, session]);
+
+  useEffect(() => {
+    return () => {
+      void session.flushPending();
+    };
+  }, [session]);
 
   const changeBody = useCallback(
     (value: string, options?: { continueNumberedLists?: boolean }) => {
-      let nextValue = value;
-      if (options?.continueNumberedLists && value.endsWith('\n')) {
-        const previousLine = value.slice(0, -1).split('\n').at(-1) ?? '';
-        const match = previousLine.match(/^(\s*)(\d+)\.\s+.+/);
-        if (match) nextValue += `${match[1]}${Number(match[2]) + 1}. `;
-      }
-
-      setBody(nextValue);
-      const forDate = dateRef.current;
-      pendingBody.current = { value: nextValue, date: forDate };
-      if (bodyTimer.current) clearTimeout(bodyTimer.current);
-      bodyTimer.current = setTimeout(() => {
-        pendingBody.current = null;
-        void saveBodyNow(nextValue, forDate);
-      }, SAVE_MS);
+      session.changeBody(value, options);
     },
-    [saveBodyNow],
+    [session],
   );
 
   const changeInk = useCallback(
     (next: InkDocument) => {
       setInk(next);
       const forDate = dateRef.current;
-      const forNoteId = noteId;
+      const forNoteId = session.getSnapshot().noteId;
       pendingInk.current = { value: next, date: forDate, noteId: forNoteId };
       if (inkTimer.current) clearTimeout(inkTimer.current);
       inkTimer.current = setTimeout(() => {
         pendingInk.current = null;
         void saveInkNow(next, forDate, forNoteId);
-      }, SAVE_MS);
+      }, INK_SAVE_MS);
     },
-    [noteId, saveInkNow],
+    [saveInkNow, session],
   );
 
+  const retrySave = useCallback(async () => {
+    await session.retrySave();
+  }, [session]);
+
+  const ready = note.ready && note.date === date;
+
   return {
-    ready: loadedDate === date,
-    body,
+    ready,
+    body: ready || note.date === date ? note.body : '',
     ink,
-    noteId,
+    noteId: note.noteId,
     drawingId,
+    saveStatus: note.saveStatus as SaveStatus,
+    recovered: note.recovered,
     changeBody,
     changeInk,
+    retrySave,
   };
 }
