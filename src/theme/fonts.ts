@@ -1,21 +1,40 @@
-export const fonts = {
-  sans: 'Switzer-Regular',
-  sansMedium: 'Switzer-Medium',
-  sansSemi: 'Switzer-Semibold',
-  serif: 'Zodiak-Regular',
-  serifItalic: 'Zodiak-Italic',
-} as const;
+import { Platform } from 'react-native';
 
-export const fontAssets = {
-  [fonts.sans]: require('../../assets/fonts/Switzer-Regular.ttf'),
-  [fonts.sansMedium]: require('../../assets/fonts/Switzer-Medium.ttf'),
-  [fonts.sansSemi]: require('../../assets/fonts/Switzer-Semibold.ttf'),
-  [fonts.serif]: require('../../assets/fonts/Zodiak-Regular.ttf'),
-  [fonts.serifItalic]: require('../../assets/fonts/Zodiak-Italic.ttf'),
+export const fonts = {
+  sans: Platform.select({
+    ios: 'Avenir Next',
+    android: 'sans-serif',
+    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    default: 'System',
+  }),
+  sansMedium: Platform.select({
+    ios: 'AvenirNext-Medium',
+    android: 'sans-serif-medium',
+    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    default: 'System',
+  }),
+  sansSemi: Platform.select({
+    ios: 'AvenirNext-DemiBold',
+    android: 'sans-serif-medium',
+    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    default: 'System',
+  }),
+  serif: Platform.select({
+    ios: 'Charter',
+    android: 'serif',
+    web: 'Charter, Georgia, serif',
+    default: 'serif',
+  }),
+  serifItalic: Platform.select({
+    ios: 'Charter-Italic',
+    android: 'serif',
+    web: 'Charter, Georgia, serif',
+    default: 'serif',
+  }),
 } as const;
 
 export function editorFontFamily(font: string): string | undefined {
-  if (font === 'switzer' || font === 'instrument-sans') return fonts.sans;
-  if (font === 'zodiak' || font === 'instrument-serif') return fonts.serif;
+  if (font === 'avenir' || font === 'switzer' || font === 'instrument-sans') return fonts.sans;
+  if (font === 'charter' || font === 'zodiak' || font === 'instrument-serif') return fonts.serif;
   return undefined;
 }

@@ -5,7 +5,7 @@ export {
   useAppTheme,
   useThemeStyles,
 } from './AppThemeProvider';
-export { editorFontFamily, fontAssets, fonts } from './fonts';
+export { editorFontFamily, fonts } from './fonts';
 export { motion } from './motion';
 export {
   type AgendaTheme,

@@ -1,4 +1,3 @@
-import { Color } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
 /** Four appearance modes — Light / Dark / Light HC / Dark HC. */
@@ -14,79 +13,79 @@ export function rgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** Calendar / event / space category palette — Apple system colors 2025+. */
+/** Calendar / event / space category palette. */
 export const categoryColorValues = {
   red: {
-    light: '#FF383C',
-    dark: '#FF4245',
-    lightHighContrast: '#E9152D',
-    darkHighContrast: '#FF6165',
+    light: '#C4514A',
+    dark: '#F07C74',
+    lightHighContrast: '#A83934',
+    darkHighContrast: '#FF9B94',
   },
   orange: {
-    light: '#FF8D28',
-    dark: '#FF9230',
-    lightHighContrast: '#C55300',
-    darkHighContrast: '#FFA056',
+    light: '#C56B32',
+    dark: '#E9955E',
+    lightHighContrast: '#9B4B19',
+    darkHighContrast: '#FFB17D',
   },
   yellow: {
-    light: '#FFCC00',
-    dark: '#FFD600',
-    lightHighContrast: '#A16A00',
-    darkHighContrast: '#FEDF43',
+    light: '#A67C24',
+    dark: '#D8B45A',
+    lightHighContrast: '#7B590D',
+    darkHighContrast: '#F2D27F',
   },
   green: {
-    light: '#34C759',
-    dark: '#30D158',
-    lightHighContrast: '#008932',
-    darkHighContrast: '#4AD968',
+    light: '#4F7F62',
+    dark: '#79AD8A',
+    lightHighContrast: '#315E43',
+    darkHighContrast: '#9DCCAA',
   },
   mint: {
-    light: '#00C8B3',
-    dark: '#00DAC3',
-    lightHighContrast: '#008575',
-    darkHighContrast: '#54DFCB',
+    light: '#3D857B',
+    dark: '#72B6AA',
+    lightHighContrast: '#246158',
+    darkHighContrast: '#98D3C8',
   },
   teal: {
-    light: '#00C3D0',
-    dark: '#00D2E0',
-    lightHighContrast: '#008198',
-    darkHighContrast: '#3BDDEC',
+    light: '#397D86',
+    dark: '#6BAAB3',
+    lightHighContrast: '#205A63',
+    darkHighContrast: '#91C9D0',
   },
   cyan: {
-    light: '#00C0E8',
-    dark: '#3CD3FE',
-    lightHighContrast: '#007EAE',
-    darkHighContrast: '#6DD9FF',
+    light: '#397C9B',
+    dark: '#70A9C3',
+    lightHighContrast: '#205977',
+    darkHighContrast: '#98C8DD',
   },
   blue: {
-    light: '#0088FF',
-    dark: '#0091FF',
-    lightHighContrast: '#1E6EF4',
-    darkHighContrast: '#5CB8FF',
+    light: '#456F9A',
+    dark: '#78A0C9',
+    lightHighContrast: '#294F76',
+    darkHighContrast: '#9CBEE0',
   },
   indigo: {
-    light: '#6155F5',
-    dark: '#6D7CFF',
-    lightHighContrast: '#564ADE',
-    darkHighContrast: '#A7AAFF',
+    light: '#655F91',
+    dark: '#918ABC',
+    lightHighContrast: '#49436F',
+    darkHighContrast: '#B5AED9',
   },
   purple: {
-    light: '#CB30E0',
-    dark: '#DB34F2',
-    lightHighContrast: '#B02FC2',
-    darkHighContrast: '#EA8DFF',
+    light: '#845B85',
+    dark: '#B387B2',
+    lightHighContrast: '#633D64',
+    darkHighContrast: '#D1A8CF',
   },
   pink: {
-    light: '#FF2D55',
-    dark: '#FF375F',
-    lightHighContrast: '#E7124D',
-    darkHighContrast: '#FF8AC4',
+    light: '#A95570',
+    dark: '#D17F99',
+    lightHighContrast: '#84374F',
+    darkHighContrast: '#EFA3B9',
   },
   brown: {
-    light: '#AC7F5E',
-    dark: '#B78A66',
-    lightHighContrast: '#956D51',
-    darkHighContrast: '#DBA679',
+    light: '#866750',
+    dark: '#B49379',
+    lightHighContrast: '#624731',
+    darkHighContrast: '#D2B29A',
   },
 } as const satisfies Record<string, ModeValues>;
 
@@ -105,40 +104,40 @@ export const spaceColors: Record<CategoryColorName, string> = Object.fromEntries
 
 export const neutralColorValues = {
   gray1: {
-    light: '#8E8E93',
-    dark: '#8E8E93',
-    lightHighContrast: '#6C6C70',
-    darkHighContrast: '#AEAEB2',
+    light: '#77736C',
+    dark: '#999B9C',
+    lightHighContrast: '#59554F',
+    darkHighContrast: '#B8BABC',
   },
   gray2: {
-    light: '#AEAEB2',
-    dark: '#636366',
-    lightHighContrast: '#8E8E93',
-    darkHighContrast: '#7C7C80',
+    light: '#9C978E',
+    dark: '#777B7E',
+    lightHighContrast: '#777169',
+    darkHighContrast: '#929699',
   },
   gray3: {
-    light: '#C7C7CC',
-    dark: '#48484A',
-    lightHighContrast: '#AEAEB2',
-    darkHighContrast: '#545456',
+    light: '#BBB4A9',
+    dark: '#555B60',
+    lightHighContrast: '#948C81',
+    darkHighContrast: '#6B7175',
   },
   gray4: {
-    light: '#D1D1D6',
-    dark: '#3A3A3C',
-    lightHighContrast: '#BCBCC0',
-    darkHighContrast: '#444446',
+    light: '#D2C9BC',
+    dark: '#3D444A',
+    lightHighContrast: '#AFA497',
+    darkHighContrast: '#50575D',
   },
   gray5: {
-    light: '#E5E5EA',
-    dark: '#2C2C2E',
-    lightHighContrast: '#D8D8DC',
-    darkHighContrast: '#363638',
+    light: '#E7DED1',
+    dark: '#293037',
+    lightHighContrast: '#D7CCBE',
+    darkHighContrast: '#373F46',
   },
   gray6: {
-    light: '#F2F2F7',
-    dark: '#1C1C1E',
-    lightHighContrast: '#EBEBF0',
-    darkHighContrast: '#242426',
+    light: '#F1EADF',
+    dark: '#1B2229',
+    lightHighContrast: '#E9DFD1',
+    darkHighContrast: '#242C33',
   },
 } as const satisfies Record<string, ModeValues>;
 
@@ -234,40 +233,12 @@ export type AgendaTheme = {
   floatingTextMuted: string;
 };
 
-const IOS_CATEGORY_COLORS: Record<CategoryColorName, ColorValue> = {
-  red: Color.ios.systemRed,
-  orange: Color.ios.systemOrange,
-  yellow: Color.ios.systemYellow,
-  green: Color.ios.systemGreen,
-  mint: Color.ios.systemMint,
-  teal: Color.ios.systemTeal,
-  cyan: Color.ios.systemCyan,
-  blue: Color.ios.systemBlue,
-  indigo: Color.ios.systemIndigo,
-  purple: Color.ios.systemPurple,
-  pink: Color.ios.systemPink,
-  brown: Color.ios.systemBrown,
-};
-
-const IOS_NEUTRAL_COLORS: Record<NeutralColorName, ColorValue> = {
-  gray1: Color.ios.systemGray,
-  gray2: Color.ios.systemGray2,
-  gray3: Color.ios.systemGray3,
-  gray4: Color.ios.systemGray4,
-  gray5: Color.ios.systemGray5,
-  gray6: Color.ios.systemGray6,
-};
-
-function iosColor(nativeColor: ColorValue, fallback: string): ColorValue {
-  return (nativeColor as ColorValue | null) ?? fallback;
-}
-
 export function getCategoryReference(name: CategoryColorName, mode: AppearanceMode): string {
   return categoryColorValues[name][mode];
 }
 
 export function getCategoryColor(name: CategoryColorName, mode: AppearanceMode): ColorValue {
-  return iosColor(IOS_CATEGORY_COLORS[name], getCategoryReference(name, mode));
+  return getCategoryReference(name, mode);
 }
 
 /** Primary Soft opacity per Apple guidance. */
@@ -303,20 +274,20 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
   const neutral = Object.fromEntries(
     (Object.keys(neutralColorValues) as NeutralColorName[]).map((name) => [
       name,
-      iosColor(IOS_NEUTRAL_COLORS[name], neutralColorValues[name][mode]),
+      neutralColorValues[name][mode],
     ]),
   ) as Record<NeutralColorName, ColorValue>;
 
-  const text = isDark ? '#FFFFFF' : '#000000';
-  const secondaryText = rgba(isDark ? '#EBEBF5' : '#3C3C43', 0.6);
-  const tertiaryText = rgba(isDark ? '#EBEBF5' : '#3C3C43', 0.3);
-  const quaternaryText = rgba(isDark ? '#EBEBF5' : '#3C3C43', isHighContrast ? 0.28 : 0.18);
-  const surfaceBackground = isDark ? '#000000' : '#FFFFFF';
+  const text = isDark ? '#F3F0EA' : '#27231F';
+  const secondaryText = isDark ? '#B0AFAB' : '#6E675F';
+  const tertiaryText = isDark ? '#85888A' : '#928A80';
+  const quaternaryText = isDark ? '#666B6E' : '#B0A79C';
+  const surfaceBackground = isDark ? '#10161C' : '#F8F4EC';
   const surfaceSecondary = neutralColorValues.gray6[mode];
-  const surfaceTertiary = isDark ? neutralColorValues.gray5[mode] : '#FFFFFF';
-  const fillBase = '#787880';
+  const surfaceTertiary = isDark ? neutralColorValues.gray5[mode] : '#FFFDF8';
+  const fillBase = isDark ? '#AAB0B4' : '#6E675F';
   const alphaBoost = isHighContrast ? 0.06 : 0;
-  const separatorFallback = rgba('#787880', isDark ? 0.24 : 0.12);
+  const separatorFallback = isDark ? '#30383F' : '#DDD4C7';
   const inputFallback = rgba(fillBase, 0.12 + alphaBoost);
   const blueRef = getCategoryReference('blue', mode);
   const greenRef = getCategoryReference('green', mode);
@@ -333,37 +304,37 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
       onPrimary,
     },
     content: {
-      text: iosColor(Color.ios.label, text),
-      secondary: iosColor(Color.ios.secondaryLabel, secondaryText),
-      tertiary: iosColor(Color.ios.tertiaryLabel, tertiaryText),
-      quaternary: iosColor(Color.ios.quaternaryLabel, quaternaryText),
-      placeholder: iosColor(Color.ios.placeholderText, tertiaryText),
-      link: iosColor(Color.ios.link, blueRef),
-      disabled: iosColor(Color.ios.quaternaryLabel, quaternaryText),
+      text,
+      secondary: secondaryText,
+      tertiary: tertiaryText,
+      quaternary: quaternaryText,
+      placeholder: tertiaryText,
+      link: blueRef,
+      disabled: quaternaryText,
     },
     surface: {
-      background: iosColor(Color.ios.systemBackground, surfaceBackground),
-      secondary: iosColor(Color.ios.secondarySystemBackground, surfaceSecondary),
-      tertiary: iosColor(Color.ios.tertiarySystemBackground, surfaceTertiary),
-      grouped: iosColor(Color.ios.systemGroupedBackground, surfaceSecondary),
-      groupedSecondary: iosColor(Color.ios.secondarySystemGroupedBackground, surfaceTertiary),
-      groupedTertiary: iosColor(Color.ios.tertiarySystemGroupedBackground, surfaceSecondary),
+      background: surfaceBackground,
+      secondary: surfaceSecondary,
+      tertiary: surfaceTertiary,
+      grouped: surfaceSecondary,
+      groupedSecondary: surfaceTertiary,
+      groupedTertiary: surfaceSecondary,
     },
     control: {
-      fill: iosColor(Color.ios.systemFill, rgba(fillBase, 0.2 + alphaBoost)),
-      fillSecondary: iosColor(Color.ios.secondarySystemFill, rgba(fillBase, 0.16 + alphaBoost)),
-      fillTertiary: iosColor(Color.ios.tertiarySystemFill, inputFallback),
-      fillQuaternary: iosColor(Color.ios.quaternarySystemFill, rgba(fillBase, 0.08 + alphaBoost)),
-      input: iosColor(Color.ios.tertiarySystemFill, inputFallback),
+      fill: rgba(fillBase, 0.2 + alphaBoost),
+      fillSecondary: rgba(fillBase, 0.16 + alphaBoost),
+      fillTertiary: inputFallback,
+      fillQuaternary: rgba(fillBase, 0.08 + alphaBoost),
+      input: inputFallback,
       inputClear: 'transparent',
       selected: primarySoft,
       pressed: rgba(primaryReference, softAlpha(mode) + 0.08),
-      disabled: iosColor(Color.ios.quaternarySystemFill, rgba(fillBase, 0.08 + alphaBoost)),
+      disabled: rgba(fillBase, 0.08 + alphaBoost),
     },
     boundary: {
-      separator: iosColor(Color.ios.separator, separatorFallback),
+      separator: separatorFallback,
       border: neutral.gray4,
-      borderStrong: iosColor(Color.ios.opaqueSeparator, neutralColorValues.gray3[mode]),
+      borderStrong: neutralColorValues.gray3[mode],
       focus: primary,
     },
     status: {
@@ -405,7 +376,7 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     warning: orangeRef,
     danger: redRef,
     success: greenRef,
-    floating: isDark ? rgba('#000000', 0.35) : rgba('#1C1C1E', 0.28),
+    floating: isDark ? rgba('#06090C', 0.72) : rgba('#27231F', 0.72),
     floatingText: '#FFFFFF',
     floatingTextMuted: rgba('#FFFFFF', 0.65),
   };

@@ -14,10 +14,13 @@ import {
   type InkStroke,
 } from '@/features/todays-page/inkFormat';
 import type { InkTool } from '@/features/todays-page/inkTools';
+import { useAppTheme } from '@/theme';
 
 type Props = {
   document: InkDocument;
   strokeColor: string;
+  /** Color or semantic color role written into persisted strokes. */
+  strokeStorageColor?: string;
   strokeWidth: number;
   strokeOpacity: number;
   penOnly: boolean;
@@ -63,6 +66,7 @@ function strokeWidthForPressure(base: number, pressure?: number) {
 export function InkCanvas({
   document,
   strokeColor,
+  strokeStorageColor,
   strokeWidth,
   strokeOpacity,
   penOnly,
@@ -71,6 +75,7 @@ export function InkCanvas({
   onChange,
   onLiveBottomChange,
 }: Props) {
+  const theme = useAppTheme();
   const strokes = document.strokes;
   const [livePoints, setLivePoints] = useState<InkPoint[]>([]);
   const [liveWidth, setLiveWidth] = useState(strokeWidth);
@@ -82,6 +87,7 @@ export function InkCanvas({
   const liveWidthRef = useRef(strokeWidth);
   const liveOpacityRef = useRef(strokeOpacity);
   const strokeColorRef = useRef(strokeColor);
+  const strokeStorageColorRef = useRef(strokeStorageColor ?? strokeColor);
   const strokeWidthRef = useRef(strokeWidth);
   const strokeOpacityRef = useRef(strokeOpacity);
   const sessionRef = useRef(false);
@@ -95,9 +101,10 @@ export function InkCanvas({
 
   useEffect(() => {
     strokeColorRef.current = strokeColor;
+    strokeStorageColorRef.current = strokeStorageColor ?? strokeColor;
     strokeWidthRef.current = strokeWidth;
     strokeOpacityRef.current = strokeOpacity;
-  }, [strokeColor, strokeOpacity, strokeWidth]);
+  }, [strokeColor, strokeOpacity, strokeStorageColor, strokeWidth]);
 
   useEffect(() => {
     penOnlyRef.current = penOnly;
@@ -178,7 +185,7 @@ export function InkCanvas({
     emit([
       ...strokesRef.current,
       createStroke(
-        strokeColorRef.current,
+        strokeStorageColorRef.current,
         liveWidthRef.current,
         points,
         liveOpacityRef.current,
@@ -268,12 +275,7 @@ export function InkCanvas({
           runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
           return;
         }
-        runOnJS(beginStrokeJS)(
-          event.x,
-          event.y,
-          event.pointerType,
-          event.stylusData?.pressure,
-        );
+        runOnJS(beginStrokeJS)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
       })
       .onUpdate((event) => {
         'worklet';
@@ -281,12 +283,7 @@ export function InkCanvas({
           runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
           return;
         }
-        runOnJS(moveStrokeJS)(
-          event.x,
-          event.y,
-          event.pointerType,
-          event.stylusData?.pressure,
-        );
+        runOnJS(moveStrokeJS)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
       })
       .onEnd(() => {
         'worklet';
@@ -296,28 +293,23 @@ export function InkCanvas({
         'worklet';
         if (!success && !isErase) runOnJS(cancelStrokeJS)();
       });
-  }, [
-    beginStrokeJS,
-    cancelStrokeJS,
-    enabled,
-    endStrokeJS,
-    eraseAtJS,
-    moveStrokeJS,
-    penOnly,
-    tool,
-  ]);
+  }, [beginStrokeJS, cancelStrokeJS, enabled, endStrokeJS, eraseAtJS, moveStrokeJS, penOnly, tool]);
 
   const livePath = useMemo(() => pointsToSvgPath(livePoints), [livePoints]);
   const committed = useMemo(
     () =>
       strokes.map((stroke) => ({
         id: stroke.id,
-        color: stroke.color,
+        color:
+          stroke.color === 'primaryInk' ||
+          (theme.isDark && (stroke.color === '#111111' || stroke.color === '#000000'))
+            ? theme.text
+            : stroke.color,
         width: stroke.width,
         opacity: stroke.opacity ?? 1,
         d: pointsToSvgPath(stroke.points),
       })),
-    [strokes],
+    [strokes, theme.isDark, theme.text],
   );
 
   return (

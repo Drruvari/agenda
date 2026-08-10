@@ -1,6 +1,7 @@
 /* eslint-disable import/no-unresolved -- Tabler's valid wildcard exports are not resolved by Expo's ESLint resolver. */
 import IconAlertCircle from '@tabler/icons-react-native/IconAlertCircle';
 import IconArrowBackUp from '@tabler/icons-react-native/IconArrowBackUp';
+import IconArrowForwardUp from '@tabler/icons-react-native/IconArrowForwardUp';
 import IconArrowsMaximize from '@tabler/icons-react-native/IconArrowsMaximize';
 import IconArrowsMinimize from '@tabler/icons-react-native/IconArrowsMinimize';
 import IconBell from '@tabler/icons-react-native/IconBell';
@@ -81,6 +82,7 @@ const icons = {
   orbit: AgendaLogo,
   pencil: IconPencil,
   refresh: IconRefresh,
+  redo: IconArrowForwardUp,
   undo: IconArrowBackUp,
   search: IconSearch,
   settings: IconSettings,

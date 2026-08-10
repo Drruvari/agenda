@@ -1,6 +1,4 @@
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
@@ -14,24 +12,12 @@ import { ItemEditorHost, ItemEditorProvider } from '@/features/item-editor';
 import { EditSpaceHost, LibraryHost, LibraryProvider, SpacePickerHost } from '@/features/library';
 import { AppLockProvider } from '@/features/privacy';
 import { configureReminders } from '@/native/notifications/reminders';
-import { fontAssets, useAppAppearance } from '@/theme';
-
-void SplashScreen.preventAutoHideAsync();
+import { useAppAppearance } from '@/theme';
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts(fontAssets);
-
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      void SplashScreen.hideAsync();
-    }
-  }, [fontError, fontsLoaded]);
-
   useEffect(() => {
     void configureReminders();
   }, []);
-
-  if (!fontsLoaded && !fontError) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>

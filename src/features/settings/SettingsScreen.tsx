@@ -398,9 +398,26 @@ function GeneralSettings({
         <SettingToggle
           accent={accent}
           title="Pull down to quick add"
-          subtitle="Pull down from the top of Today to open quick add. Turn off if it conflicts with scrolling."
+          subtitle="Pull down from the top of Today to open quick add. Enabling this turns off pull to search."
           value={general.pullDownToAdd}
-          onValueChange={(pullDownToAdd) => onGeneral({ pullDownToAdd })}
+          onValueChange={(pullDownToAdd) =>
+            onGeneral({
+              pullDownToAdd,
+              ...(pullDownToAdd ? { pullDownToSearch: false } : {}),
+            })
+          }
+        />
+        <SettingToggle
+          accent={accent}
+          title="Pull down to search"
+          subtitle="Pull down from the top of Today to open search. Enabling this turns off quick add."
+          value={general.pullDownToSearch}
+          onValueChange={(pullDownToSearch) =>
+            onGeneral({
+              pullDownToSearch,
+              ...(pullDownToSearch ? { pullDownToAdd: false } : {}),
+            })
+          }
         />
         <SettingToggle
           accent={accent}
@@ -490,8 +507,8 @@ function EditorSettings({
           value={editor.font}
           options={[
             { label: 'System', value: 'system' },
-            { label: 'Switzer', value: 'switzer' },
-            { label: 'Zodiak', value: 'zodiak' },
+            { label: 'Avenir Next', value: 'avenir' },
+            { label: 'Charter', value: 'charter' },
           ]}
           onValueChange={(font) => onEditor({ font })}
         />

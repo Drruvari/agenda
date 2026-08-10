@@ -16,7 +16,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { BlurSurface } from '@/components/ui/BlurSurface';
 import { BottomBar } from '@/components/ui/BottomBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -73,7 +72,6 @@ import {
   continuousCorner,
   fonts,
   motion,
-  rgba,
   useAppAppearance,
   useAppTheme,
 } from '@/theme';
@@ -228,7 +226,7 @@ export default function PlannerScreen() {
     openEdit,
     openQuickAdd: openQuickAddEditor,
   } = useItemEditor();
-  const { openLibrary } = useLibrary();
+  const { openCreateSpace, openLibrary } = useLibrary();
   const { openRoutines, openSearch } = useAppSheets();
   const editorOpen = Boolean(editorSession);
   const insets = useSafeAreaInsets();
@@ -693,6 +691,16 @@ export default function PlannerScreen() {
     openQuickAddEditor();
   }, [openQuickAddEditor]);
 
+  const pullDownToSearch = settings.general.pullDownToSearch;
+  const pullDownEnabled = settings.general.pullDownToAdd || pullDownToSearch;
+  const runPullAction = useCallback(() => {
+    if (pullDownToSearch) {
+      openSearch();
+      return;
+    }
+    openQuickAdd();
+  }, [openQuickAdd, openSearch, pullDownToSearch]);
+
   const {
     scrollRef,
     scrollGesture,
@@ -704,9 +712,9 @@ export default function PlannerScreen() {
     releaseLabelStyle,
   } = usePlannerGestures({
     onShiftDay: shiftDay,
-    onPullAdd: openQuickAdd,
+    onPullAdd: runPullAction,
     gesturesEnabled: !drawingActive,
-    pullDownToAdd: settings.general.pullDownToAdd,
+    pullDownToAdd: pullDownEnabled,
     swipeToChangeDay: settings.general.swipeToChangeDay,
   });
 
@@ -735,8 +743,7 @@ export default function PlannerScreen() {
     : Math.max(0, allDay.length - ALL_DAY_PREVIEW_COUNT);
 
   const isDark = colorScheme === 'dark';
-  const headerFrosted = isDark ? rgba('#000000', 0.2) : rgba('#FFFFFF', 0.35);
-  const headerTint = isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight';
+  const headerTop = insets.top + 6;
 
   return (
     <View style={styles.safeArea}>
@@ -744,19 +751,19 @@ export default function PlannerScreen() {
 
       <BlurTargetView ref={blurTarget} style={styles.blurTarget}>
         <Animated.View style={styles.blurTarget}>
-          {settings.general.pullDownToAdd ? (
+          {pullDownEnabled ? (
             <Animated.View
               pointerEvents="none"
-              style={[styles.pullHintWrap, { top: headerHeight - 4 }, pullHintStyle]}
+              style={[styles.pullHintWrap, { top: headerTop + headerHeight }, pullHintStyle]}
             >
               <View style={styles.pullHint}>
                 <Animated.Text style={[styles.pullHintText, pullLabelStyle]}>
-                  Pull to add
+                  {pullDownToSearch ? 'Pull to search' : 'Pull to add'}
                 </Animated.Text>
                 <Animated.Text
                   style={[styles.pullHintText, styles.pullHintOverlay, releaseLabelStyle]}
                 >
-                  Release to add
+                  {pullDownToSearch ? 'Release to search' : 'Release to add'}
                 </Animated.Text>
               </View>
             </Animated.View>
@@ -773,7 +780,7 @@ export default function PlannerScreen() {
             contentContainerStyle={[
               styles.scrollContent,
               {
-                paddingTop: headerHeight,
+                paddingTop: headerTop + headerHeight + 12,
                 paddingBottom: Math.max(128, insets.bottom + 108),
               },
             ]}
@@ -783,7 +790,11 @@ export default function PlannerScreen() {
                     <Text style={styles.dateSubtitle}>
                       {[
                         settings.general.swipeToChangeDay ? 'Swipe to change day' : null,
-                        settings.general.pullDownToAdd ? 'pull down to add' : null,
+                        pullDownEnabled
+                          ? pullDownToSearch
+                            ? 'pull down to search'
+                            : 'pull down to add'
+                          : null,
                       ]
                         .filter(Boolean)
                         .join(' • ') || 'Your day'}
@@ -818,9 +829,26 @@ export default function PlannerScreen() {
                           onPress={() => setUI({ activeSpaceId: space.id })}
                         />
                       ))}
+                    <AnimatedPressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Quick add a space"
+                      haptic="light"
+                      onPress={openCreateSpace}
+                      pressedStyle={styles.spaceAddPressed}
+                      style={styles.spaceAdd}
+                    >
+                      <Icon name="add" size={18} color={C.accent} stroke={2.2} />
+                    </AnimatedPressable>
                   </Animated.ScrollView>
 
-                  <View style={styles.connectStack}>
+                  <View
+                    style={[
+                      styles.connectStack,
+                      (calendarAccess !== 'granted' ||
+                        (systemRemindersSupported && reminderAccess !== 'granted')) &&
+                        styles.connectStackVisible,
+                    ]}
+                  >
                     <PermissionCard
                       title="Bring your schedule together"
                       state={calendarAccess}
@@ -847,7 +875,7 @@ export default function PlannerScreen() {
                     <View style={styles.groupCard}>
                       <View style={styles.allDayHeader}>
                         <View style={styles.headerLabelRow}>
-                          <Text style={styles.sectionLabel}>ALL DAY</Text>
+                          <Text style={styles.sectionLabel}>All day</Text>
                         </View>
 
                         <SquareIconButton
@@ -906,7 +934,7 @@ export default function PlannerScreen() {
                           style={styles.scheduledSection}
                         >
                           <View style={styles.scheduledHeader}>
-                            <Text style={styles.sectionLabel}>SCHEDULED</Text>
+                            <Text style={styles.sectionLabel}>Calendar</Text>
                             <Text style={styles.sectionCount}>{scheduled.length}</Text>
                           </View>
 
@@ -948,7 +976,7 @@ export default function PlannerScreen() {
                           pressedStyle={styles.pressed}
                           style={styles.completedHeader}
                         >
-                          <Text style={styles.sectionLabel}>{completed.length} COMPLETED</Text>
+                          <Text style={styles.sectionLabel}>{completed.length} Completed</Text>
                           {ui.completedExpanded ? (
                             <Icon name="chevronUp" size={20} color={C.muted} />
                           ) : (
@@ -983,7 +1011,7 @@ export default function PlannerScreen() {
 
                     <View style={styles.groupCard}>
                       <View style={styles.routineHeader}>
-                        <Text style={styles.sectionLabel}>ROUTINES</Text>
+                        <Text style={styles.sectionLabel}>Routines</Text>
                         <View style={styles.routineHeaderRight}>
                           <Text style={styles.sectionCount}>
                             {completedRoutines}/{routines.length}
@@ -1036,35 +1064,24 @@ export default function PlannerScreen() {
       <View
         onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
         pointerEvents={editorOpen ? 'none' : 'box-none'}
-        style={styles.stickyHeader}
+        style={[styles.stickyHeader, { top: headerTop }]}
       >
-        <BlurSurface
-          blurTarget={blurTarget}
-          borderBottomRadius={24}
-          elevated={false}
-          intensity={90}
-          overlayColor={headerFrosted}
-          tint={headerTint}
-          style={styles.stickyHeaderBlur}
-          contentStyle={[styles.stickyHeaderContent, { paddingTop: insets.top + 6 }]}
-        >
-          <TopBar
-            calendarIndicator={
-              settings.general.calendarIndicators &&
-              Boolean(
-                view &&
+        <TopBar
+          calendarIndicator={
+            settings.general.calendarIndicators &&
+            Boolean(
+              view &&
                 (view.allDay.length ||
                   view.scheduled.length ||
                   view.completed.length ||
                   view.dailyNote?.bodyText.trim()),
-              )
-            }
-            mode={mode}
-            setMode={setMode}
-            onCalendar={() => setCalendarPickerOpen(true)}
-            onSettings={() => router.push('/settings')}
-          />
-        </BlurSurface>
+            )
+          }
+          mode={mode}
+          setMode={setMode}
+          onCalendar={() => setCalendarPickerOpen(true)}
+          onSettings={() => router.push('/settings')}
+        />
       </View>
 
       {!editorOpen ? (
@@ -1072,10 +1089,7 @@ export default function PlannerScreen() {
           blurTarget={blurTarget}
           bottom={Math.max(16, insets.bottom + 10)}
           onAdd={() => openCreate('task')}
-          onMore={() => {
-            triggerHaptic('selection');
-            openLibrary();
-          }}
+          onMore={openLibrary}
           onSearch={openSearch}
         />
       ) : null}
@@ -1450,24 +1464,16 @@ function createStyles(theme: AgendaTheme) {
 
     stickyHeader: {
       position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
+      left: 12,
+      right: 12,
       zIndex: 20,
-    },
-    stickyHeaderBlur: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.divider,
-    },
-    stickyHeaderContent: {
-      paddingHorizontal: 16,
-      paddingBottom: 10,
+      alignItems: 'center',
     },
     topBar: {
       width: '100%',
-      maxWidth: 440,
+      maxWidth: 416,
       alignSelf: 'center',
-      minHeight: 44,
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1476,21 +1482,32 @@ function createStyles(theme: AgendaTheme) {
     segmented: {
       flex: 1,
       minWidth: 0,
+      borderWidth: 0,
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 4,
     },
     topActions: {
       flexDirection: 'row',
       flexShrink: 0,
-      gap: 8,
+      padding: 3,
+      borderRadius: 999,
+      backgroundColor: C.surface,
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 4,
     },
     circleButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: C.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.divider,
+      backgroundColor: 'transparent',
     },
     circleButtonPressed: {
       opacity: 0.72,
@@ -1588,26 +1605,38 @@ function createStyles(theme: AgendaTheme) {
     spaceFilterLabelActive: {
       color: C.onPrimary,
     },
+    spaceAdd: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: C.surface,
+    },
+    spaceAddPressed: {
+      opacity: 0.68,
+      backgroundColor: C.card,
+    },
 
     connectStack: {
       gap: 12,
+    },
+    connectStackVisible: {
       marginBottom: 16,
     },
 
     contentStack: {
-      gap: 16,
+      gap: 28,
     },
     groupCard: {
-      backgroundColor: C.surface,
-      ...continuousCorner(16),
-      padding: 4,
-      gap: 4,
-      overflow: 'hidden',
+      backgroundColor: 'transparent',
+      gap: 8,
+      overflow: 'visible',
     },
 
     allDayHeader: {
-      height: 44,
-      paddingLeft: 12,
+      height: 34,
+      paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1646,14 +1675,14 @@ function createStyles(theme: AgendaTheme) {
       backgroundColor: C.accentSoft,
     },
     squareButtonNeutral: {
-      backgroundColor: C.card,
+      backgroundColor: 'transparent',
     },
     sectionLabel: {
       fontFamily: fonts.sansSemi,
-      fontSize: 14,
-      lineHeight: 18,
-      color: C.muted,
-      textTransform: 'uppercase',
+      fontSize: 20,
+      lineHeight: 26,
+      letterSpacing: -0.35,
+      color: C.text,
     },
     sectionCount: {
       fontFamily: fonts.sansMedium,
@@ -1667,7 +1696,7 @@ function createStyles(theme: AgendaTheme) {
       paddingVertical: 8,
       paddingHorizontal: 12,
       ...continuousCorner(16),
-      backgroundColor: C.card,
+      backgroundColor: C.surface,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1756,12 +1785,11 @@ function createStyles(theme: AgendaTheme) {
     },
 
     scheduledSection: {
-      gap: 4,
+      gap: 8,
     },
     scheduledHeader: {
-      height: 32,
-      paddingVertical: 7,
-      paddingHorizontal: 12,
+      height: 34,
+      paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1795,7 +1823,7 @@ function createStyles(theme: AgendaTheme) {
       paddingVertical: 8,
       paddingHorizontal: 16,
       ...continuousCorner(16),
-      backgroundColor: C.card,
+      backgroundColor: C.surface,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1807,16 +1835,16 @@ function createStyles(theme: AgendaTheme) {
     },
 
     completedHeader: {
-      height: 36,
-      paddingHorizontal: 16,
+      height: 34,
+      paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
 
     routineHeader: {
-      height: 44,
-      paddingLeft: 16,
+      height: 34,
+      paddingLeft: 0,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -1829,7 +1857,7 @@ function createStyles(theme: AgendaTheme) {
     routineRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 4,
+      gap: 8,
     },
     routineCard: {
       flex: 1,
@@ -1837,7 +1865,7 @@ function createStyles(theme: AgendaTheme) {
       height: 84,
       padding: 16,
       ...continuousCorner(16),
-      backgroundColor: C.card,
+      backgroundColor: C.surface,
       alignItems: 'center',
       gap: 8,
     },

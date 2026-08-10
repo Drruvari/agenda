@@ -10,7 +10,7 @@ export type InkBrush = {
 };
 
 export const PEN_BRUSHES: InkBrush[] = [
-  { id: 'pen-black', kind: 'pen', color: '#111111', width: 3.2, opacity: 1, label: 'Black' },
+  { id: 'pen-primary', kind: 'pen', color: 'primaryInk', width: 3.2, opacity: 1, label: 'Ink' },
   { id: 'pen-red', kind: 'pen', color: '#FF3B30', width: 3.2, opacity: 1, label: 'Red' },
   { id: 'pen-blue', kind: 'pen', color: '#007AFF', width: 3.2, opacity: 1, label: 'Blue' },
   { id: 'pen-green', kind: 'pen', color: '#34C759', width: 3.2, opacity: 1, label: 'Green' },

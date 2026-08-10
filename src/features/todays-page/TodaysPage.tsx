@@ -1,28 +1,26 @@
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
+  Keyboard,
   Modal,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   Platform,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import type { Repositories } from '@/data/repositories';
 import { formatLongDate } from '@/data/schema/ids';
 import type { AppSettings } from '@/data/schema/types';
-import { CanvasScrollbar } from '@/features/todays-page/CanvasScrollbar';
 import type { SaveStatus } from '@/features/todays-page/dailyNoteSession';
 import { DrawToolbar } from '@/features/todays-page/DrawToolbar';
 import { clearInkDocument, InkCanvas, undoInkDocument } from '@/features/todays-page/InkCanvas';
@@ -33,14 +31,10 @@ import { useDailyPage } from '@/features/todays-page/useDailyPage';
 import { triggerHaptic } from '@/lib/haptics';
 import { type AgendaTheme, continuousCorner, editorFontFamily, fonts, useAppTheme } from '@/theme';
 
-/** Minimum paper height on the home card. */
-const PAPER_MIN_HEIGHT = 280;
-/** Home card stays compact — longer pages scroll inside. */
-const CARD_MAX_HEIGHT = 320;
-/** Always keep this much empty room under the lowest ink. */
-const DRAW_BOTTOM_PAD = 168;
-/** Extra bottom inset so strokes aren’t hidden under the floating bar. */
-const TOOLBAR_CLEARANCE = 72;
+const PREVIEW_HEIGHT = 320;
+const SKETCH_MIN_HEIGHT = 260;
+const SKETCH_GROW_STEP = 120;
+const SKETCH_BOTTOM_PAD = 56;
 
 type Props = {
   date: string;
@@ -50,6 +44,9 @@ type Props = {
   onError?: (message: string) => void;
   onPersisted?: () => void;
 };
+
+type OpenMode = 'read' | 'text' | 'draw';
+type Selection = { start: number; end: number };
 
 export function TodaysPage({
   date,
@@ -62,126 +59,131 @@ export function TodaysPage({
   const theme = useAppTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const inputRef = useRef<TextInput | null>(null);
-  const fullInputRef = useRef<TextInput | null>(null);
-  const fullScrollRef = useRef<ScrollView>(null);
-  const cardScrollRef = useRef<ScrollView>(null);
-  const fullScrollY = useSharedValue(0);
-  const cardScrollY = useSharedValue(0);
-  const fullScrollYRef = useRef(0);
-  const cardScrollYRef = useRef(0);
-
-  const [drawMode, setDrawMode] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [mode, setMode] = useState<OpenMode>('read');
   const [tool, setTool] = useState<InkTool>('pen');
   const [brush, setBrush] = useState<InkBrush>(DEFAULT_BRUSH);
-  const [textEditing, setTextEditing] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [contentHeight, setContentHeight] = useState(PAPER_MIN_HEIGHT);
+  const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
+  const [redoInk, setRedoInk] = useState<ReturnType<typeof useDailyPage>['ink']['strokes']>([]);
   const [liveBottom, setLiveBottom] = useState(0);
   const [sharing, setSharing] = useState(false);
 
-  const penOnly = settings.general.penOnlyDrawing;
-  const locksParent = drawMode && !penOnly;
-
-  const { body, ink, changeBody, changeInk, ready, saveStatus, recovered, retrySave } =
-    useDailyPage({
-      date,
-      repos,
-      onError,
-      onPersisted,
-    });
-
-  const inkBottom = useMemo(() => inkContentBottom(ink.strokes), [ink.strokes]);
-
-  const paperHeight = useMemo(() => {
-    const contentBottom = Math.max(inkBottom, liveBottom);
-    const withPad =
-      contentBottom > 0 || drawMode
-        ? Math.ceil(contentBottom + DRAW_BOTTOM_PAD + (drawMode ? TOOLBAR_CLEARANCE : 0))
-        : PAPER_MIN_HEIGHT;
-    const drawFloor = drawMode ? PAPER_MIN_HEIGHT + DRAW_BOTTOM_PAD : PAPER_MIN_HEIGHT;
-    // Fullscreen fills the viewport; home card content can grow and scroll inside a max height.
-    const viewportFloor = expanded && viewportHeight > 0 ? viewportHeight - 8 : 0;
-    return Math.max(PAPER_MIN_HEIGHT, drawFloor, withPad, viewportFloor);
-  }, [drawMode, expanded, inkBottom, liveBottom, viewportHeight]);
-
-  const cardFrameHeight = Math.min(paperHeight, CARD_MAX_HEIGHT);
-
-  const heightRef = useRef(PAPER_MIN_HEIGHT);
+  const page = useDailyPage({ date, repos, onError, onPersisted });
+  const { body, ink, changeBody, changeInk, ready, recovered, retrySave, saveStatus } = page;
+  const hasText = body.trim().length > 0;
+  const hasSketch = ink.strokes.length > 0;
+  const isEmpty = !hasText && !hasSketch;
+  const drawing = expanded && mode === 'draw';
+  const textEditing = expanded && mode === 'text';
+  const contentLong =
+    body.length > 260 || body.split('\n').length > 7 || inkContentBottom(ink.strokes) > 150;
+  const sketchHeight = Math.max(
+    SKETCH_MIN_HEIGHT,
+    Math.ceil(
+      (Math.max(inkContentBottom(ink.strokes), liveBottom) + SKETCH_BOTTOM_PAD) / SKETCH_GROW_STEP,
+    ) * SKETCH_GROW_STEP,
+  );
 
   useEffect(() => {
-    onDrawingActiveChange?.(locksParent);
+    onDrawingActiveChange?.(drawing && !settings.general.penOnlyDrawing);
     return () => onDrawingActiveChange?.(false);
-  }, [locksParent, onDrawingActiveChange]);
+  }, [drawing, onDrawingActiveChange, settings.general.penOnlyDrawing]);
 
   useEffect(() => {
-    const prev = heightRef.current;
-    if (paperHeight > prev) {
-      const delta = paperHeight - prev;
-      if (expanded) {
-        const next = fullScrollYRef.current + delta;
-        fullScrollYRef.current = next;
-        fullScrollY.value = next;
-        fullScrollRef.current?.scrollTo({ y: next, animated: false });
-      } else {
-        // Keep the home card fixed height; scroll inside as the page grows.
-        const next = cardScrollYRef.current + delta;
-        cardScrollYRef.current = next;
-        cardScrollY.value = next;
-        cardScrollRef.current?.scrollTo({ y: next, animated: false });
-      }
+    if (expanded && mode === 'text') {
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
-    heightRef.current = paperHeight;
-    setContentHeight(paperHeight);
-  }, [cardScrollY, expanded, fullScrollY, paperHeight]);
+  }, [expanded, mode]);
 
-  useEffect(() => {
-    if (!drawMode) setLiveBottom(0);
-  }, [drawMode]);
+  const open = (nextMode: OpenMode = 'read') => {
+    setMode(nextMode);
+    setExpanded(true);
+    triggerHaptic('medium');
+    if (nextMode === 'text') requestAnimationFrame(() => inputRef.current?.focus());
+  };
 
-  const enterDrawMode = () => {
+  const close = () => {
+    Keyboard.dismiss();
+    setMode('read');
+    setExpanded(false);
+    triggerHaptic('selection');
+  };
+
+  const enterText = () => {
+    setMode('text');
+    Keyboard.dismiss();
+    requestAnimationFrame(() => inputRef.current?.focus());
+    triggerHaptic('selection');
+  };
+
+  const enterDraw = () => {
     inputRef.current?.blur();
-    fullInputRef.current?.blur();
-    setTextEditing(false);
+    Keyboard.dismiss();
+    setMode('draw');
     setTool('pen');
-    setBrush(DEFAULT_BRUSH);
-    setDrawMode(true);
     triggerHaptic('selection');
   };
 
-  const enterTypeMode = (focus?: RefObject<TextInput | null>) => {
-    setDrawMode(false);
-    requestAnimationFrame(() => focus?.current?.focus());
+  const finishEditing = () => {
+    Keyboard.dismiss();
+    inputRef.current?.blur();
+    setMode('read');
     triggerHaptic('selection');
   };
 
-  const toggleDraw = () => {
-    if (drawMode) {
-      setDrawMode(false);
-      triggerHaptic('selection');
-      return;
-    }
-    enterDrawMode();
+  const updateInk = (next: typeof ink) => {
+    setRedoInk([]);
+    changeInk(next);
   };
 
   const undo = () => {
-    if (ink.strokes.length === 0) return;
+    const removed = ink.strokes.at(-1);
+    if (!removed) return;
+    setRedoInk((current) => [...current, removed]);
     changeInk(undoInkDocument(ink));
     triggerHaptic('light');
   };
 
-  const shareText = () => {
-    void Share.share({
-      message: body.trim() || 'Today’s page is empty.',
-    });
+  const redo = () => {
+    const restored = redoInk.at(-1);
+    if (!restored) return;
+    setRedoInk((current) => current.slice(0, -1));
+    changeInk({ ...ink, strokes: [...ink.strokes, restored] });
+    triggerHaptic('light');
   };
 
-  const sharePdf = async (mode: 'page' | 'sketch') => {
+  const applyTextFormat = (kind: 'heading' | 'bold' | 'italic' | 'bullet' | 'number' | 'check') => {
+    const selected = body.slice(selection.start, selection.end);
+    const lineStart = body.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1;
+    const prefix =
+      kind === 'heading' ? '# ' : kind === 'bullet' ? '- ' : kind === 'number' ? '1. ' : '☐ ';
+    let replacement: string;
+    let start = selection.start;
+    let end = selection.end;
+    if (kind === 'bold' || kind === 'italic') {
+      const marker = kind === 'bold' ? '**' : '_';
+      replacement = `${marker}${selected}${marker}`;
+      start += marker.length;
+      end = start + selected.length;
+      changeBody(body.slice(0, selection.start) + replacement + body.slice(selection.end));
+    } else {
+      replacement = prefix;
+      start = lineStart + prefix.length;
+      end = start;
+      changeBody(body.slice(0, lineStart) + replacement + body.slice(lineStart));
+    }
+    setSelection({ start, end });
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const shareText = () => void Share.share({ message: body.trim() || 'Today’s page is empty.' });
+  const sharePdf = async (shareMode: 'page' | 'sketch') => {
     if (sharing) return;
     setSharing(true);
     try {
-      await shareDailyPage({ body, date, ink, mode });
+      await shareDailyPage({ body, date, ink, mode: shareMode });
     } catch (error) {
       onError?.(error instanceof Error ? error.message : 'Could not share today’s page');
     } finally {
@@ -189,319 +191,232 @@ export function TodaysPage({
     }
   };
 
-  const openShareOptions = () => {
-    if (sharing) return;
+  const confirmClear = () =>
+    Alert.alert('Clear today’s page?', 'This removes its writing and drawing.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear page',
+        style: 'destructive',
+        onPress: () => {
+          changeBody('');
+          changeInk(clearInkDocument(ink));
+        },
+      },
+    ]);
 
+  const openMenu = () => {
+    const options = ['Share as PDF', 'Share text', 'Clear page', 'Cancel'];
     if (Platform.OS === 'ios') {
-      const options = [
-        'Page as PDF',
-        ...(ink.strokes.length > 0 ? ['Sketch as PDF'] : []),
-        'Text only',
-        'Cancel',
-      ];
       ActionSheetIOS.showActionSheetWithOptions(
-        { title: 'Share today’s page', options, cancelButtonIndex: options.length - 1 },
+        { options, cancelButtonIndex: 3, destructiveButtonIndex: 2, title: 'Today’s Page' },
         (index) => {
           if (index === 0) void sharePdf('page');
-          else if (ink.strokes.length > 0 && index === 1) void sharePdf('sketch');
-          else if (index === options.length - 2) shareText();
+          if (index === 1) shareText();
+          if (index === 2) confirmClear();
         },
       );
       return;
     }
-
-    Alert.alert('Share today’s page', 'Choose what to send.', [
-      { text: 'Page PDF', onPress: () => void sharePdf('page') },
-      ...(ink.strokes.length > 0
-        ? [{ text: 'Sketch PDF', onPress: () => void sharePdf('sketch') }]
-        : []),
-      { text: 'Text only', onPress: shareText },
+    Alert.alert('Today’s Page', undefined, [
+      { text: 'Share as PDF', onPress: () => void sharePdf('page') },
+      {
+        text: 'More options',
+        onPress: () =>
+          Alert.alert('More options', undefined, [
+            { text: 'Share text', onPress: shareText },
+            { text: 'Clear page', style: 'destructive', onPress: confirmClear },
+            { text: 'Cancel', style: 'cancel' },
+          ]),
+      },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
-  const openExpanded = () => {
-    setExpanded(true);
-    triggerHaptic('medium');
-  };
-
-  const closeExpanded = () => {
-    setExpanded(false);
-    triggerHaptic('selection');
-  };
-
-  const scrollToY = useCallback(
-    (y: number) => {
-      fullScrollYRef.current = y;
-      fullScrollY.value = y;
-      fullScrollRef.current?.scrollTo({ y, animated: false });
-    },
-    [fullScrollY],
-  );
-
-  const scrollCardToY = useCallback(
-    (y: number) => {
-      cardScrollYRef.current = y;
-      cardScrollY.value = y;
-      cardScrollRef.current?.scrollTo({ y, animated: false });
-    },
-    [cardScrollY],
-  );
-
-  const onFullScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = event.nativeEvent.contentOffset.y;
-      fullScrollYRef.current = y;
-      fullScrollY.value = y;
-    },
-    [fullScrollY],
-  );
-
-  const onCardScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = event.nativeEvent.contentOffset.y;
-      cardScrollYRef.current = y;
-      cardScrollY.value = y;
-    },
-    [cardScrollY],
-  );
-
-  const cardPaper = !expanded ? (
-    <View style={[styles.cardFrame, { height: cardFrameHeight }]}>
-      <ScrollView
-        ref={cardScrollRef}
-        style={styles.cardScroll}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        scrollEnabled={!drawMode || penOnly}
-        scrollEventThrottle={16}
-        onScroll={onCardScroll}
-      >
-        <PaperSurface
-          inputRef={inputRef}
-          body={body}
-          ink={ink}
-          ready={ready}
-          drawMode={drawMode}
-          paperHeight={paperHeight}
-          settings={settings}
-          textEditing={textEditing}
-          tool={tool}
-          brush={brush}
-          showToolbar={false}
-          onBodyChange={(value) =>
-            changeBody(value, {
-              continueNumberedLists: settings.editor.continueNumberedLists,
-            })
-          }
-          onInkChange={changeInk}
-          onTextEditingChange={setTextEditing}
-          onRequestType={() => enterTypeMode(inputRef)}
-          onToolChange={setTool}
-          onBrushChange={setBrush}
-          onUndo={undo}
-          onLiveBottomChange={setLiveBottom}
-        />
-      </ScrollView>
-
-      <CanvasScrollbar
-        contentHeight={paperHeight}
-        viewportHeight={cardFrameHeight}
-        scrollY={cardScrollY}
-        onScrollTo={scrollCardToY}
-      />
-
-      {drawMode ? (
-        <View style={styles.cardToolbarDock} pointerEvents="box-none">
-          <DrawToolbar
-            tool={tool}
-            brush={brush}
-            canUndo={ink.strokes.length > 0}
-            onToolChange={setTool}
-            onBrushChange={setBrush}
-            onUndo={undo}
-          />
-        </View>
-      ) : null}
-    </View>
-  ) : null;
-
   return (
     <>
-      <View style={styles.card}>
-        <View style={styles.header}>
+      <View style={styles.section}>
+        <View style={styles.previewHeader}>
           <View style={styles.headerCopy}>
-            <Text style={styles.heading}>Today’s page</Text>
+            <Text style={styles.sectionTitle}>Today’s page</Text>
             <SaveStatusLabel
               recovered={recovered}
               status={saveStatus}
               onRetry={() => void retrySave()}
             />
           </View>
-          <View style={styles.actions}>
-            <HeaderButton
-              name="pencil"
-              active={drawMode}
-              onPress={toggleDraw}
-              accessibilityLabel={drawMode ? 'Done drawing' : 'Draw'}
-            />
-            <HeaderButton
-              name="share"
-              onPress={openShareOptions}
-              accessibilityLabel="Share today’s page"
-            />
-            <HeaderButton
-              name="expand"
-              onPress={openExpanded}
-              accessibilityLabel="Open today’s page full screen"
-            />
-          </View>
+          <IconButton name="expand" label="Open today’s page" onPress={() => open('read')} />
         </View>
-        <View style={styles.body}>{cardPaper}</View>
+
+        <AnimatedPressable
+          accessibilityRole="button"
+          accessibilityLabel="Open today’s page"
+          disabled={!ready}
+          onPress={() => open('read')}
+          pressScale={0.995}
+          style={styles.preview}
+        >
+          {isEmpty ? (
+            <View style={styles.emptyPreview}>
+              <Text style={styles.emptyTitle}>Write or sketch about today</Text>
+              <View style={styles.emptyActions}>
+                <InlineAction icon="typography" label="Write" onPress={() => open('text')} />
+                <InlineAction icon="pencil" label="Draw" onPress={() => open('draw')} />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.previewDocument}>
+              {hasText ? (
+                <MarkdownDocument
+                  body={body.split('\n').slice(0, 7).join('\n')}
+                  fontFamily={editorFontFamily(settings.editor.font)}
+                  fontSize={17}
+                  compact
+                />
+              ) : null}
+              {hasSketch ? <InkPreview ink={ink} height={hasText ? 118 : 190} /> : null}
+              {contentLong ? (
+                <View style={styles.continueRow}>
+                  <Text style={styles.continueLabel}>Continue editing</Text>
+                  <Icon name="chevronDown" size={16} color={theme.textSecondary} />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </AnimatedPressable>
       </View>
 
       <Modal
         visible={expanded}
         animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={closeExpanded}
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+        onRequestClose={close}
       >
-        <GestureHandlerRootView style={styles.fullRoot}>
-          <View style={[styles.fullRoot, { backgroundColor: theme.background }]}>
-            <View style={[styles.fullHeader, { paddingTop: insets.top + 6 }]}>
-              <AnimatedPressable
-                accessibilityRole="button"
-                accessibilityLabel="Close full screen"
-                haptic="selection"
-                pressScale={0.94}
-                onPress={closeExpanded}
-                style={styles.fullHeaderBtn}
-              >
-                <Icon name="minimize" size={22} color={theme.text} />
-              </AnimatedPressable>
-
-              <View style={styles.fullTitleBlock}>
-                <Text style={styles.fullEyebrow}>Today’s page</Text>
-                <Text numberOfLines={1} style={styles.fullTitle}>
-                  {formatLongDate(date)}
+        <GestureHandlerRootView style={styles.modalRoot}>
+          <View style={[styles.modalRoot, { paddingTop: insets.top }]}>
+            <View style={styles.editorHeader}>
+              <IconButton
+                name={Platform.OS === 'android' ? 'back' : 'minimize'}
+                label="Close today’s page"
+                onPress={close}
+              />
+              <View style={styles.editorTitleBlock}>
+                <Text style={styles.editorEyebrow}>
+                  {mode === 'read' ? 'TODAY’S PAGE' : formatLongDate(date)}
                 </Text>
+                {mode === 'read' ? (
+                  <Text style={styles.editorDate}>{formatLongDate(date)}</Text>
+                ) : null}
                 <SaveStatusLabel
                   recovered={recovered}
                   status={saveStatus}
                   onRetry={() => void retrySave()}
                 />
               </View>
-
-              <AnimatedPressable
-                accessibilityRole="button"
-                accessibilityLabel={drawMode ? 'Switch to typing' : 'Draw'}
-                accessibilityState={{ selected: drawMode }}
-                haptic={drawMode ? 'medium' : 'light'}
-                pressScale={0.94}
-                onPress={toggleDraw}
-                style={[styles.fullHeaderBtn, drawMode ? styles.fullHeaderBtnActive : null]}
-              >
-                <Icon name="pencil" size={22} color={drawMode ? theme.onPrimary : theme.text} />
-              </AnimatedPressable>
+              {mode === 'read' ? (
+                <IconButton name="more" label="Page options" onPress={openMenu} />
+              ) : (
+                <AnimatedPressable onPress={finishEditing} style={styles.doneButton}>
+                  <Text style={styles.doneLabel}>Done</Text>
+                </AnimatedPressable>
+              )}
             </View>
 
-            <View
-              style={styles.fullBody}
-              onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
+            <ScrollView
+              style={styles.documentScroll}
+              contentContainerStyle={styles.documentScrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={!drawing || settings.general.penOnlyDrawing}
             >
-              <ScrollView
-                ref={fullScrollRef}
-                style={styles.fullScroll}
-                contentContainerStyle={styles.fullScrollContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                scrollEnabled={!drawMode || penOnly}
-                scrollEventThrottle={16}
-                onScroll={onFullScroll}
-              >
-                <PaperSurface
-                  inputRef={fullInputRef}
-                  body={body}
-                  ink={ink}
-                  ready={ready}
-                  drawMode={drawMode}
-                  paperHeight={paperHeight}
-                  settings={settings}
-                  textEditing={textEditing}
+              <View style={[styles.document, width >= 768 && styles.documentTablet]}>
+                {textEditing ? (
+                  <TextInput
+                    ref={inputRef}
+                    value={body}
+                    editable={ready}
+                    multiline
+                    scrollEnabled={false}
+                    selection={selection}
+                    onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
+                    onChangeText={(value) =>
+                      changeBody(value, {
+                        continueNumberedLists: settings.editor.continueNumberedLists,
+                      })
+                    }
+                    placeholder="Write, sketch, think…"
+                    placeholderTextColor={theme.placeholder}
+                    textAlignVertical="top"
+                    style={[
+                      styles.editorInput,
+                      { minHeight: hasSketch ? 48 : 170 },
+                      {
+                        fontFamily: editorFontFamily(settings.editor.font),
+                        fontSize: Math.max(17, settings.editor.fontSize),
+                      },
+                    ]}
+                  />
+                ) : hasText ? (
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit writing"
+                    disabled={drawing}
+                    onPress={enterText}
+                    pressScale={0.998}
+                    style={styles.markdownHit}
+                  >
+                    <MarkdownDocument
+                      body={body}
+                      fontFamily={editorFontFamily(settings.editor.font)}
+                      fontSize={Math.max(17, settings.editor.fontSize)}
+                    />
+                  </AnimatedPressable>
+                ) : !drawing ? (
+                  <AnimatedPressable onPress={enterText} style={styles.emptyDocument}>
+                    <Text style={styles.documentPlaceholder}>Write, sketch, think…</Text>
+                  </AnimatedPressable>
+                ) : null}
+
+                {(hasSketch || drawing) && (
+                  <View style={[styles.sketchBlock, { height: sketchHeight }]}>
+                    {!hasSketch && drawing ? <Text style={styles.drawHint}>Draw here</Text> : null}
+                    <InkCanvas
+                      document={ink}
+                      strokeColor={brush.color === 'primaryInk' ? theme.text : brush.color}
+                      strokeStorageColor={brush.color}
+                      strokeWidth={brush.width}
+                      strokeOpacity={brush.opacity}
+                      penOnly={settings.general.penOnlyDrawing}
+                      tool={tool}
+                      enabled={drawing}
+                      onChange={updateInk}
+                      onLiveBottomChange={setLiveBottom}
+                    />
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={[styles.editorFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+              {textEditing ? (
+                <TextToolbar onFormat={applyTextFormat} />
+              ) : drawing ? (
+                <DrawToolbar
                   tool={tool}
                   brush={brush}
-                  showToolbar={false}
-                  onBodyChange={(value) =>
-                    changeBody(value, {
-                      continueNumberedLists: settings.editor.continueNumberedLists,
-                    })
-                  }
-                  onInkChange={changeInk}
-                  onTextEditingChange={setTextEditing}
-                  onRequestType={() => enterTypeMode(fullInputRef)}
+                  canUndo={ink.strokes.length > 0}
+                  canRedo={redoInk.length > 0}
                   onToolChange={setTool}
                   onBrushChange={setBrush}
                   onUndo={undo}
-                  onLiveBottomChange={setLiveBottom}
+                  onRedo={redo}
                 />
-              </ScrollView>
-
-              <CanvasScrollbar
-                contentHeight={contentHeight}
-                viewportHeight={viewportHeight}
-                scrollY={fullScrollY}
-                onScrollTo={scrollToY}
-              />
-            </View>
-
-            <View style={[styles.fullFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-              {drawMode ? (
-                <View style={styles.footerToolbar} pointerEvents="box-none">
-                  <DrawToolbar
-                    tool={tool}
-                    brush={brush}
-                    canUndo={ink.strokes.length > 0}
-                    onToolChange={setTool}
-                    onBrushChange={setBrush}
-                    onUndo={undo}
-                  />
+              ) : (
+                <View style={styles.contextActions}>
+                  <InlineAction icon="typography" label="Write" onPress={enterText} />
+                  <InlineAction icon="pencil" label="Draw" onPress={enterDraw} />
                 </View>
-              ) : null}
-
-              <View style={styles.modeBar}>
-                <ModePill
-                  label="Type"
-                  active={!drawMode}
-                  onPress={() => enterTypeMode(fullInputRef)}
-                />
-                <ModePill label="Draw" active={drawMode} onPress={enterDrawMode} />
-                <AnimatedPressable
-                  accessibilityLabel="Clear drawing"
-                  accessibilityState={{ disabled: ink.strokes.length === 0 }}
-                  disabled={ink.strokes.length === 0}
-                  haptic="warning"
-                  pressScale={0.94}
-                  onPress={() => changeInk(clearInkDocument(ink))}
-                  style={[
-                    styles.clearPill,
-                    ink.strokes.length === 0 ? styles.clearPillDisabled : null,
-                  ]}
-                >
-                  <Icon
-                    name="trash"
-                    size={16}
-                    color={ink.strokes.length === 0 ? theme.textTertiary : theme.danger}
-                  />
-                  <Text
-                    style={[
-                      styles.clearLabel,
-                      ink.strokes.length === 0 ? styles.clearLabelDisabled : null,
-                    ]}
-                  >
-                    Clear
-                  </Text>
-                </AnimatedPressable>
-              </View>
+              )}
             </View>
           </View>
         </GestureHandlerRootView>
@@ -510,125 +425,232 @@ export function TodaysPage({
   );
 }
 
-function PaperSurface({
-  inputRef,
-  body,
+function InkPreview({
   ink,
-  ready,
-  drawMode,
-  paperHeight,
-  settings,
-  textEditing,
-  tool,
-  brush,
-  showToolbar,
-  onBodyChange,
-  onInkChange,
-  onTextEditingChange,
-  onRequestType,
-  onToolChange,
-  onBrushChange,
-  onUndo,
-  onLiveBottomChange,
+  height,
 }: {
-  inputRef: RefObject<TextInput | null>;
-  body: string;
   ink: ReturnType<typeof useDailyPage>['ink'];
-  ready: boolean;
-  drawMode: boolean;
-  paperHeight: number;
-  settings: AppSettings;
-  textEditing: boolean;
-  tool: InkTool;
-  brush: InkBrush;
-  showToolbar: boolean;
-  onBodyChange: (value: string) => void;
-  onInkChange: (next: ReturnType<typeof useDailyPage>['ink']) => void;
-  onTextEditingChange: (editing: boolean) => void;
-  onRequestType: () => void;
-  onToolChange: (tool: InkTool) => void;
-  onBrushChange: (brush: InkBrush) => void;
-  onUndo: () => void;
-  onLiveBottomChange: (bottom: number) => void;
+  height: number;
+}) {
+  return (
+    <View style={{ height }} pointerEvents="none">
+      <InkCanvas
+        document={ink}
+        strokeColor="transparent"
+        strokeWidth={1}
+        strokeOpacity={1}
+        penOnly={false}
+        tool="pen"
+        enabled={false}
+        onChange={() => undefined}
+      />
+    </View>
+  );
+}
+
+function IconButton({
+  name,
+  label,
+  onPress,
+}: {
+  name: IconName;
+  label: string;
+  onPress: () => void;
 }) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
-  const margin = settings.editor.pageMargin;
-  const showMarkdown = settings.editor.renderMarkdown && !textEditing && !drawMode;
-
   return (
-    <View style={[styles.surface, { minHeight: paperHeight }]}>
-      {showMarkdown ? (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      haptic="selection"
+      pressScale={0.92}
+      style={styles.iconButton}
+    >
+      <Icon name={name} size={21} color={theme.text} />
+    </AnimatedPressable>
+  );
+}
+
+function InlineAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      haptic="selection"
+      pressScale={0.94}
+      style={styles.inlineAction}
+    >
+      <Icon name={icon} size={19} color={theme.primary} />
+      <Text style={styles.inlineActionLabel}>{label}</Text>
+    </AnimatedPressable>
+  );
+}
+
+function TextToolbar({
+  onFormat,
+}: {
+  onFormat: (kind: 'heading' | 'bold' | 'italic' | 'bullet' | 'number' | 'check') => void;
+}) {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
+  const tools: { label: string; kind: Parameters<typeof onFormat>[0] }[] = [
+    { label: 'H1', kind: 'heading' },
+    { label: 'B', kind: 'bold' },
+    { label: 'I', kind: 'italic' },
+    { label: '•', kind: 'bullet' },
+    { label: '1.', kind: 'number' },
+    { label: '☐', kind: 'check' },
+  ];
+  return (
+    <View style={styles.textToolbar}>
+      {tools.map((item) => (
         <AnimatedPressable
-          accessibilityLabel="Edit today’s page"
-          onPress={ready ? onRequestType : undefined}
-          disabled={!ready}
-          pressScale={0.995}
-          style={[styles.textLayer, { padding: margin, minHeight: paperHeight }]}
-          pointerEvents={drawMode || !ready ? 'none' : 'auto'}
+          key={item.kind}
+          accessibilityRole="button"
+          accessibilityLabel={item.kind}
+          onPress={() => onFormat(item.kind)}
+          pressScale={0.9}
+          style={styles.textTool}
         >
-          <MarkdownPreview
-            body={body}
-            fontFamily={editorFontFamily(settings.editor.font)}
-            fontSize={settings.editor.fontSize}
-          />
+          <Text
+            style={[
+              styles.textToolLabel,
+              item.kind === 'bold' && styles.bold,
+              item.kind === 'italic' && styles.italic,
+            ]}
+          >
+            {item.label}
+          </Text>
         </AnimatedPressable>
-      ) : (
-        <TextInput
-          ref={inputRef}
-          value={body}
-          editable={ready && !drawMode}
-          onChangeText={onBodyChange}
-          onFocus={() => onTextEditingChange(true)}
-          onBlur={() => onTextEditingChange(false)}
-          multiline
-          scrollEnabled={false}
-          textAlignVertical="top"
-          placeholder="Write something..."
-          placeholderTextColor={theme.placeholder}
-          pointerEvents={drawMode ? 'none' : 'auto'}
-          style={[
-            styles.textLayer,
-            styles.input,
-            {
-              padding: margin,
-              minHeight: paperHeight,
-              fontFamily: editorFontFamily(settings.editor.font),
-              fontSize: settings.editor.fontSize,
-              lineHeight: Math.round(settings.editor.fontSize * 1.4),
-            },
-          ]}
-        />
-      )}
-
-      {ready ? (
-        <InkCanvas
-          document={ink}
-          strokeColor={brush.color}
-          strokeWidth={brush.width}
-          strokeOpacity={brush.opacity}
-          penOnly={settings.general.penOnlyDrawing}
-          tool={tool}
-          enabled={drawMode}
-          onChange={onInkChange}
-          onLiveBottomChange={onLiveBottomChange}
-        />
-      ) : null}
-
-      {showToolbar ? (
-        <View style={styles.toolbarDock} pointerEvents="box-none">
-          <DrawToolbar
-            tool={tool}
-            brush={brush}
-            canUndo={ink.strokes.length > 0}
-            onToolChange={onToolChange}
-            onBrushChange={onBrushChange}
-            onUndo={onUndo}
-          />
-        </View>
-      ) : null}
+      ))}
     </View>
   );
+}
+
+function MarkdownDocument({
+  body,
+  fontFamily,
+  fontSize,
+  compact = false,
+}: {
+  body: string;
+  fontFamily?: string;
+  fontSize: number;
+  compact?: boolean;
+}) {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
+
+  return (
+    <View style={[styles.markdownDocument, compact && styles.markdownDocumentCompact]}>
+      {body.split('\n').map((source, index) => {
+        const heading = /^(#{1,3})\s+(.+)$/.exec(source);
+        const checklist = /^(?:[-*]\s+)?\[([ xX])\]\s+(.+)$/.exec(source);
+        const symbolChecklist = /^([☐☑])\s+(.+)$/.exec(source);
+        const bullet = /^[-*+]\s+(.+)$/.exec(source);
+        const ordered = /^(\d+)[.)]\s+(.+)$/.exec(source);
+        const key = `${index}-${source}`;
+
+        if (!source) return <View key={key} style={styles.markdownSpacer} />;
+
+        if (heading) {
+          const level = heading[1]!.length;
+          return (
+            <Text
+              key={key}
+              style={[
+                styles.markdownText,
+                {
+                  fontFamily: fonts.sansSemi,
+                  fontSize: compact ? fontSize + (level === 1 ? 4 : 2) : fontSize + (4 - level) * 2,
+                  lineHeight: compact ? fontSize + 10 : fontSize + (4 - level) * 2 + 8,
+                },
+              ]}
+            >
+              {renderInlineMarkdown(heading[2]!, styles)}
+            </Text>
+          );
+        }
+
+        if (checklist || symbolChecklist) {
+          const checked = checklist
+            ? checklist[1]!.toLowerCase() === 'x'
+            : symbolChecklist![1] === '☑';
+          const content = checklist ? checklist[2]! : symbolChecklist![2]!;
+          return (
+            <View key={key} style={styles.markdownRow}>
+              <Text style={[styles.markdownMarker, { fontSize, lineHeight: fontSize + 8 }]}>
+                {checked ? '☑' : '☐'}
+              </Text>
+              <Text
+                style={[
+                  styles.markdownText,
+                  { fontFamily, fontSize, lineHeight: fontSize + 8 },
+                  checked && styles.markdownChecked,
+                ]}
+              >
+                {renderInlineMarkdown(content, styles)}
+              </Text>
+            </View>
+          );
+        }
+
+        const marker = bullet ? '•' : ordered ? `${ordered[1]}.` : null;
+        const content = bullet ? bullet[1]! : ordered ? ordered[2]! : source;
+        return (
+          <View key={key} style={marker ? styles.markdownRow : undefined}>
+            {marker ? (
+              <Text style={[styles.markdownMarker, { fontSize, lineHeight: fontSize + 8 }]}>
+                {marker}
+              </Text>
+            ) : null}
+            <Text style={[styles.markdownText, { fontFamily, fontSize, lineHeight: fontSize + 8 }]}>
+              {renderInlineMarkdown(content, styles)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function renderInlineMarkdown(text: string, styles: ReturnType<typeof createStyles>): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const token = /(\*\*\*|___)(.+?)\1|\*\*(.+?)\*\*|__(.+?)__|\*([^*]+?)\*|_([^_]+?)_/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = token.exec(text)) != null) {
+    if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
+    const content = match[2] ?? match[3] ?? match[4] ?? match[5] ?? match[6] ?? '';
+    const bold = match[2] != null || match[3] != null || match[4] != null;
+    const italic = match[2] != null || match[5] != null || match[6] != null;
+    nodes.push(
+      <Text
+        key={`${match.index}-${content}`}
+        style={[bold && styles.markdownBold, italic && styles.markdownItalic]}
+      >
+        {content}
+      </Text>,
+    );
+    cursor = match.index + match[0].length;
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes;
 }
 
 function SaveStatusLabel({
@@ -642,359 +664,183 @@ function SaveStatusLabel({
 }) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
-
-  if (status === 'error') {
+  if (status === 'error')
     return (
-      <AnimatedPressable
-        accessibilityRole="button"
-        accessibilityLabel="Retry saving today’s page"
-        haptic="warning"
-        pressScale={0.98}
-        onPress={onRetry}
-      >
+      <AnimatedPressable onPress={onRetry}>
         <Text style={styles.saveError}>Couldn’t save — tap to retry</Text>
       </AnimatedPressable>
     );
-  }
-
-  if (recovered && (status === 'dirty' || status === 'saving')) {
+  if (recovered && (status === 'dirty' || status === 'saving'))
     return <Text style={styles.saveMuted}>Recovered unsaved changes</Text>;
-  }
-
-  if (status === 'dirty' || status === 'saving') {
+  if (status === 'dirty' || status === 'saving')
     return <Text style={styles.saveMuted}>Saving…</Text>;
-  }
-
-  if (status === 'saved') {
-    return <Text style={styles.saveMuted}>Saved</Text>;
-  }
-
+  if (status === 'saved') return <Text style={styles.saveMuted}>Saved</Text>;
   return null;
-}
-
-function HeaderButton({
-  name,
-  active = false,
-  onPress,
-  accessibilityLabel,
-}: {
-  name: 'pencil' | 'share' | 'expand';
-  active?: boolean;
-  onPress: () => void;
-  accessibilityLabel: string;
-}) {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-
-  return (
-    <AnimatedPressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: active }}
-      hitSlop={4}
-      haptic={active ? 'medium' : 'light'}
-      pressScale={0.94}
-      style={[styles.headerBtn, active ? styles.headerBtnActive : styles.headerBtnIdle]}
-    >
-      <Icon name={name} size={22} color={active ? theme.onPrimary : theme.primary} />
-    </AnimatedPressable>
-  );
-}
-
-function ModePill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-
-  return (
-    <AnimatedPressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      haptic="selection"
-      pressScale={0.97}
-      style={[styles.modePill, active ? styles.modePillActive : styles.modePillIdle]}
-    >
-      <Text style={[styles.modePillLabel, active && styles.modePillLabelActive]}>{label}</Text>
-    </AnimatedPressable>
-  );
-}
-
-function MarkdownPreview({
-  body,
-  fontFamily,
-  fontSize,
-}: {
-  body: string;
-  fontFamily?: string;
-  fontSize: number;
-}) {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-
-  if (!body.trim()) {
-    return <Text style={styles.markdownPlaceholder}>Write something...</Text>;
-  }
-
-  return (
-    <View style={styles.markdownPreview}>
-      {body.split('\n').map((line, index) => {
-        const heading = /^(#{1,3})\s+(.+)$/.exec(line);
-        const bullet = /^[-*]\s+(.+)$/.exec(line);
-        return (
-          <Text
-            key={`${index}-${line}`}
-            style={[
-              styles.markdownLine,
-              { fontFamily, fontSize, lineHeight: Math.round(fontSize * 1.4) },
-              heading ? styles.markdownHeading : null,
-            ]}
-          >
-            {heading ? heading[2] : bullet ? `•  ${bullet[1]}` : line || ' '}
-          </Text>
-        );
-      })}
-    </View>
-  );
 }
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    card: {
-      backgroundColor: theme.section,
-      ...continuousCorner(16),
-      padding: 4,
-      gap: 4,
-      overflow: 'hidden',
+    section: {
+      backgroundColor: 'transparent',
+      overflow: 'visible',
     },
-    header: {
-      minHeight: 44,
-      paddingLeft: 16,
+    previewHeader: {
+      minHeight: 34,
+      paddingHorizontal: 0,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
     },
-    headerCopy: {
-      flex: 1,
-      minWidth: 0,
-      gap: 2,
-    },
-    heading: {
+    headerCopy: { flex: 1, gap: 1 },
+    sectionTitle: {
       fontFamily: fonts.serifItalic,
-      fontSize: 20,
-      lineHeight: 24,
-      color: theme.text,
-      flexShrink: 1,
+      fontSize: 22,
+      lineHeight: 28,
+      letterSpacing: -0.4,
+      color: theme.content.text,
     },
     saveMuted: {
       fontFamily: fonts.sans,
-      fontSize: 12,
-      lineHeight: 16,
-      color: theme.textSecondary,
+      fontSize: 11,
+      lineHeight: 14,
+      color: theme.content.secondary,
     },
-    saveError: {
-      fontFamily: fonts.sansMedium,
-      fontSize: 12,
-      lineHeight: 16,
-      color: theme.danger,
-    },
-    actions: {
-      flexDirection: 'row',
-      gap: 4,
-    },
-    headerBtn: {
-      width: 44,
-      height: 44,
-      ...continuousCorner(12),
+    saveError: { fontFamily: fonts.sansMedium, fontSize: 11, color: theme.status.danger },
+    iconButton: {
+      width: 42,
+      height: 42,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: 21,
     },
-    headerBtnActive: {
-      backgroundColor: theme.primary,
-    },
-    headerBtnIdle: {
-      backgroundColor: theme.primarySoft,
-    },
-    body: {
-      position: 'relative',
-    },
-    cardFrame: {
-      maxHeight: CARD_MAX_HEIGHT,
+    preview: {
+      height: PREVIEW_HEIGHT,
+      marginTop: 8,
+      padding: 16,
+      backgroundColor: theme.surface.secondary,
       ...continuousCorner(16),
       overflow: 'hidden',
-      position: 'relative',
     },
-    cardScroll: {
-      flex: 1,
-    },
-    cardToolbarDock: {
-      position: 'absolute',
-      left: 8,
-      right: 36,
-      bottom: 10,
+    emptyPreview: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
+    emptyTitle: { fontFamily: fonts.sans, fontSize: 16, color: theme.content.secondary },
+    emptyActions: { flexDirection: 'row', gap: 28 },
+    inlineAction: {
+      minHeight: 42,
+      flexDirection: 'row',
       alignItems: 'center',
-      zIndex: 2,
+      justifyContent: 'center',
+      gap: 7,
+      paddingHorizontal: 12,
+      borderRadius: 21,
     },
-    surface: {
-      ...continuousCorner(20),
-      backgroundColor: theme.card,
-      overflow: 'hidden',
-      position: 'relative',
+    inlineActionLabel: { fontFamily: fonts.sansSemi, fontSize: 15, color: theme.content.text },
+    previewDocument: { flex: 1 },
+    continueRow: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingLeft: 20,
+      paddingVertical: 4,
+      backgroundColor: theme.surface.secondary,
     },
-    textLayer: {
-      width: '100%',
-      zIndex: 0,
+    continueLabel: {
+      fontFamily: fonts.sansMedium,
+      fontSize: 13,
+      color: theme.content.secondary,
     },
-    input: {
+    modalRoot: { flex: 1, backgroundColor: theme.surface.secondary },
+    editorHeader: {
+      minHeight: 64,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    editorTitleBlock: { flex: 1, alignItems: 'center' },
+    editorEyebrow: {
+      fontFamily: fonts.sansSemi,
+      fontSize: 12,
+      lineHeight: 16,
+      letterSpacing: 0.5,
+      color: theme.content.text,
+      textTransform: 'uppercase',
+    },
+    editorDate: {
       fontFamily: fonts.sans,
-      fontSize: 16,
-      lineHeight: 22,
-      color: theme.text,
+      fontSize: 13,
+      lineHeight: 17,
+      color: theme.content.secondary,
+    },
+    doneButton: { minWidth: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+    doneLabel: { fontFamily: fonts.sansSemi, fontSize: 16, color: theme.brand.primary },
+    documentScroll: { flex: 1 },
+    documentScrollContent: { flexGrow: 1, paddingBottom: 40 },
+    document: {
+      width: '100%',
+      maxWidth: 720,
+      alignSelf: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      backgroundColor: theme.surface.secondary,
+    },
+    documentTablet: { paddingHorizontal: 28 },
+    editorInput: {
+      color: theme.content.text,
+      lineHeight: 26,
+      padding: 0,
       outlineStyle: 'none',
       backgroundColor: 'transparent',
     } as any,
-    toolbarDock: {
-      position: 'absolute',
-      left: 8,
-      right: 8,
-      bottom: 12,
-      alignItems: 'center',
-      zIndex: 2,
-    },
-    markdownPreview: { gap: 2 },
-    markdownLine: { color: theme.text },
-    markdownHeading: { fontFamily: fonts.sansSemi, fontSize: 22 },
-    markdownPlaceholder: {
-      color: theme.placeholder,
+    markdownHit: { minHeight: 48 },
+    emptyDocument: { minHeight: 170 },
+    documentPlaceholder: {
       fontFamily: fonts.sans,
-      fontSize: 16,
+      fontSize: 17,
+      lineHeight: 26,
+      color: theme.content.placeholder,
     },
-
-    fullRoot: {
-      flex: 1,
-    },
-    fullHeader: {
-      paddingHorizontal: 16,
-      paddingBottom: 8,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    fullHeaderBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.section,
-    },
-    fullHeaderBtnActive: {
-      backgroundColor: theme.primary,
-    },
-    fullTitleBlock: {
-      flex: 1,
-      minWidth: 0,
-      alignItems: 'center',
-    },
-    fullEyebrow: {
+    markdownDocument: { gap: 2 },
+    markdownDocumentCompact: { maxHeight: 176, overflow: 'hidden' },
+    markdownText: { flexShrink: 1, color: theme.content.text },
+    markdownRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    markdownMarker: {
+      width: 25,
+      flexShrink: 0,
       fontFamily: fonts.sansMedium,
-      fontSize: 10,
-      lineHeight: 12,
-      color: theme.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      textAlign: 'center',
+      color: theme.content.secondary,
     },
-    fullTitle: {
-      fontFamily: fonts.serifItalic,
-      fontSize: 20,
-      lineHeight: 24,
-      color: theme.text,
-      textAlign: 'center',
-    },
-    fullBody: {
-      flex: 1,
-      paddingHorizontal: 12,
-      paddingRight: 4,
+    markdownSpacer: { height: 10 },
+    markdownBold: { fontFamily: fonts.sansSemi },
+    markdownItalic: { fontFamily: fonts.serifItalic },
+    markdownChecked: { color: theme.content.secondary, textDecorationLine: 'line-through' },
+    sketchBlock: {
       position: 'relative',
+      overflow: 'hidden',
     },
-    fullScroll: {
-      flex: 1,
-    },
-    fullScrollContent: {
-      flexGrow: 1,
-      paddingBottom: 8,
-      paddingRight: 8,
-    },
-    fullFooter: {
-      paddingHorizontal: 16,
-      paddingTop: 6,
-      gap: 10,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.separator,
-      backgroundColor: theme.background,
-    },
-    footerToolbar: {
-      alignItems: 'center',
-    },
-    modeBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      padding: 4,
-      borderRadius: 999,
-      backgroundColor: theme.section,
-    },
-    modePill: {
-      flex: 1,
-      height: 40,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    modePillActive: {
-      backgroundColor: theme.primary,
-    },
-    modePillIdle: {
-      backgroundColor: 'transparent',
-    },
-    modePillLabel: {
-      fontFamily: fonts.sansSemi,
+    drawHint: {
+      position: 'absolute',
+      alignSelf: 'center',
+      top: 96,
+      fontFamily: fonts.sans,
       fontSize: 15,
-      color: theme.text,
+      color: theme.content.placeholder,
     },
-    modePillLabelActive: {
-      color: theme.onPrimary,
+    editorFooter: {
+      minHeight: 62,
+      paddingHorizontal: 14,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.boundary.separator,
+      backgroundColor: theme.surface.secondary,
     },
-    clearPill: {
-      height: 40,
-      paddingHorizontal: 12,
-      borderRadius: 999,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      backgroundColor: theme.isDark ? 'rgba(255,59,48,0.18)' : 'rgba(255,59,48,0.12)',
-    },
-    clearPillDisabled: {
-      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-    },
-    clearLabel: {
-      fontFamily: fonts.sansMedium,
-      fontSize: 14,
-      color: theme.danger,
-    },
-    clearLabelDisabled: {
-      color: theme.textTertiary,
-    },
+    contextActions: { flexDirection: 'row', justifyContent: 'space-around' },
+    textToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+    textTool: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+    textToolLabel: { fontFamily: fonts.sansMedium, fontSize: 16, color: theme.content.text },
+    bold: { fontFamily: fonts.sansSemi },
+    italic: { fontFamily: fonts.serifItalic },
   });
 }

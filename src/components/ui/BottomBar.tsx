@@ -1,11 +1,11 @@
 import type { RefObject } from 'react';
-import { StyleSheet, Text, type View as NativeView, View } from 'react-native';
+import { StyleSheet, type View as NativeView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { BlurSurface } from '@/components/ui/BlurSurface';
 import { Icon } from '@/components/ui/Icon';
-import { type AgendaTheme, fonts, spacing, useThemeStyles } from '@/theme';
+import { type AgendaTheme, spacing, useThemeStyles } from '@/theme';
 
 type Props = {
   onAdd: () => void;
@@ -16,7 +16,7 @@ type Props = {
   bottom?: number;
 };
 
-/** Floating action dock — glass capsule with primary add + utility actions. */
+/** Floating action dock with a centered primary action. */
 export function BottomBar({
   onAdd,
   onSearch,
@@ -39,23 +39,6 @@ export function BottomBar({
         style={styles.dock}
         contentStyle={styles.dockContent}
       >
-        <AnimatedPressable
-          accessibilityRole="button"
-          accessibilityLabel={addLabel}
-          haptic="medium"
-          onPress={onAdd}
-          pressScale={0.98}
-          pressedStyle={styles.pressedSoft}
-          style={styles.addHit}
-        >
-          <View style={[styles.addBadge, { backgroundColor: theme.primary }]}>
-            <Icon name="add" size={18} color={theme.onPrimary} stroke={2.6} />
-          </View>
-          <Text style={styles.addLabel}>{addLabel}</Text>
-        </AnimatedPressable>
-
-        <View style={styles.divider} />
-
         {onMore ? (
           <AnimatedPressable
             accessibilityRole="button"
@@ -64,9 +47,22 @@ export function BottomBar({
             pressedStyle={styles.pressedSoft}
             style={styles.iconHit}
           >
-            <Icon name="more" size={20} color={theme.floatingTextMuted} stroke={1.9} />
+            <Icon name="more" size={21} color={theme.floatingTextMuted} stroke={1.9} />
           </AnimatedPressable>
-        ) : null}
+        ) : (
+          <View style={styles.iconHit} />
+        )}
+
+        <AnimatedPressable
+          accessibilityRole="button"
+          accessibilityLabel={addLabel}
+          haptic="medium"
+          onPress={onAdd}
+          pressScale={0.94}
+          style={[styles.addHit, { backgroundColor: theme.primary }]}
+        >
+          <Icon name="add" size={24} color={theme.onPrimary} stroke={2.5} />
+        </AnimatedPressable>
 
         <AnimatedPressable
           accessibilityRole="button"
@@ -75,7 +71,7 @@ export function BottomBar({
           pressedStyle={styles.pressedSoft}
           style={styles.iconHit}
         >
-          <Icon name="search" size={20} color={theme.floatingText} stroke={1.9} />
+          <Icon name="search" size={21} color={theme.floatingText} stroke={1.9} />
         </AnimatedPressable>
       </BlurSurface>
     </View>
@@ -91,58 +87,31 @@ function createStyles(theme: AgendaTheme) {
       alignItems: 'center',
     },
     dock: {
-      width: '100%',
-      maxWidth: 360,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255, 255, 255, 0.16)',
+      width: 224,
     },
     dockContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 6,
-      paddingVertical: 6,
-      gap: 2,
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      paddingVertical: 7,
     },
     addHit: {
-      flex: 1,
-      minHeight: 46,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingLeft: 6,
-      paddingRight: 10,
-      borderRadius: 999,
-    },
-    addBadge: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 50,
+      height: 50,
+      borderRadius: 25,
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: theme.primary,
-      shadowOpacity: 0.35,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 3,
-    },
-    addLabel: {
-      flex: 1,
-      fontFamily: fonts.sansMedium,
-      fontSize: 16,
-      lineHeight: 20,
-      letterSpacing: -0.2,
-      color: theme.floatingText,
-    },
-    divider: {
-      width: StyleSheet.hairlineWidth,
-      height: 22,
-      backgroundColor: 'rgba(255, 255, 255, 0.22)',
-      marginHorizontal: 4,
+      shadowOpacity: 0.42,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 5,
     },
     iconHit: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: 'center',
       justifyContent: 'center',
     },

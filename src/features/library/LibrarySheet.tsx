@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,10 +25,16 @@ import { defaultSpaceColor } from './spaceAppearance';
 export function LibraryHost() {
   const { session, close } = useLibrary();
   if (!session || session.type !== 'library') return null;
-  return <LibrarySheet onDismiss={close} />;
+  return <LibrarySheet onDismiss={close} quickCreate={session.quickCreate} />;
 }
 
-function LibrarySheet({ onDismiss }: { onDismiss: () => void }) {
+function LibrarySheet({
+  onDismiss,
+  quickCreate = false,
+}: {
+  onDismiss: () => void;
+  quickCreate?: boolean;
+}) {
   const { repos, refresh, setUI, ui } = useData();
   const { openEditSpace } = useLibrary();
   const { accent } = useAppAppearance();
@@ -42,6 +48,7 @@ function LibrarySheet({ onDismiss }: { onDismiss: () => void }) {
   const [notes, setNotes] = useState<DailyNote[]>([]);
   const [browser, setBrowser] = useState<'all' | 'inbox' | 'completed' | string | null>(null);
   const [name, setName] = useState('');
+  const sheetScrollRef = useRef<ScrollView>(null);
 
   const reload = useCallback(() => {
     void Promise.all([repos.spaces.list(), repos.agenda.list(), repos.notes.list()]).then(
@@ -132,8 +139,12 @@ function LibrarySheet({ onDismiss }: { onDismiss: () => void }) {
     </View>
   ) : (
     <ScrollView
+      ref={sheetScrollRef}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={[styles.sheet, { paddingBottom: insets.bottom + 28 }]}
+      onContentSizeChange={() => {
+        if (quickCreate) sheetScrollRef.current?.scrollToEnd({ animated: true });
+      }}
     >
       <AgendaSheetHeader title="Library" onCancel={requestClose} />
 
@@ -200,6 +211,7 @@ function LibrarySheet({ onDismiss }: { onDismiss: () => void }) {
 
       <View style={styles.addRow}>
         <TextInput
+          autoFocus={quickCreate}
           onChangeText={setName}
           onSubmitEditing={() => void add()}
           placeholder="Space name"

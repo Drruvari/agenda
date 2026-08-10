@@ -16,12 +16,23 @@ type Props = {
   tool: InkTool;
   brush: InkBrush;
   canUndo: boolean;
+  canRedo: boolean;
   onToolChange: (tool: InkTool) => void;
   onBrushChange: (brush: InkBrush) => void;
   onUndo: () => void;
+  onRedo: () => void;
 };
 
-export function DrawToolbar({ tool, brush, canUndo, onToolChange, onBrushChange, onUndo }: Props) {
+export function DrawToolbar({
+  tool,
+  brush,
+  canUndo,
+  canRedo,
+  onToolChange,
+  onBrushChange,
+  onUndo,
+  onRedo,
+}: Props) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
   const brushes = tool === 'highlighter' ? HIGHLIGHT_BRUSHES : PEN_BRUSHES;
@@ -61,8 +72,9 @@ export function DrawToolbar({ tool, brush, canUndo, onToolChange, onBrushChange,
       <View style={styles.group}>
         {brushes.map((item) => {
           const selected = tool !== 'eraser' && brush.id === item.id;
+          const displayColor = item.color === 'primaryInk' ? theme.text : item.color;
           const isDarkInk =
-            item.color.toLowerCase() === '#111111' || item.color.toLowerCase() === '#000000';
+            displayColor.toLowerCase() === '#111111' || displayColor.toLowerCase() === '#000000';
           return (
             <AnimatedPressable
               key={item.id}
@@ -81,7 +93,7 @@ export function DrawToolbar({ tool, brush, canUndo, onToolChange, onBrushChange,
                 style={[
                   styles.swatch,
                   {
-                    backgroundColor: item.color,
+                    backgroundColor: displayColor,
                     opacity: item.kind === 'highlighter' ? 0.85 : 1,
                     borderWidth: isDarkInk && theme.isDark ? StyleSheet.hairlineWidth : 0,
                     borderColor: 'rgba(255,255,255,0.35)',
@@ -111,6 +123,14 @@ export function DrawToolbar({ tool, brush, canUndo, onToolChange, onBrushChange,
           accessibilityLabel="Undo last stroke"
         >
           <Icon name="undo" size={17} color={canUndo ? theme.text : theme.textTertiary} />
+        </ToolChip>
+        <ToolChip
+          active={false}
+          disabled={!canRedo}
+          onPress={onRedo}
+          accessibilityLabel="Redo last stroke"
+        >
+          <Icon name="redo" size={17} color={canRedo ? theme.text : theme.textTertiary} />
         </ToolChip>
       </View>
     </>
@@ -186,7 +206,7 @@ function createStyles(theme: AgendaTheme) {
       overflow: 'hidden',
     },
     androidShell: {
-      backgroundColor: theme.isDark ? 'rgba(44,44,46,0.94)' : 'rgba(255,255,255,0.94)',
+      backgroundColor: theme.surface.tertiary,
     },
     bar: {
       flexDirection: 'row',
@@ -211,7 +231,7 @@ function createStyles(theme: AgendaTheme) {
       backgroundColor: theme.primary,
     },
     chipIdle: {
-      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      backgroundColor: theme.control.fillQuaternary,
     },
     chipDisabled: {
       opacity: 0.35,
@@ -219,7 +239,7 @@ function createStyles(theme: AgendaTheme) {
     divider: {
       width: StyleSheet.hairlineWidth,
       height: 20,
-      backgroundColor: theme.isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.1)',
+      backgroundColor: theme.boundary.separator,
       marginHorizontal: 2,
     },
     swatchHit: {

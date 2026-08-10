@@ -119,6 +119,8 @@ export interface AppSettings {
     penOnlyDrawing: boolean;
     /** Pull down at top of Today to open quick add. */
     pullDownToAdd: boolean;
+    /** Pull down at top of Today to open search. Mutually exclusive with quick add. */
+    pullDownToSearch: boolean;
     /** Horizontal swipe on Today to move between days. */
     swipeToChangeDay: boolean;
   };
@@ -149,6 +151,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     clickToEdit: true,
     penOnlyDrawing: false,
     pullDownToAdd: true,
+    pullDownToSearch: false,
     swipeToChangeDay: true,
   },
   editor: {
