@@ -847,12 +847,12 @@ export default function PlannerScreen() {
                     <View style={styles.groupCard}>
                       <View style={styles.allDayHeader}>
                         <View style={styles.headerLabelRow}>
-                          <Text style={[styles.sectionLabel, styles.accentLabel]}>ALL DAY</Text>
+                          <Text style={styles.sectionLabel}>ALL DAY</Text>
                         </View>
 
                         <SquareIconButton
-                          name={ui.allDayExpanded ? 'minimize' : 'expand'}
-                          tone="accentSoft"
+                          name={ui.allDayExpanded ? 'chevronUp' : 'chevronDown'}
+                          tone="neutral"
                           onPress={() => setUI({ allDayExpanded: !ui.allDayExpanded })}
                           accessibilityLabel={
                             ui.allDayExpanded
@@ -881,6 +881,7 @@ export default function PlannerScreen() {
                         })
                       ) : (
                         <EmptyState
+                          compact
                           message={filteredEmptyHint ?? 'Nothing all day. Add a task or event.'}
                         />
                       )}
@@ -927,7 +928,10 @@ export default function PlannerScreen() {
                               );
                             })
                           ) : (
-                            <EmptyState message={filteredEmptyHint ?? 'No scheduled items yet.'} />
+                            <EmptyState
+                              compact
+                              message={filteredEmptyHint ?? 'No scheduled items yet.'}
+                            />
                           )}
                         </Animated.View>
                       ) : null}
@@ -985,10 +989,10 @@ export default function PlannerScreen() {
                             {completedRoutines}/{routines.length}
                           </Text>
                           <SquareIconButton
-                            name="more"
-                            tone="accentSoft"
+                            name="add"
+                            tone="neutral"
                             onPress={openRoutines}
-                            accessibilityLabel="Routine options"
+                            accessibilityLabel="Add or manage routines"
                           />
                         </View>
                       </View>
@@ -1005,6 +1009,7 @@ export default function PlannerScreen() {
                         </View>
                       ) : (
                         <EmptyState
+                          compact
                           message={
                             activeSpaceLabel
                               ? `No routines for ${activeSpaceLabel}.`
@@ -1390,12 +1395,13 @@ function SquareIconButton({
   accessibilityLabel,
 }: {
   name: IconName;
-  tone: 'accent' | 'accentSoft';
+  tone: 'accent' | 'accentSoft' | 'neutral';
   onPress: () => void;
   accessibilityLabel: string;
 }) {
   const { C, styles } = usePlannerTheme();
   const filled = tone === 'accent';
+  const neutral = tone === 'neutral';
 
   return (
     <AnimatedPressable
@@ -1405,9 +1411,16 @@ function SquareIconButton({
       hitSlop={4}
       haptic={filled ? 'medium' : 'light'}
       pressedStyle={styles.pressed}
-      style={[styles.squareButton, filled ? styles.squareButtonAccent : styles.squareButtonSoft]}
+      style={[
+        styles.squareButton,
+        filled
+          ? styles.squareButtonAccent
+          : neutral
+            ? styles.squareButtonNeutral
+            : styles.squareButtonSoft,
+      ]}
     >
-      <Icon name={name} size={24} color={filled ? C.onPrimary : C.accent} />
+      <Icon name={name} size={24} color={filled ? C.onPrimary : neutral ? C.muted : C.accent} />
     </AnimatedPressable>
   );
 }
@@ -1632,17 +1645,15 @@ function createStyles(theme: AgendaTheme) {
     squareButtonSoft: {
       backgroundColor: C.accentSoft,
     },
+    squareButtonNeutral: {
+      backgroundColor: C.card,
+    },
     sectionLabel: {
       fontFamily: fonts.sansSemi,
       fontSize: 14,
       lineHeight: 18,
       color: C.muted,
       textTransform: 'uppercase',
-    },
-    accentLabel: {
-      fontSize: 16,
-      lineHeight: 18,
-      color: C.accent,
     },
     sectionCount: {
       fontFamily: fonts.sansMedium,

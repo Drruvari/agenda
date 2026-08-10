@@ -3,13 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
 
 type Props = {
+  compact?: boolean;
   message: string;
 };
 
-export function EmptyState({ message }: Props) {
+export function EmptyState({ compact = false, message }: Props) {
   const { styles } = useThemeStyles(createStyles);
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact ? styles.cardCompact : null]}>
       <Text style={styles.message}>{message}</Text>
     </View>
   );
@@ -25,6 +26,10 @@ function createStyles(theme: AgendaTheme) {
       justifyContent: 'center',
       backgroundColor: theme.card,
       ...continuousCorner(16),
+    },
+    cardCompact: {
+      minHeight: 40,
+      paddingVertical: 8,
     },
     message: {
       fontFamily: fonts.sans,

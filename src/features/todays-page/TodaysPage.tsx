@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -59,7 +58,6 @@ export function TodaysPage({
   const theme = useAppTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const inputRef = useRef<TextInput | null>(null);
   const fullInputRef = useRef<TextInput | null>(null);
   const fullScrollRef = useRef<ScrollView>(null);
@@ -455,19 +453,6 @@ export function TodaysPage({
                   >
                     Clear
                   </Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Open settings"
-                  haptic="selection"
-                  pressScale={0.94}
-                  onPress={() => {
-                    closeExpanded();
-                    requestAnimationFrame(() => router.push('/settings'));
-                  }}
-                  style={styles.settingsBtn}
-                >
-                  <Icon name="settings" size={18} color={theme.textSecondary} />
                 </AnimatedPressable>
               </View>
             </View>
@@ -963,13 +948,6 @@ function createStyles(theme: AgendaTheme) {
     },
     clearLabelDisabled: {
       color: theme.textTertiary,
-    },
-    settingsBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
   });
 }
