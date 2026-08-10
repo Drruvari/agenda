@@ -42,6 +42,7 @@ import IconTrash from '@tabler/icons-react-native/IconTrash';
 import IconTypography from '@tabler/icons-react-native/IconTypography';
 import IconUpload from '@tabler/icons-react-native/IconUpload';
 import IconWriting from '@tabler/icons-react-native/IconWriting';
+import IconX from '@tabler/icons-react-native/IconX';
 
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
 
@@ -62,6 +63,7 @@ const icons = {
   clock: IconClock,
   completed: IconCircleCheck,
   cloud: IconCloud,
+  close: IconX,
   copy: IconCopy,
   download: IconDownload,
   eraser: IconEraser,
@@ -91,6 +93,7 @@ const icons = {
   trash: IconTrash,
   typography: IconTypography,
   upload: IconUpload,
+  warning: IconAlertCircle,
   writing: IconWriting,
 } as const;
 
