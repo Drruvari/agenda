@@ -2,7 +2,7 @@ export type Priority = 'none' | 'low' | 'medium' | 'high';
 export type ItemType = 'task' | 'event' | 'note';
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type AccentColor =
-  'blue' | 'red' | 'purple' | 'green' | 'brown' | 'orange' | 'magenta' | 'yellow';
+  'black' | 'blue' | 'red' | 'purple' | 'green' | 'brown' | 'orange' | 'magenta' | 'yellow';
 
 export type PlannerMode = 'recent' | 'today' | 'upcoming';
 
@@ -140,7 +140,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     dateFormat: 'long',
     weekStartsOn: 'monday',
     mode: 'system',
-    accent: 'blue',
+    accent: 'black',
     showSpaces: true,
     showCompleted: true,
     compactStream: false,

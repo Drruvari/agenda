@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { type PropsWithChildren, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { toast, Toaster } from 'sonner-native';
 
@@ -124,9 +124,4 @@ export function AgendaToaster() {
       }}
     />
   );
-}
-
-/** @deprecated No longer required — kept so older imports still typecheck if referenced. */
-export function ToastProvider({ children }: PropsWithChildren) {
-  return children;
 }

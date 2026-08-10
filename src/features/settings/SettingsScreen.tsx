@@ -39,6 +39,7 @@ import { pickBackupFile, printPage, saveBackupFile } from './settingsFiles';
 type SettingsTab = 'general' | 'editor' | 'export' | 'sync' | 'privacy';
 
 const ACCENTS: AccentColor[] = [
+  'black',
   'blue',
   'red',
   'purple',

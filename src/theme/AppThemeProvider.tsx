@@ -27,7 +27,7 @@ import {
  * `purple` maps to system Indigo (former #5856D6 brand family).
  * `magenta` maps to system Purple.
  */
-const ACCENT_TO_CATEGORY: Record<AccentColor, CategoryColorName> = {
+const ACCENT_TO_CATEGORY: Record<Exclude<AccentColor, 'black'>, CategoryColorName> = {
   blue: 'blue',
   red: 'red',
   purple: 'indigo',
@@ -46,6 +46,9 @@ type AppThemeValue = {
 };
 
 function accentHex(accent: AccentColor, mode: AppearanceMode): string {
+  if (accent === 'black') {
+    return mode === 'dark' || mode === 'darkHighContrast' ? '#FFFFFF' : '#191919';
+  }
   return categoryColorValues[ACCENT_TO_CATEGORY[accent]][mode];
 }
 

@@ -847,7 +847,6 @@ export default function PlannerScreen() {
                     <View style={styles.groupCard}>
                       <View style={styles.allDayHeader}>
                         <View style={styles.headerLabelRow}>
-                          <Icon name="agenda" color={C.accent} size={24} />
                           <Text style={[styles.sectionLabel, styles.accentLabel]}>ALL DAY</Text>
                         </View>
 
