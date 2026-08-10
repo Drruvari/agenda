@@ -1,14 +1,17 @@
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActionSheetIOS,
+  Alert,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
@@ -20,12 +23,13 @@ import type { Repositories } from '@/data/repositories';
 import { formatLongDate } from '@/data/schema/ids';
 import type { AppSettings } from '@/data/schema/types';
 import { CanvasScrollbar } from '@/features/todays-page/CanvasScrollbar';
+import type { SaveStatus } from '@/features/todays-page/dailyNoteSession';
 import { DrawToolbar } from '@/features/todays-page/DrawToolbar';
 import { clearInkDocument, InkCanvas, undoInkDocument } from '@/features/todays-page/InkCanvas';
 import { inkContentBottom } from '@/features/todays-page/inkFormat';
 import { DEFAULT_BRUSH, type InkBrush, type InkTool } from '@/features/todays-page/inkTools';
+import { shareDailyPage } from '@/features/todays-page/shareDailyPage';
 import { useDailyPage } from '@/features/todays-page/useDailyPage';
-import type { SaveStatus } from '@/features/todays-page/dailyNoteSession';
 import { triggerHaptic } from '@/lib/haptics';
 import { type AgendaTheme, continuousCorner, editorFontFamily, fonts, useAppTheme } from '@/theme';
 
@@ -75,6 +79,7 @@ export function TodaysPage({
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(PAPER_MIN_HEIGHT);
   const [liveBottom, setLiveBottom] = useState(0);
+  const [sharing, setSharing] = useState(false);
 
   const penOnly = settings.general.penOnlyDrawing;
   const locksParent = drawMode && !penOnly;
@@ -166,10 +171,52 @@ export function TodaysPage({
     triggerHaptic('light');
   };
 
-  const exportPage = () => {
+  const shareText = () => {
     void Share.share({
       message: body.trim() || 'Today’s page is empty.',
     });
+  };
+
+  const sharePdf = async (mode: 'page' | 'sketch') => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      await shareDailyPage({ body, date, ink, mode });
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : 'Could not share today’s page');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const openShareOptions = () => {
+    if (sharing) return;
+
+    if (Platform.OS === 'ios') {
+      const options = [
+        'Page as PDF',
+        ...(ink.strokes.length > 0 ? ['Sketch as PDF'] : []),
+        'Text only',
+        'Cancel',
+      ];
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: 'Share today’s page', options, cancelButtonIndex: options.length - 1 },
+        (index) => {
+          if (index === 0) void sharePdf('page');
+          else if (ink.strokes.length > 0 && index === 1) void sharePdf('sketch');
+          else if (index === options.length - 2) shareText();
+        },
+      );
+      return;
+    }
+
+    Alert.alert('Share today’s page', 'Choose what to send.', [
+      { text: 'Page PDF', onPress: () => void sharePdf('page') },
+      ...(ink.strokes.length > 0
+        ? [{ text: 'Sketch PDF', onPress: () => void sharePdf('sketch') }]
+        : []),
+      { text: 'Text only', onPress: shareText },
+    ]);
   };
 
   const openExpanded = () => {
@@ -300,7 +347,7 @@ export function TodaysPage({
             />
             <HeaderButton
               name="share"
-              onPress={exportPage}
+              onPress={openShareOptions}
               accessibilityLabel="Share today’s page"
             />
             <HeaderButton
