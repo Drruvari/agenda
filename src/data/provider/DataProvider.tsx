@@ -1,8 +1,6 @@
 import {
-  createContext,
   type PropsWithChildren,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -15,35 +13,21 @@ import type { DatabaseClient } from '@/data/database/types';
 import { SCHEMA_VERSION } from '@/data/database/types';
 import { createRepositories, type Repositories } from '@/data/repositories';
 import { toLocalDateString } from '@/data/schema/ids';
-import type { AppSettings, PlannerMode } from '@/data/schema/types';
+import type { AppSettings } from '@/data/schema/types';
 import { DEFAULT_SETTINGS } from '@/data/schema/types';
 import { seedIfNeeded } from '@/data/seed/seed';
 import { createSettingsStore, type SettingsStore } from '@/data/settings/settings';
 import { AppThemeProvider } from '@/theme/AppThemeProvider';
 
-export type PlannerUIState = {
-  selectedDate: string;
-  mode: PlannerMode;
-  activeSpaceId: string | null;
-  completedExpanded: boolean;
-  allDayExpanded: boolean;
-  editingItemId: string | null;
-};
+import {
+  DataContext,
+  type DataContextValue,
+  type PlannerUIState,
+  useData,
+} from './DataContext';
 
-type DataContextValue = {
-  db: DatabaseClient;
-  repos: Repositories;
-  settingsStore: SettingsStore;
-  settings: AppSettings;
-  setSettings: (settings: AppSettings) => Promise<void>;
-  ui: PlannerUIState;
-  setUI: (patch: Partial<PlannerUIState>) => void;
-  /** Bump to force Today (and other screens) to reload from the database. */
-  revision: number;
-  refresh: () => void;
-};
-
-const DataContext = createContext<DataContextValue | null>(null);
+export type { DataContextValue, PlannerUIState };
+export { useData };
 
 export function DataProvider({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
@@ -179,14 +163,6 @@ export function DataProvider({ children }: PropsWithChildren) {
       <AppThemeProvider settings={settings}>{children}</AppThemeProvider>
     </DataContext.Provider>
   );
-}
-
-export function useData(): DataContextValue {
-  const value = useContext(DataContext);
-  if (!value) {
-    throw new Error('useData must be used within DataProvider');
-  }
-  return value;
 }
 
 const styles = StyleSheet.create({

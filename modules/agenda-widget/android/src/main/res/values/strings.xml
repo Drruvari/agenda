@@ -1,0 +1,4 @@
+<resources>
+  <string name="agenda_widget_name">Agenda</string>
+  <string name="agenda_widget_description">Today’s Agenda items at a glance</string>
+</resources>

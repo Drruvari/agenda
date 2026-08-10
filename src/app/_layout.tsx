@@ -13,6 +13,7 @@ import { EditSpaceHost, LibraryHost, LibraryProvider, SpacePickerHost } from '@/
 import { AppLockProvider } from '@/features/privacy';
 import { configureReminders } from '@/native/notifications/reminders';
 import { useAppAppearance } from '@/theme';
+import { WidgetSync } from '@/widgets/WidgetSync';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <DataProvider>
+        <WidgetSync />
         <AppLockProvider>
           <ItemEditorProvider>
             <LibraryProvider>

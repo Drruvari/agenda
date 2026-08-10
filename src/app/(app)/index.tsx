@@ -39,6 +39,7 @@ import {
   useData,
 } from '@/data';
 import { completeAgendaTask, uncompleteAgendaTask } from '@/domain/agendaLifecycle';
+import { isTimePast } from '@/domain/day/isTimePast';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
 import { useItemEditor } from '@/features/item-editor';
 import { useLibrary } from '@/features/library';
@@ -421,11 +422,17 @@ export default function PlannerScreen() {
   const scheduled = useMemo<ScheduledTask[]>(
     () =>
       [
-        ...(view?.scheduled.map((item) => ({
-          ...mapItem(item),
-          time: item.time ?? '',
-          icon: item.type === 'event' ? ('clock' as const) : undefined,
-        })) ?? []),
+        ...(view?.scheduled.map((item) => {
+          const completed = item.type === 'task' && item.completed;
+          const time = item.time ?? '';
+          return {
+            ...mapItem(item),
+            time,
+            icon: item.type === 'event' ? ('clock' as const) : undefined,
+            late: Boolean(time) && !completed && isTimePast(time),
+            completed,
+          };
+        }) ?? []),
         ...(showExternalItems
           ? [
               ...deviceEvents
@@ -440,36 +447,47 @@ export default function PlannerScreen() {
                     return item.title === event.title && item.time === `${hh}:${mm}`;
                   });
                 })
-                .map((event) => ({
-                  id: `device:${event.id}`,
-                  title: event.title,
-                  subtitle: event.calendarTitle ?? 'Device calendar',
-                  time: new Date(event.startDate).toLocaleTimeString(undefined, {
+                .map((event) => {
+                  const time = new Date(event.startDate).toLocaleTimeString(undefined, {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false,
-                  }),
-                  icon: 'clock' as const,
-                  special: 'calendar' as const,
-                  deviceEventId: event.id,
-                })),
+                  });
+                  return {
+                    id: `device:${event.id}`,
+                    title: event.title,
+                    subtitle: event.calendarTitle ?? 'Device calendar',
+                    time,
+                    icon: 'clock' as const,
+                    special: 'calendar' as const,
+                    deviceEventId: event.id,
+                    late: isTimePast(time),
+                  };
+                }),
               ...systemReminders
                 .filter((reminder) => !reminder.allDay && reminder.dueDate)
-                .map((reminder) => ({
-                  id: `system-reminder:${reminder.id}`,
-                  title: reminder.title,
-                  subtitle: reminder.listTitle ?? 'Apple Reminders',
-                  time: new Date(reminder.dueDate as string).toLocaleTimeString(undefined, {
+                .map((reminder) => {
+                  const time = new Date(reminder.dueDate as string).toLocaleTimeString(undefined, {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false,
-                  }),
-                  icon: 'clock' as const,
-                  systemReminderId: reminder.id,
-                })),
+                  });
+                  return {
+                    id: `system-reminder:${reminder.id}`,
+                    title: reminder.title,
+                    subtitle: reminder.listTitle ?? 'Apple Reminders',
+                    time,
+                    icon: 'clock' as const,
+                    systemReminderId: reminder.id,
+                    late: isTimePast(time),
+                  };
+                }),
             ]
           : []),
-      ].sort((a, b) => a.time.localeCompare(b.time)),
+      ].sort((a, b) => {
+        if (Boolean(a.late) !== Boolean(b.late)) return a.late ? -1 : 1;
+        return a.time.localeCompare(b.time);
+      }),
     [deviceEvents, mapItem, showExternalItems, systemReminders, view?.scheduled],
   );
 
@@ -1267,13 +1285,25 @@ function ScheduledRow({
 
   const body = (
     <>
-      <Text style={[styles.timeText, isDone && styles.taskTitleCompleted]}>{task.time}</Text>
+      <Text
+        style={[
+          styles.timeText,
+          isDone && styles.taskTitleCompleted,
+          task.late && !isDone && styles.lateText,
+        ]}
+      >
+        {task.time}
+      </Text>
       <View style={styles.timeDivider} />
       <View style={[styles.scheduledTask, compact && styles.scheduledTaskCompact]}>
         <View style={styles.taskMain}>
           {task.icon === 'clock' ? (
             <View style={styles.checkboxSlot}>
-              <Icon name="clock" size={24} color={C.iconMuted} />
+              <Icon
+                name="clock"
+                size={24}
+                color={task.late && !isDone ? C.danger : C.iconMuted}
+              />
             </View>
           ) : (
             <RoundCheckbox checked={isDone} onPress={onToggleComplete} />
@@ -1290,8 +1320,11 @@ function ScheduledRow({
                 {task.title}
               </Text>
             </View>
-            <Text style={styles.taskSubtitle} numberOfLines={1}>
-              {task.subtitle}
+            <Text
+              style={[styles.taskSubtitle, task.late && !isDone && styles.lateText]}
+              numberOfLines={1}
+            >
+              {task.late && !isDone ? `Late · ${task.subtitle}` : task.subtitle}
             </Text>
           </View>
         </View>

@@ -72,6 +72,28 @@
         {
           "faceIDPermission": "Allow Agenda to use Face ID to unlock your private agenda."
         }
+      ],
+      "expo-system-ui",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.drruvari.agenda.widgets",
+          "groupIdentifier": "group.com.drruvari.agenda",
+          "widgets": [
+            {
+              "name": "AgendaWidget",
+              "displayName": "Agenda",
+              "description": "Today’s Agenda items at a glance",
+              "contentMarginsDisabled": true,
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge",
+                "systemExtraLarge"
+              ]
+            }
+          ]
+        }
       ]
     ],
     "experiments": {

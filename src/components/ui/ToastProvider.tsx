@@ -47,22 +47,16 @@ export function showToast(message: string, options: ToastOptions = {}): void {
   toast(message, common);
 }
 
-/** Kept for existing call sites — sonner works outside React. */
 export function useToast(): ToastContextValue {
   return useMemo(() => ({ showToast }), []);
 }
 
-/**
- * Sonner host. Mount once near the root (inside GestureHandlerRootView).
- * @see https://sonner-native.netlify.app/
- */
 export function AgendaToaster() {
   const { colorScheme } = useAppAppearance();
   const theme = useAppTheme();
   const isAndroid = Platform.OS === 'android';
   const blurTint = theme.isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight';
   const overlay = theme.isDark ? rgba('#1C1C1E', 0.45) : rgba('#FFFFFF', 0.55);
-  // Android BlurView has no reliable backdrop without a blurTarget — use a solid surface.
   const toastBackground = isAndroid ? theme.card : 'transparent';
 
   return (

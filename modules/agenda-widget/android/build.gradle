@@ -1,0 +1,23 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'expo-module-gradle-plugin'
+
+group = 'com.drruvari.agendawidget'
+version = '1.0.0'
+
+android {
+  namespace 'com.drruvari.agendawidget'
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+}
