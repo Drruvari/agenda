@@ -40,6 +40,7 @@ import {
   useAppTheme,
 } from '@/theme';
 
+import { AndroidGeneralSettingsForm } from './AndroidGeneralSettingsForm';
 import { IOSGeneralSettingsForm } from './IOSGeneralSettingsForm';
 import { SettingPicker } from './SettingPicker';
 import { SettingsScaffold, SettingsSection, SettingsTabBar } from './SettingsChrome';
@@ -218,7 +219,11 @@ export function SettingsScreen({
     return <IOSGeneralSettingsForm general={settings.general} onChange={updateGeneral} />;
   }
 
-  if (Platform.OS === 'ios' && categoryOnly && tab === 'editor') {
+  if (Platform.OS === 'android' && categoryOnly && tab === 'general') {
+    return <AndroidGeneralSettingsForm general={settings.general} onChange={updateGeneral} />;
+  }
+
+  if (Platform.OS !== 'web' && categoryOnly && tab === 'editor') {
     const editor = settings.editor;
     return (
       <Host
@@ -322,7 +327,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS === 'ios' && categoryOnly && tab === 'export') {
+  if (Platform.OS !== 'web' && categoryOnly && tab === 'export') {
     return (
       <Host
         colorScheme={colorScheme}
@@ -396,7 +401,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS === 'ios' && categoryOnly && tab === 'sync') {
+  if (Platform.OS !== 'web' && categoryOnly && tab === 'sync') {
     return (
       <Host
         colorScheme={colorScheme}
@@ -407,7 +412,7 @@ export function SettingsScreen({
         <FieldGroup>
           <FieldGroup.Section title="Local Sync">
             <NativeListItem supportingText="Search and Daily Notes use a local index">
-              <NativeText>On This iPhone</NativeText>
+              <NativeText>On This Device</NativeText>
             </NativeListItem>
             <NativeListItem
               supportingText={lastSync ? new Date(lastSync).toLocaleString() : 'Not yet synced'}
@@ -455,7 +460,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS === 'ios' && categoryOnly && tab === 'privacy') {
+  if (Platform.OS !== 'web' && categoryOnly && tab === 'privacy') {
     return <PrivacySettings />;
   }
 

@@ -18,7 +18,7 @@ export function PrivacySettings() {
       if (enabled && !biometricsReady) {
         Alert.alert(
           'Device authentication required',
-          'Set up Face ID, Touch ID, or a device passcode in Settings, then try again.',
+          'Set up biometrics or a device passcode in system Settings, then try again.',
         );
         return;
       }

@@ -260,6 +260,7 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
   const isDark = mode === 'dark' || mode === 'darkHighContrast';
   const isHighContrast = mode === 'lightHighContrast' || mode === 'darkHighContrast';
   const useNeutralIOSPalette = Platform.OS === 'ios';
+  const useMaterialAndroidPalette = Platform.OS === 'android';
   const primaryReference = getCategoryReference('indigo', mode);
   const primary = getCategoryColor('indigo', mode);
   const onPrimary = isDark ? '#000000' : '#FFFFFF';
@@ -283,64 +284,100 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     ? isDark
       ? '#FFFFFF'
       : '#1C1C1E'
-    : isDark
-      ? '#F3F0EA'
-      : '#27231F';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#E6E1E5'
+        : '#1D1B20'
+      : isDark
+        ? '#F3F0EA'
+        : '#27231F';
   const secondaryText = useNeutralIOSPalette
     ? isDark
       ? '#A1A1A6'
       : '#636366'
-    : isDark
-      ? '#B0AFAB'
-      : '#6E675F';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#CAC4D0'
+        : '#49454F'
+      : isDark
+        ? '#B0AFAB'
+        : '#6E675F';
   const tertiaryText = useNeutralIOSPalette
     ? isDark
       ? '#7C7C80'
       : '#8E8E93'
-    : isDark
-      ? '#85888A'
-      : '#928A80';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#938F99'
+        : '#79747E'
+      : isDark
+        ? '#85888A'
+        : '#928A80';
   const quaternaryText = useNeutralIOSPalette
     ? isDark
       ? '#5A5A5E'
       : '#AEAEB2'
-    : isDark
-      ? '#666B6E'
-      : '#B0A79C';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#79747E'
+        : '#938F99'
+      : isDark
+        ? '#666B6E'
+        : '#B0A79C';
   const surfaceBackground = useNeutralIOSPalette
     ? isDark
       ? '#000000'
       : '#F2F2F7'
-    : isDark
-      ? '#10161C'
-      : '#F8F4EC';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#141218'
+        : '#FFFBFE'
+      : isDark
+        ? '#10161C'
+        : '#F8F4EC';
   const surfaceSecondary = useNeutralIOSPalette
     ? isDark
       ? '#1C1C1E'
       : '#FFFFFF'
-    : neutralColorValues.gray6[mode];
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#211F26'
+        : '#F3EDF7'
+      : neutralColorValues.gray6[mode];
   const surfaceTertiary = useNeutralIOSPalette
     ? isDark
       ? '#2C2C2E'
       : '#FFFFFF'
-    : isDark
-      ? neutralColorValues.gray5[mode]
-      : '#FFFDF8';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#2B2930'
+        : '#E7E0EC'
+      : isDark
+        ? neutralColorValues.gray5[mode]
+        : '#FFFDF8';
   const fillBase = useNeutralIOSPalette
     ? isDark
       ? '#FFFFFF'
       : '#000000'
-    : isDark
-      ? '#AAB0B4'
-      : '#6E675F';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#E6E1E5'
+        : '#1D1B20'
+      : isDark
+        ? '#AAB0B4'
+        : '#6E675F';
   const alphaBoost = isHighContrast ? 0.06 : 0;
   const separatorFallback = useNeutralIOSPalette
     ? isDark
       ? '#38383A'
       : '#C6C6C8'
-    : isDark
-      ? '#30383F'
-      : '#DDD4C7';
+    : useMaterialAndroidPalette
+      ? isDark
+        ? '#49454F'
+        : '#CAC4D0'
+      : isDark
+        ? '#30383F'
+        : '#DDD4C7';
   const inputFallback = rgba(fillBase, 0.12 + alphaBoost);
   const blueRef = getCategoryReference('blue', mode);
   const greenRef = getCategoryReference('green', mode);
@@ -433,12 +470,19 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
       ? isDark
         ? rgba('#1C1C1E', 0.86)
         : rgba('#FFFFFF', 0.86)
-      : isDark
-        ? rgba('#06090C', 0.72)
-        : rgba('#27231F', 0.72),
-    floatingText: useNeutralIOSPalette && !isDark ? '#1C1C1E' : '#FFFFFF',
+      : useMaterialAndroidPalette
+        ? isDark
+          ? rgba('#211F26', 0.94)
+          : rgba('#F3EDF7', 0.94)
+        : isDark
+          ? rgba('#06090C', 0.72)
+          : rgba('#27231F', 0.72),
+    floatingText:
+      (useNeutralIOSPalette || useMaterialAndroidPalette) && !isDark ? '#1C1C1E' : '#FFFFFF',
     floatingTextMuted:
-      useNeutralIOSPalette && !isDark ? rgba('#1C1C1E', 0.58) : rgba('#FFFFFF', 0.65),
+      (useNeutralIOSPalette || useMaterialAndroidPalette) && !isDark
+        ? rgba('#1C1C1E', 0.58)
+        : rgba('#FFFFFF', 0.65),
   };
 }
 

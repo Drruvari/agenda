@@ -24,7 +24,7 @@ export function NotificationSettingsScreen() {
     access === 'granted'
       ? 'Allowed'
       : access === 'denied'
-        ? 'Blocked in iOS Settings'
+        ? 'Blocked in system Settings'
         : access === 'unavailable'
           ? 'Unavailable'
           : 'Not Requested';

@@ -806,6 +806,7 @@ export default function PlannerScreen() {
 
   const isDark = colorScheme === 'dark';
   const usesNativeChrome = Platform.OS === 'ios';
+  const usesNativeBottomTabs = Platform.OS === 'android';
   const headerTop = usesNativeChrome ? 0 : insets.top + 6;
 
   return (
@@ -1184,7 +1185,7 @@ export default function PlannerScreen() {
         </View>
       ) : null}
 
-      {!editorOpen && !usesNativeChrome ? (
+      {!editorOpen && !usesNativeChrome && !usesNativeBottomTabs ? (
         <BottomBar
           blurTarget={blurTarget}
           bottom={Math.max(16, insets.bottom + 10)}
