@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Platform, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -87,9 +87,9 @@ function createStyles(theme: AgendaTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 3,
-      backgroundColor: theme.section,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.separator,
+      backgroundColor: Platform.OS === 'android' ? theme.control.fill : theme.section,
+      borderWidth: Platform.OS === 'android' ? 0 : StyleSheet.hairlineWidth,
+      borderColor: Platform.OS === 'android' ? 'transparent' : theme.separator,
       ...continuousCorner(999),
     },
     segment: {
@@ -104,13 +104,13 @@ function createStyles(theme: AgendaTheme) {
       left: 3,
       top: 3,
       bottom: 3,
-      backgroundColor: theme.card,
+      backgroundColor: Platform.OS === 'android' ? theme.control.fillSecondary : theme.card,
       ...continuousCorner(999),
       shadowColor: '#000000',
-      shadowOpacity: 0.06,
+      shadowOpacity: Platform.OS === 'android' ? 0 : 0.06,
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 1 },
-      elevation: 1,
+      elevation: Platform.OS === 'android' ? 0 : 1,
     },
     segmentText: {
       fontFamily: fonts.sansMedium,

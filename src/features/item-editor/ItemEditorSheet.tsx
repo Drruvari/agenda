@@ -158,7 +158,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
   const onTitleChange = (text: string) => {
     patch({ title: text });
 
-    if (mode.type === 'edit' || mode.type === 'edit-routine' || draft.kind !== 'task') return;
+    if (mode.type === 'edit' || mode.type === 'edit-routine' || draft.kind === 'note') return;
     if (!settings.editor.smartParsingEnabled) return;
 
     const parsed = parseSmartInput(text, ui.selectedDate);
@@ -168,6 +168,10 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       updates.time = parsed.time;
       updates.timed = true;
     }
+    if (parsed.durationMinutes && (parsed.type === 'event' || draft.kind === 'event')) {
+      updates.durationMinutes = parsed.durationMinutes;
+    }
+    if (parsed.type && parsed.type !== 'note') updates.kind = parsed.type;
     if (parsed.priority) updates.priority = parsed.priority;
     if (parsed.spaceName) {
       const match = spaces.find(
@@ -207,7 +211,9 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
     const rawDetails = draft.details;
 
     const parsed =
-      settings.editor.smartParsingEnabled && draft.kind === 'task' && mode.type !== 'edit'
+      settings.editor.smartParsingEnabled &&
+      (draft.kind === 'task' || draft.kind === 'event') &&
+      mode.type !== 'edit'
         ? parseSmartInput(rawTitle, ui.selectedDate)
         : { title: rawTitle.trim() };
 
@@ -291,7 +297,10 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       } else if (draft.kind === 'event') {
         const start = finalTime ? localDateTime(finalDate, finalTime) : parseLocalDate(finalDate);
         if (!start) throw new Error('Invalid event date');
-        const duration = Math.max(1, draft.durationMinutes);
+        const duration = Math.max(
+          1,
+          ('durationMinutes' in parsed && parsed.durationMinutes) || draft.durationMinutes,
+        );
         const end = finalTime
           ? new Date(start.getTime() + duration * 60_000)
           : new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
@@ -384,6 +393,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       heading={heading}
       inputKey={inputKey}
       saving={saving}
+      smartParsingEnabled={settings.editor.smartParsingEnabled}
       showDelete={mode.type === 'edit' || mode.type === 'edit-routine'}
       showTypePicker={showTypePicker}
       spaces={spaces}

@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '@/components/layout/PlaceholderScreen';
+import { SettingsScreen } from './SettingsScreen';
 
 export function GeneralSettingsScreen() {
-  return (
-    <PlaceholderScreen
-      title="General"
-      description="General preferences will be implemented here."
-    />
-  );
+  return <SettingsScreen categoryOnly initialTab="general" />;
 }

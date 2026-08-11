@@ -40,7 +40,6 @@ import {
   useAppTheme,
 } from '@/theme';
 
-import { AndroidGeneralSettingsForm } from './AndroidGeneralSettingsForm';
 import { IOSGeneralSettingsForm } from './IOSGeneralSettingsForm';
 import { SettingPicker } from './SettingPicker';
 import { SettingsScaffold, SettingsSection, SettingsTabBar } from './SettingsChrome';
@@ -219,11 +218,7 @@ export function SettingsScreen({
     return <IOSGeneralSettingsForm general={settings.general} onChange={updateGeneral} />;
   }
 
-  if (Platform.OS === 'android' && categoryOnly && tab === 'general') {
-    return <AndroidGeneralSettingsForm general={settings.general} onChange={updateGeneral} />;
-  }
-
-  if (Platform.OS !== 'web' && categoryOnly && tab === 'editor') {
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'editor') {
     const editor = settings.editor;
     return (
       <Host
@@ -327,7 +322,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS !== 'web' && categoryOnly && tab === 'export') {
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'export') {
     return (
       <Host
         colorScheme={colorScheme}
@@ -401,7 +396,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS !== 'web' && categoryOnly && tab === 'sync') {
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'sync') {
     return (
       <Host
         colorScheme={colorScheme}
@@ -460,7 +455,7 @@ export function SettingsScreen({
     );
   }
 
-  if (Platform.OS !== 'web' && categoryOnly && tab === 'privacy') {
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'privacy') {
     return <PrivacySettings />;
   }
 
@@ -551,6 +546,7 @@ export function SettingsScreen({
 
   return (
     <SettingsScaffold
+      header={categoryOnly && Platform.OS === 'android' ? null : undefined}
       title={
         categoryOnly ? (TABS.find((item) => item.value === tab)?.label ?? 'Settings') : 'Settings'
       }
@@ -765,7 +761,11 @@ function GeneralSettings({
           accent={accent}
           last
           title="Pen-only drawing"
-          subtitle="Draw with Apple Pencil while fingers scroll."
+          subtitle={
+            Platform.OS === 'ios'
+              ? 'Draw with Apple Pencil while fingers scroll.'
+              : 'Draw with a stylus while fingers scroll.'
+          }
           value={general.penOnlyDrawing}
           onValueChange={(penOnlyDrawing) => onGeneral({ penOnlyDrawing })}
         />

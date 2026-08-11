@@ -134,7 +134,9 @@ export function SettingsScaffold({
 
   return (
     <SafeAreaView
-      edges={Platform.OS === 'ios' ? ['left', 'right'] : ['top', 'left', 'right']}
+      edges={
+        Platform.OS === 'ios' || header === null ? ['left', 'right'] : ['top', 'left', 'right']
+      }
       style={styles.safeArea}
     >
       <BlurTargetView ref={blurTargetRef} style={styles.blurTarget}>

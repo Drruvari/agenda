@@ -19,9 +19,18 @@ import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import type { Priority } from '@/data/schema/types';
 import { useLibrary } from '@/features/library/LibraryContext';
+import { type SmartTokenKind, tokenizeSmartInput } from '@/lib/smart-parse/parseSmartInput';
 import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
-import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import {
+  type AgendaTheme,
+  categoryColorValues,
+  continuousCorner,
+  fonts,
+  useAppAppearance,
+  useAppTheme,
+} from '@/theme';
 
+import { SmartSyntaxInfo } from './SmartSyntaxInfo';
 import {
   DURATION_OPTIONS,
   type EditorKind,
@@ -39,6 +48,7 @@ export type ItemEditorFormProps = {
   heading: string;
   inputKey: string;
   saving: boolean;
+  smartParsingEnabled: boolean;
   showDelete?: boolean;
   showTypePicker: boolean;
   spaces: { id: string; name: string }[];
@@ -67,6 +77,7 @@ export function ItemEditorForm({
   heading,
   inputKey,
   saving,
+  smartParsingEnabled,
   showDelete,
   showTypePicker,
   spaces,
@@ -97,6 +108,8 @@ export function ItemEditorForm({
         : draft.kind === 'routine'
           ? 'Routine name'
           : 'What needs to be done?';
+  const showSmartInput =
+    smartParsingEnabled && showTypePicker && (draft.kind === 'task' || draft.kind === 'event');
 
   return (
     <View style={[styles.root, { paddingBottom: Math.max(insets.bottom, 8) }]}>
@@ -122,6 +135,7 @@ export function ItemEditorForm({
             <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
         )}
+
         <Text numberOfLines={1} style={styles.heading}>
           {heading}
         </Text>
@@ -202,7 +216,15 @@ export function ItemEditorForm({
           </FormSection>
         ) : null}
 
-        {Platform.OS === 'ios' ? (
+        {showSmartInput ? (
+          <SmartTitleInput
+            autoFocus
+            inputKey={inputKey}
+            onChangeText={onTitleChange}
+            placeholder={titlePlaceholder}
+            value={draft.title}
+          />
+        ) : Platform.OS === 'ios' ? (
           <Host
             colorScheme={colorScheme}
             ignoreSafeArea="all"
@@ -346,6 +368,91 @@ export function ItemEditorForm({
           </Pressable>
         ) : null}
       </ScrollView>
+    </View>
+  );
+}
+
+function smartTokenColor(kind: SmartTokenKind, mode: AgendaTheme['mode']): string {
+  if (kind === 'type') return categoryColorValues.indigo[mode];
+  if (kind === 'date') return categoryColorValues.green[mode];
+  if (kind === 'time') return categoryColorValues.orange[mode];
+  if (kind === 'space') return categoryColorValues.cyan[mode];
+  return categoryColorValues.red[mode];
+}
+
+function SmartTitleInput({
+  autoFocus,
+  inputKey,
+  onChangeText,
+  placeholder,
+  value,
+}: {
+  autoFocus?: boolean;
+  inputKey: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  const { accent } = useAppAppearance();
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme, accent), [theme, accent]);
+  const segments = useMemo(() => tokenizeSmartInput(value), [value]);
+  const [inputHeight, setInputHeight] = useState(40);
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={styles.smartInputRow}>
+      <View collapsable={false} style={[styles.smartInputWrap, { height: inputHeight }]}>
+        {value ? (
+          <Text
+            onTextLayout={({ nativeEvent }) =>
+              setInputHeight(Math.max(40, nativeEvent.lines.length * 30 + 8))
+            }
+            pointerEvents="none"
+            style={styles.smartInputHighlight}
+          >
+            {segments.map((segment, index) => (
+              <Text
+                key={`${index}-${segment.text}`}
+                style={
+                  segment.kind ? { color: smartTokenColor(segment.kind, theme.mode) } : undefined
+                }
+              >
+                {segment.text}
+              </Text>
+            ))}
+            {Platform.OS === 'android' && focused ? (
+              <Text style={{ color: accent, letterSpacing: -4 }}>▏</Text>
+            ) : null}
+          </Text>
+        ) : null}
+        <TextInput
+          key={`${inputKey}-title`}
+          autoFocus={autoFocus}
+          blurOnSubmit
+          cursorColor={accent}
+          multiline
+          onChangeText={(text) => {
+            if (!text) setInputHeight(40);
+            onChangeText(text);
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={theme.placeholder}
+          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
+          returnKeyType="done"
+          scrollEnabled={false}
+          selectionColor={accent}
+          style={[
+            styles.titleInput,
+            { height: inputHeight },
+            value ? styles.smartInputEditor : null,
+          ]}
+          textAlignVertical="top"
+          value={value}
+        />
+      </View>
+      <SmartSyntaxInfo />
     </View>
   );
 }
@@ -892,6 +999,36 @@ function createStyles(theme: AgendaTheme, accent: string) {
       lineHeight: 30,
       letterSpacing: -0.3,
       backgroundColor: 'transparent',
+    },
+    smartInputRow: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    smartInputWrap: {
+      flex: 1,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    smartInputHighlight: {
+      position: 'absolute',
+      zIndex: Platform.OS === 'ios' ? 1 : 0,
+      top: 0,
+      right: 0,
+      bottom: Platform.OS === 'android' ? 0 : undefined,
+      left: 0,
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+      color: theme.text,
+      fontFamily: fonts.sansSemi,
+      fontSize: 24,
+      lineHeight: 30,
+      letterSpacing: -0.3,
+    },
+    smartInputEditor: {
+      color: 'rgba(0, 0, 0, 0)',
+      opacity: Platform.OS === 'android' ? 0 : 1,
     },
     nativeTitleHost: {
       width: '100%',

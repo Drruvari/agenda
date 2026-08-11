@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from '@/components/layout/PlaceholderScreen';
+import { SettingsScreen } from './SettingsScreen';
 
 export function AppearanceSettingsScreen() {
-  return (
-    <PlaceholderScreen
-      title="Appearance"
-      description="Appearance controls will be implemented here when specified."
-    />
-  );
+  return <SettingsScreen categoryOnly initialTab="general" />;
 }
