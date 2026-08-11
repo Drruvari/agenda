@@ -242,6 +242,8 @@ export default function PlannerScreen() {
   const [systemReminders, setSystemReminders] = useState<DeviceSystemReminder[]>([]);
   const [calendarAccess, setCalendarAccess] = useState<CalendarAccessState>('undetermined');
   const [reminderAccess, setReminderAccess] = useState<SystemReminderAccessState>('undetermined');
+  const [calendarPromptDismissed, setCalendarPromptDismissed] = useState(false);
+  const [reminderPromptDismissed, setReminderPromptDismissed] = useState(false);
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(100);
   const [drawingActive, setDrawingActive] = useState(false);
@@ -277,6 +279,21 @@ export default function PlannerScreen() {
       cancelled = true;
     };
   }, [params.date, setUI, settingsStore]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      settingsStore.getItem('integrations.calendar.promptDismissed'),
+      settingsStore.getItem('integrations.reminders.promptDismissed'),
+    ]).then(([calendarDismissed, remindersDismissed]) => {
+      if (cancelled) return;
+      setCalendarPromptDismissed(calendarDismissed === 'true');
+      setReminderPromptDismissed(remindersDismissed === 'true');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsStore]);
 
   const reload = useCallback(async () => {
     const requestId = ++reloadRequestId.current;
@@ -336,6 +353,16 @@ export default function PlannerScreen() {
   const connectReminders = async () => {
     setReminderAccess(await requestSystemReminderAccess());
     refresh();
+  };
+
+  const dismissCalendarPrompt = () => {
+    setCalendarPromptDismissed(true);
+    void settingsStore.setItem('integrations.calendar.promptDismissed', 'true');
+  };
+
+  const dismissReminderPrompt = () => {
+    setReminderPromptDismissed(true);
+    void settingsStore.setItem('integrations.reminders.promptDismissed', 'true');
   };
 
   const spacesById = useMemo(
@@ -424,7 +451,15 @@ export default function PlannerScreen() {
           ]
         : []),
     ],
-    [birthdays, derivedMode, deviceEvents, mapItem, showExternalItems, systemReminders, view?.allDay],
+    [
+      birthdays,
+      derivedMode,
+      deviceEvents,
+      mapItem,
+      showExternalItems,
+      systemReminders,
+      view?.allDay,
+    ],
   );
 
   const scheduled = useMemo<ScheduledTask[]>(
@@ -796,10 +831,7 @@ export default function PlannerScreen() {
               onPress={() => openCreate('task')}
             />
             <Stack.Toolbar.Menu accessibilityLabel="More" icon="ellipsis">
-              <Stack.Toolbar.MenuAction
-                icon="gearshape"
-                onPress={() => router.push('/settings')}
-              >
+              <Stack.Toolbar.MenuAction icon="gearshape" onPress={() => router.push('/settings')}>
                 Settings
               </Stack.Toolbar.MenuAction>
             </Stack.Toolbar.Menu>
@@ -843,122 +875,224 @@ export default function PlannerScreen() {
               },
             ]}
           >
-                  <View style={styles.dateBlock}>
-                    <Text style={styles.dateTitle}>{dateHeading}</Text>
-                    <Text style={styles.dateSubtitle}>
-                      {[
-                        settings.general.swipeToChangeDay ? 'Swipe to change day' : null,
-                        pullDownEnabled
-                          ? pullDownToSearch
-                            ? 'pull down to search'
-                            : 'pull down to add'
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' • ') || 'Your day'}
-                    </Text>
+            <View style={styles.dateBlock}>
+              <Text style={styles.dateTitle}>{dateHeading}</Text>
+              <Text style={styles.dateSubtitle}>
+                {[
+                  settings.general.swipeToChangeDay ? 'Swipe to change day' : null,
+                  pullDownEnabled
+                    ? pullDownToSearch
+                      ? 'pull down to search'
+                      : 'pull down to add'
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' • ') || 'Your day'}
+              </Text>
+            </View>
+
+            <Animated.ScrollView
+              horizontal
+              directionalLockEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.spaceFilterScroll}
+              contentContainerStyle={styles.spaceFilters}
+            >
+              <SpaceFilter
+                active={!ui.activeSpaceId}
+                label="All"
+                onPress={() => setUI({ activeSpaceId: null })}
+              />
+              <SpaceFilter
+                active={isInboxSpaceFilter(ui.activeSpaceId)}
+                label="Inbox"
+                onPress={() => setUI({ activeSpaceId: INBOX_FILTER_ID })}
+              />
+              {(view?.spaces ?? [])
+                .filter((space) => space.isPinned && space.name.toLowerCase() !== 'inbox')
+                .map((space) => (
+                  <SpaceFilter
+                    active={ui.activeSpaceId === space.id}
+                    key={space.id}
+                    label={space.name}
+                    onPress={() => setUI({ activeSpaceId: space.id })}
+                  />
+                ))}
+              <AnimatedPressable
+                accessibilityRole="button"
+                accessibilityLabel="Quick add a space"
+                haptic="light"
+                onPress={openCreateSpace}
+                pressedStyle={styles.spaceAddPressed}
+                style={styles.spaceAdd}
+              >
+                <Icon name="add" size={18} color={C.accent} stroke={2.2} />
+              </AnimatedPressable>
+            </Animated.ScrollView>
+
+            <View
+              style={[
+                styles.connectStack,
+                ((calendarAccess !== 'granted' && !calendarPromptDismissed) ||
+                  (systemRemindersSupported &&
+                    reminderAccess !== 'granted' &&
+                    !reminderPromptDismissed)) &&
+                  styles.connectStackVisible,
+              ]}
+            >
+              {!calendarPromptDismissed ? (
+                <PermissionCard
+                  title="Bring your schedule together"
+                  state={calendarAccess}
+                  undetermined="See meetings and events alongside today’s tasks — including birthdays from your Birthdays calendar."
+                  denied="Calendar access is off. Enable Calendar for Agenda in system settings to bring meetings into your day."
+                  unavailable="Calendar sync needs a development build. Run: npx expo run:ios"
+                  button="Connect calendar"
+                  onDismiss={dismissCalendarPrompt}
+                  onPress={() => void connectCalendar()}
+                />
+              ) : null}
+              {systemRemindersSupported && !reminderPromptDismissed ? (
+                <PermissionCard
+                  title="Already use Apple Reminders?"
+                  state={reminderAccess}
+                  undetermined="Bring reminders due today into Agenda, next to your tasks."
+                  denied="Reminders access is off. Enable Reminders for Agenda in system settings."
+                  unavailable="Apple Reminders need the iOS app."
+                  button="Connect Reminders"
+                  onDismiss={dismissReminderPrompt}
+                  onPress={() => void connectReminders()}
+                />
+              ) : null}
+            </View>
+
+            <View style={styles.contentStack}>
+              <View style={styles.groupCard}>
+                <View style={styles.allDayHeader}>
+                  <View style={styles.headerLabelRow}>
+                    <Text style={styles.sectionLabel}>All day</Text>
                   </View>
 
-                  <Animated.ScrollView
-                    horizontal
-                    directionalLockEnabled
-                    nestedScrollEnabled
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.spaceFilterScroll}
-                    contentContainerStyle={styles.spaceFilters}
-                  >
-                    <SpaceFilter
-                      active={!ui.activeSpaceId}
-                      label="All"
-                      onPress={() => setUI({ activeSpaceId: null })}
-                    />
-                    <SpaceFilter
-                      active={isInboxSpaceFilter(ui.activeSpaceId)}
-                      label="Inbox"
-                      onPress={() => setUI({ activeSpaceId: INBOX_FILTER_ID })}
-                    />
-                    {(view?.spaces ?? [])
-                      .filter((space) => space.isPinned && space.name.toLowerCase() !== 'inbox')
-                      .map((space) => (
-                        <SpaceFilter
-                          active={ui.activeSpaceId === space.id}
-                          key={space.id}
-                          label={space.name}
-                          onPress={() => setUI({ activeSpaceId: space.id })}
-                        />
-                      ))}
-                    <AnimatedPressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Quick add a space"
-                      haptic="light"
-                      onPress={openCreateSpace}
-                      pressedStyle={styles.spaceAddPressed}
-                      style={styles.spaceAdd}
-                    >
-                      <Icon name="add" size={18} color={C.accent} stroke={2.2} />
-                    </AnimatedPressable>
-                  </Animated.ScrollView>
+                  <SquareIconButton
+                    name={ui.allDayExpanded ? 'chevronUp' : 'chevronDown'}
+                    tone="neutral"
+                    onPress={() => setUI({ allDayExpanded: !ui.allDayExpanded })}
+                    accessibilityLabel={
+                      ui.allDayExpanded ? 'Collapse all-day section' : 'Expand all-day section'
+                    }
+                  />
+                </View>
 
-                  <View
-                    style={[
-                      styles.connectStack,
-                      (calendarAccess !== 'granted' ||
-                        (systemRemindersSupported && reminderAccess !== 'granted')) &&
-                        styles.connectStackVisible,
-                    ]}
-                  >
-                    <PermissionCard
-                      title="Bring your schedule together"
-                      state={calendarAccess}
-                      undetermined="See meetings and events alongside today’s tasks — including birthdays from your Birthdays calendar."
-                      denied="Calendar access is off. Enable Calendar for Agenda in system settings to bring meetings into your day."
-                      unavailable="Calendar sync needs a development build. Run: npx expo run:ios"
-                      button="Connect calendar"
-                      onPress={() => void connectCalendar()}
-                    />
-                    {systemRemindersSupported ? (
-                      <PermissionCard
-                        title="Already use Apple Reminders?"
-                        state={reminderAccess}
-                        undetermined="Bring reminders due today into Agenda, next to your tasks."
-                        denied="Reminders access is off. Enable Reminders for Agenda in system settings."
-                        unavailable="Apple Reminders need the iOS app."
-                        button="Connect Reminders"
-                        onPress={() => void connectReminders()}
+                {visibleAllDay.length > 0 ? (
+                  visibleAllDay.map((task) => {
+                    const done = Boolean(task.completed);
+                    const interaction = interactionFor(task);
+                    return (
+                      <TaskRow
+                        compact={settings.general.compactStream}
+                        completed={done}
+                        key={task.id}
+                        task={task}
+                        onComplete={interaction.onSwipeComplete}
+                        onLongPress={interaction.onLongPress}
+                        onPress={interaction.onPress}
+                        onToggleComplete={interaction.onToggleComplete}
                       />
-                    ) : null}
-                  </View>
+                    );
+                  })
+                ) : (
+                  <EmptyState
+                    compact
+                    message={filteredEmptyHint ?? 'Nothing all day. Add a task or event.'}
+                  />
+                )}
 
-                  <View style={styles.contentStack}>
-                    <View style={styles.groupCard}>
-                      <View style={styles.allDayHeader}>
-                        <View style={styles.headerLabelRow}>
-                          <Text style={styles.sectionLabel}>All day</Text>
-                        </View>
+                {hiddenAllDayCount > 0 ? (
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Show ${hiddenAllDayCount} more all-day items`}
+                    haptic="selection"
+                    onPress={() => setUI({ allDayExpanded: true })}
+                    pressedStyle={styles.pressed}
+                    style={styles.moreRow}
+                  >
+                    <Text style={styles.moreText}>+{hiddenAllDayCount} more</Text>
+                  </AnimatedPressable>
+                ) : null}
 
-                        <SquareIconButton
-                          name={ui.allDayExpanded ? 'chevronUp' : 'chevronDown'}
-                          tone="neutral"
-                          onPress={() => setUI({ allDayExpanded: !ui.allDayExpanded })}
-                          accessibilityLabel={
-                            ui.allDayExpanded
-                              ? 'Collapse all-day section'
-                              : 'Expand all-day section'
-                          }
-                        />
-                      </View>
+                {ui.allDayExpanded ? (
+                  <Animated.View
+                    entering={sectionEnter}
+                    exiting={sectionExit}
+                    style={styles.scheduledSection}
+                  >
+                    <View style={styles.scheduledHeader}>
+                      <Text style={styles.sectionLabel}>Calendar</Text>
+                      <Text style={styles.sectionCount}>{scheduled.length}</Text>
+                    </View>
 
-                      {visibleAllDay.length > 0 ? (
-                        visibleAllDay.map((task) => {
-                          const done = Boolean(task.completed);
+                    {scheduled.length > 0 ? (
+                      scheduled.map((task) => {
+                        const done = Boolean(task.completed);
+                        const interaction = interactionFor(task);
+                        return (
+                          <ScheduledRow
+                            compact={settings.general.compactStream}
+                            completed={done}
+                            key={task.id}
+                            task={task}
+                            onComplete={interaction.onSwipeComplete}
+                            onLongPress={interaction.onLongPress}
+                            onPress={interaction.onPress}
+                            onToggleComplete={interaction.onToggleComplete}
+                          />
+                        );
+                      })
+                    ) : (
+                      <EmptyState
+                        compact
+                        message={filteredEmptyHint ?? 'No scheduled items yet.'}
+                      />
+                    )}
+                  </Animated.View>
+                ) : null}
+              </View>
+
+              {settings.general.showCompleted ? (
+                <View style={styles.groupCard}>
+                  <AnimatedPressable
+                    onPress={() => setUI({ completedExpanded: !ui.completedExpanded })}
+                    accessibilityRole="button"
+                    accessibilityLabel="Toggle completed tasks"
+                    accessibilityState={{ expanded: ui.completedExpanded }}
+                    haptic="selection"
+                    pressedStyle={styles.pressed}
+                    style={styles.completedHeader}
+                  >
+                    <Text style={styles.sectionLabel}>{completed.length} Completed</Text>
+                    {ui.completedExpanded ? (
+                      <Icon name="chevronUp" size={20} color={C.muted} />
+                    ) : (
+                      <Icon name="chevronDown" size={20} color={C.muted} />
+                    )}
+                  </AnimatedPressable>
+
+                  {ui.completedExpanded ? (
+                    <Animated.View
+                      entering={sectionEnter}
+                      exiting={sectionExit}
+                      style={styles.completedList}
+                    >
+                      {completed.length > 0 ? (
+                        completed.map((task) => {
                           const interaction = interactionFor(task);
                           return (
                             <TaskRow
                               compact={settings.general.compactStream}
-                              completed={done}
                               key={task.id}
                               task={task}
-                              onComplete={interaction.onSwipeComplete}
+                              completed
                               onLongPress={interaction.onLongPress}
                               onPress={interaction.onPress}
                               onToggleComplete={interaction.onToggleComplete}
@@ -966,159 +1100,61 @@ export default function PlannerScreen() {
                           );
                         })
                       ) : (
-                        <EmptyState
-                          compact
-                          message={filteredEmptyHint ?? 'Nothing all day. Add a task or event.'}
-                        />
+                        <EmptyState message="No completed items yet." />
                       )}
+                    </Animated.View>
+                  ) : null}
+                </View>
+              ) : null}
 
-                      {hiddenAllDayCount > 0 ? (
-                        <AnimatedPressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Show ${hiddenAllDayCount} more all-day items`}
-                          haptic="selection"
-                          onPress={() => setUI({ allDayExpanded: true })}
-                          pressedStyle={styles.pressed}
-                          style={styles.moreRow}
-                        >
-                          <Text style={styles.moreText}>+{hiddenAllDayCount} more</Text>
-                        </AnimatedPressable>
-                      ) : null}
-
-                      {ui.allDayExpanded ? (
-                        <Animated.View
-                          entering={sectionEnter}
-                          exiting={sectionExit}
-                          style={styles.scheduledSection}
-                        >
-                          <View style={styles.scheduledHeader}>
-                            <Text style={styles.sectionLabel}>Calendar</Text>
-                            <Text style={styles.sectionCount}>{scheduled.length}</Text>
-                          </View>
-
-                          {scheduled.length > 0 ? (
-                            scheduled.map((task) => {
-                              const done = Boolean(task.completed);
-                              const interaction = interactionFor(task);
-                              return (
-                                <ScheduledRow
-                                  compact={settings.general.compactStream}
-                                  completed={done}
-                                  key={task.id}
-                                  task={task}
-                                  onComplete={interaction.onSwipeComplete}
-                                  onLongPress={interaction.onLongPress}
-                                  onPress={interaction.onPress}
-                                  onToggleComplete={interaction.onToggleComplete}
-                                />
-                              );
-                            })
-                          ) : (
-                            <EmptyState
-                              compact
-                              message={filteredEmptyHint ?? 'No scheduled items yet.'}
-                            />
-                          )}
-                        </Animated.View>
-                      ) : null}
-                    </View>
-
-                    {settings.general.showCompleted ? (
-                      <View style={styles.groupCard}>
-                        <AnimatedPressable
-                          onPress={() => setUI({ completedExpanded: !ui.completedExpanded })}
-                          accessibilityRole="button"
-                          accessibilityLabel="Toggle completed tasks"
-                          accessibilityState={{ expanded: ui.completedExpanded }}
-                          haptic="selection"
-                          pressedStyle={styles.pressed}
-                          style={styles.completedHeader}
-                        >
-                          <Text style={styles.sectionLabel}>{completed.length} Completed</Text>
-                          {ui.completedExpanded ? (
-                            <Icon name="chevronUp" size={20} color={C.muted} />
-                          ) : (
-                            <Icon name="chevronDown" size={20} color={C.muted} />
-                          )}
-                        </AnimatedPressable>
-
-                        {ui.completedExpanded ? (
-                          <Animated.View
-                            entering={sectionEnter}
-                            exiting={sectionExit}
-                            style={styles.completedList}
-                          >
-                            {completed.length > 0 ? (
-                              completed.map((task) => {
-                                const interaction = interactionFor(task);
-                                return (
-                                  <TaskRow
-                                    compact={settings.general.compactStream}
-                                    key={task.id}
-                                    task={task}
-                                    completed
-                                    onLongPress={interaction.onLongPress}
-                                    onPress={interaction.onPress}
-                                    onToggleComplete={interaction.onToggleComplete}
-                                  />
-                                );
-                              })
-                            ) : (
-                              <EmptyState message="No completed items yet." />
-                            )}
-                          </Animated.View>
-                        ) : null}
-                      </View>
-                    ) : null}
-
-                    <View style={styles.groupCard}>
-                      <View style={styles.routineHeader}>
-                        <Text style={styles.sectionLabel}>Routines</Text>
-                        <View style={styles.routineHeaderRight}>
-                          <Text style={styles.sectionCount}>
-                            {completedRoutines}/{routines.length}
-                          </Text>
-                          <SquareIconButton
-                            name="add"
-                            tone="neutral"
-                            onPress={openRoutines}
-                            accessibilityLabel="Add or manage routines"
-                          />
-                        </View>
-                      </View>
-
-                      {routines.length > 0 ? (
-                        <View style={styles.routineRow}>
-                          {routines.map((routine) => (
-                            <RoutineCard
-                              key={routine.id}
-                              routine={routine}
-                              onPress={() => void toggleRoutine(routine.id)}
-                            />
-                          ))}
-                        </View>
-                      ) : (
-                        <EmptyState
-                          compact
-                          message={
-                            activeSpaceLabel
-                              ? `No routines for ${activeSpaceLabel}.`
-                              : 'No routines yet. Create one to build a habit.'
-                          }
-                        />
-                      )}
-                    </View>
-
-                    <TodaysPage
-                      key={ui.selectedDate}
-                      date={ui.selectedDate}
-                      repos={repos}
-                      settings={settings}
-                      onDrawingActiveChange={setDrawingActive}
-                      onError={(message) => showToast(message, { tone: 'error' })}
-                      onPersisted={refresh}
+              <View style={styles.groupCard}>
+                <View style={styles.routineHeader}>
+                  <Text style={styles.sectionLabel}>Routines</Text>
+                  <View style={styles.routineHeaderRight}>
+                    <Text style={styles.sectionCount}>
+                      {completedRoutines}/{routines.length}
+                    </Text>
+                    <SquareIconButton
+                      name="add"
+                      tone="neutral"
+                      onPress={openRoutines}
+                      accessibilityLabel="Add or manage routines"
                     />
                   </View>
+                </View>
+
+                {routines.length > 0 ? (
+                  <View style={styles.routineRow}>
+                    {routines.map((routine) => (
+                      <RoutineCard
+                        key={routine.id}
+                        routine={routine}
+                        onPress={() => void toggleRoutine(routine.id)}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <EmptyState
+                    compact
+                    message={
+                      activeSpaceLabel
+                        ? `No routines for ${activeSpaceLabel}.`
+                        : 'No routines yet. Create one to build a habit.'
+                    }
+                  />
+                )}
+              </View>
+
+              <TodaysPage
+                key={ui.selectedDate}
+                date={ui.selectedDate}
+                repos={repos}
+                settings={settings}
+                onDrawingActiveChange={setDrawingActive}
+                onError={(message) => showToast(message, { tone: 'error' })}
+                onPersisted={refresh}
+              />
+            </View>
           </PlannerGestureScroll>
         </Animated.View>
       </BlurTargetView>
@@ -1134,10 +1170,10 @@ export default function PlannerScreen() {
               settings.general.calendarIndicators &&
               Boolean(
                 view &&
-                  (view.allDay.length ||
-                    view.scheduled.length ||
-                    view.completed.length ||
-                    view.dailyNote?.bodyText.trim()),
+                (view.allDay.length ||
+                  view.scheduled.length ||
+                  view.completed.length ||
+                  view.dailyNote?.bodyText.trim()),
               )
             }
             mode={mode}
@@ -1243,7 +1279,10 @@ function specialIconName(special: NonNullable<Task['special']>): IconName {
   return 'calendar';
 }
 
-function taskStatus(task: Task, completed: boolean): {
+function taskStatus(
+  task: Task,
+  completed: boolean,
+): {
   icon: IconName;
   label: string;
   tone: 'neutral' | 'danger';
@@ -1395,11 +1434,7 @@ function ScheduledRow({
         <View style={styles.taskMain}>
           {task.icon === 'clock' ? (
             <View style={styles.checkboxSlot}>
-              <Icon
-                name="clock"
-                size={24}
-                color={task.late && !isDone ? C.danger : C.iconMuted}
-              />
+              <Icon name="clock" size={24} color={task.late && !isDone ? C.danger : C.iconMuted} />
             </View>
           ) : (
             <RoundCheckbox checked={isDone} onPress={onToggleComplete} />

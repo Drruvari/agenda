@@ -38,7 +38,7 @@ export function AgendaSheetHeader({
   title: string;
   onCancel: () => void;
   cancelLabel?: string;
-  action?: { label: string; onPress: () => void; icon?: 'add' };
+  action?: { label: string; onPress: () => void; icon?: 'add'; disabled?: boolean };
 }) {
   const theme = useAppTheme();
   const { accent, colorScheme } = useAppAppearance();
@@ -71,13 +71,18 @@ export function AgendaSheetHeader({
           style={[styles.side, styles.end]}
         >
           {action ? (
-            <NativeButton label={action.label} onPress={action.onPress} variant="text" />
+            <NativeButton
+              disabled={action.disabled}
+              label={action.label}
+              onPress={action.onPress}
+              variant="text"
+            />
           ) : null}
         </Host>
       ) : (
         <Pressable
           accessibilityLabel={action?.label}
-          disabled={!action}
+          disabled={!action || action.disabled}
           onPress={action?.onPress}
           style={[styles.side, styles.end]}
         >

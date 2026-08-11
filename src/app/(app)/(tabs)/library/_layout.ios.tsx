@@ -1,16 +1,14 @@
 import { Stack } from 'expo-router';
-
-import { useAppTheme } from '@/theme';
+import { PlatformColor } from 'react-native';
 
 export default function LibraryLayout() {
-  const theme = useAppTheme();
-
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: theme.background },
+        contentStyle: { backgroundColor: PlatformColor('systemBackground') },
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: theme.background },
+        headerStyle: { backgroundColor: PlatformColor('systemBackground') },
+        headerTintColor: PlatformColor('label'),
       }}
     >
       <Stack.Screen

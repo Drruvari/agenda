@@ -10,11 +10,21 @@ import {
   View,
 } from 'react-native';
 
-import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/AgendaBottomSheet';
+import {
+  AgendaBottomSheet,
+  AgendaSheetHeader,
+  SHEET_DISMISS_MS,
+} from '@/components/ui/AgendaBottomSheet';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { type Space, useData } from '@/data';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import {
+  type AgendaTheme,
+  continuousCorner,
+  fonts,
+  useAppAppearance,
+  useThemeStyles,
+} from '@/theme';
 
 import { useLibrary } from './LibraryContext';
 import { SPACE_COLOR_OPTIONS, SPACE_ICON_OPTIONS } from './spaceAppearance';
@@ -27,8 +37,12 @@ export function EditSpaceHost() {
 
 function EditSpaceSheet({ spaceId, onDismiss }: { spaceId: string; onDismiss: () => void }) {
   const { repos, refresh, setUI, ui } = useData();
+  const { accent, colorScheme } = useAppAppearance();
   const { styles, theme } = useThemeStyles(createStyles);
-  const sheetHeight = useMemo(() => Math.round(Dimensions.get('window').height * 0.85), []);
+  const sheetHeight = useMemo(
+    () => Math.min(720, Math.round(Dimensions.get('window').height * 0.76)),
+    [],
+  );
   const [presented, setPresented] = useState(true);
   const [space, setSpace] = useState<Space | null>(null);
   const [name, setName] = useState('');
@@ -115,103 +129,108 @@ function EditSpaceSheet({ spaceId, onDismiss }: { spaceId: string; onDismiss: ()
       height={sheetHeight}
       isPresented={presented}
       onDismiss={finishClose}
-      snapPoints={['full']}
+      snapPoints={[{ height: sheetHeight }, 'full']}
     >
-      <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Edit Space</Text>
-
-        <View style={styles.nameRow}>
-          <View style={[styles.iconBadge, { backgroundColor: space.color }]}>
-            <Icon name={(space.icon as IconName) || 'agenda'} color={theme.onPrimary} size={22} />
+      <View style={styles.root}>
+        <AgendaSheetHeader title="Edit Space" onCancel={requestClose} cancelLabel="Done" />
+        <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
+          <View style={styles.nameRow}>
+            <View style={[styles.iconBadge, { backgroundColor: space.color }]}>
+              <Icon name={(space.icon as IconName) || 'agenda'} color={theme.onPrimary} size={22} />
+            </View>
+            <TextInput
+              onBlur={saveName}
+              onChangeText={setName}
+              onSubmitEditing={saveName}
+              placeholder="Name"
+              placeholderTextColor={theme.placeholder}
+              style={styles.nameInput}
+              value={name}
+            />
           </View>
-          <TextInput
-            onBlur={saveName}
-            onChangeText={setName}
-            onSubmitEditing={saveName}
-            placeholder="Name"
-            placeholderTextColor={theme.placeholder}
-            style={styles.nameInput}
-            value={name}
-          />
-        </View>
 
-        <Text style={styles.sectionLabel}>Icon</Text>
-        <View style={styles.iconGrid}>
-          {SPACE_ICON_OPTIONS.map((icon) => {
-            const selected = (space.icon || 'agenda') === icon;
-            return (
-              <Pressable
-                key={icon}
-                onPress={() => void persist({ icon })}
-                style={[styles.iconCell, selected && styles.iconCellSelected]}
-              >
-                <Icon name={icon} color={selected ? theme.primary : theme.text} size={22} />
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.sectionLabel}>Color</Text>
-        <View style={styles.colorRow}>
-          {SPACE_COLOR_OPTIONS.map((color) => {
-            const selected = space.color === color.hex;
-            return (
-              <Pressable
-                key={color.name}
-                onPress={() => void persist({ color: color.hex })}
-                style={[
-                  styles.colorDot,
-                  { backgroundColor: color.hex },
-                  selected && styles.colorDotSelected,
-                ]}
-              />
-            );
-          })}
-        </View>
-
-        <View style={styles.pinRow}>
-          <View style={styles.pinCopy}>
-            <Text style={styles.rowLabel}>Pin to Today</Text>
-            <Text style={styles.meta}>Show in quick filters on Today</Text>
+          <Text style={styles.sectionLabel}>Icon</Text>
+          <View style={styles.iconGrid}>
+            {SPACE_ICON_OPTIONS.map((icon) => {
+              const selected = (space.icon || 'agenda') === icon;
+              return (
+                <Pressable
+                  key={icon}
+                  onPress={() => void persist({ icon })}
+                  style={[styles.iconCell, selected && styles.iconCellSelected]}
+                >
+                  <Icon name={icon} color={selected ? theme.primary : theme.text} size={22} />
+                </Pressable>
+              );
+            })}
           </View>
-          <NativeSwitch
-            value={space.isPinned}
-            onValueChange={(isPinned) => void persist({ isPinned })}
-          />
-        </View>
 
-        <View style={styles.counts}>
-          <Text style={styles.meta}>
-            {activeCount} active · {completedCount} completed
-          </Text>
-        </View>
+          <Text style={styles.sectionLabel}>Color</Text>
+          <View style={styles.colorRow}>
+            {SPACE_COLOR_OPTIONS.map((color) => {
+              const selected = space.color === color.hex;
+              return (
+                <Pressable
+                  key={color.name}
+                  onPress={() => void persist({ color: color.hex })}
+                  style={[
+                    styles.colorDot,
+                    { backgroundColor: color.hex },
+                    selected && styles.colorDotSelected,
+                  ]}
+                />
+              );
+            })}
+          </View>
 
-        <Pressable
-          onPress={remove}
-          style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.deleteLabel}>Delete Space</Text>
-        </Pressable>
-      </ScrollView>
+          <View style={styles.pinRow}>
+            <View style={styles.pinCopy}>
+              <Text style={styles.rowLabel}>Pin to Today</Text>
+              <Text style={styles.meta}>Show in quick filters on Today</Text>
+            </View>
+            <NativeSwitch
+              accent={accent}
+              colorScheme={colorScheme}
+              value={space.isPinned}
+              onValueChange={(isPinned) => void persist({ isPinned })}
+            />
+          </View>
+
+          <View style={styles.counts}>
+            <Text style={styles.meta}>
+              {activeCount} active · {completedCount} completed
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={remove}
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.deleteLabel}>Delete Space</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
     </AgendaBottomSheet>
   );
 }
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
+    root: { flex: 1 },
     sheet: {
       paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingTop: 20,
       paddingBottom: 40,
-      gap: 14,
-      backgroundColor: theme.background,
+      gap: 18,
     },
-    title: {
-      fontFamily: fonts.sansMedium,
-      fontSize: 22,
-      color: theme.text,
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      backgroundColor: theme.card,
+      ...continuousCorner(16),
     },
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconBadge: {
       width: 44,
       height: 44,
@@ -224,7 +243,7 @@ function createStyles(theme: AgendaTheme) {
       minHeight: 48,
       paddingHorizontal: 14,
       color: theme.text,
-      backgroundColor: theme.section,
+      backgroundColor: theme.input,
       fontFamily: fonts.sansMedium,
       fontSize: 17,
       ...continuousCorner(14),
@@ -242,7 +261,7 @@ function createStyles(theme: AgendaTheme) {
       height: 48,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.section,
+      backgroundColor: theme.card,
       ...continuousCorner(12),
     },
     iconCellSelected: {
@@ -263,8 +282,10 @@ function createStyles(theme: AgendaTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingVertical: 8,
-      paddingHorizontal: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: theme.card,
+      ...continuousCorner(16),
     },
     pinCopy: { flex: 1, gap: 2 },
     rowLabel: {
@@ -277,13 +298,13 @@ function createStyles(theme: AgendaTheme) {
       fontSize: 14,
       color: theme.textSecondary,
     },
-    counts: { paddingHorizontal: 4 },
+    counts: { paddingHorizontal: 14 },
     deleteButton: {
-      marginTop: 8,
+      marginTop: 2,
       minHeight: 50,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.section,
+      backgroundColor: theme.card,
       ...continuousCorner(14),
     },
     deleteLabel: {

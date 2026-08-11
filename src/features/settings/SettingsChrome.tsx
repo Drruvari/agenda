@@ -284,12 +284,11 @@ export function createChromeStyles(theme: AgendaTheme) {
       fontFamily: Platform.OS === 'ios' ? undefined : fonts.sansSemi,
       fontSize: 13,
       fontWeight: Platform.OS === 'ios' ? '400' : undefined,
-      textTransform: Platform.OS === 'ios' ? 'uppercase' : undefined,
     },
     sectionCard: {
       overflow: 'hidden',
       backgroundColor: iosSection ?? theme.section,
-      ...continuousCorner(16),
+      ...continuousCorner(20),
     },
     tabBarWrap: {
       position: 'absolute',

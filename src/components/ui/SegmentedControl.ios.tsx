@@ -16,7 +16,7 @@ type Props<T extends string> = {
 };
 
 export function SegmentedControl<T extends string>({ options, value, onChange, style }: Props<T>) {
-  const { colorScheme } = useAppAppearance();
+  const { accent, colorScheme } = useAppAppearance();
   const selectedIndex = Math.max(
     0,
     options.findIndex((option) => option.value === value),
@@ -31,6 +31,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
       }}
       selectedIndex={selectedIndex}
       style={[{ minHeight: 32 }, style]}
+      tintColor={accent}
       values={options.map((option) => option.label)}
     />
   );

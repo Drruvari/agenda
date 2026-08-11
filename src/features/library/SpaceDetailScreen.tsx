@@ -1,6 +1,6 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/ui/EmptyState';
 import { type AgendaItem, formatLongDate, toLocalDateString, useData } from '@/data';
@@ -49,42 +49,50 @@ export function SpaceDetailScreen() {
   }, [items, today]);
 
   return (
-    <SettingsScaffold
-      title={name}
-      trailing={
-        <Pressable onPress={() => id && openEditSpace(id)} hitSlop={8}>
-          <Text style={styles.edit}>Edit</Text>
-        </Pressable>
-      }
-    >
-      <Pressable
-        onPress={() => {
-          if (!id) return;
-          setUI({ activeSpaceId: id });
-          router.back();
-        }}
-        style={styles.filterChip}
+    <>
+      <Stack.Screen options={{ title: name }} />
+      {Platform.OS === 'ios' ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button onPress={() => id && openEditSpace(id)}>Edit</Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      ) : null}
+      <SettingsScaffold
+        title={name}
+        trailing={
+          <Pressable onPress={() => id && openEditSpace(id)} hitSlop={8}>
+            <Text style={styles.edit}>Edit</Text>
+          </Pressable>
+        }
       >
-        <Text style={styles.filterChipLabel}>Filter Today</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => {
+            if (!id) return;
+            setUI({ activeSpaceId: id });
+            router.back();
+          }}
+          style={styles.filterChip}
+        >
+          <Text style={styles.filterChipLabel}>Filter Today</Text>
+        </Pressable>
 
-      <Section title="Today" items={sections.todayItems} onOpen={openEdit} styles={styles} />
-      <Section
-        title="Upcoming"
-        items={sections.upcoming}
-        onOpen={openEdit}
-        styles={styles}
-        showDate
-      />
-      <Section title="Later" items={sections.later} onOpen={openEdit} styles={styles} showDate />
-      <Section
-        title="Completed"
-        items={sections.completed}
-        onOpen={openEdit}
-        styles={styles}
-        showDate
-      />
-    </SettingsScaffold>
+        <Section title="Today" items={sections.todayItems} onOpen={openEdit} styles={styles} />
+        <Section
+          title="Upcoming"
+          items={sections.upcoming}
+          onOpen={openEdit}
+          styles={styles}
+          showDate
+        />
+        <Section title="Later" items={sections.later} onOpen={openEdit} styles={styles} showDate />
+        <Section
+          title="Completed"
+          items={sections.completed}
+          onOpen={openEdit}
+          styles={styles}
+          showDate
+        />
+      </SettingsScaffold>
+    </>
   );
 }
 

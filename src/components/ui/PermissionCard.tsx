@@ -13,6 +13,7 @@ type Props = {
   unavailable: string;
   button: string;
   onPress: () => void;
+  onDismiss?: () => void;
 };
 
 export function PermissionCard({
@@ -22,6 +23,7 @@ export function PermissionCard({
   denied,
   unavailable,
   button,
+  onDismiss,
   onPress,
 }: Props) {
   const { styles } = useThemeStyles(createStyles);
@@ -38,9 +40,16 @@ export function PermissionCard({
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{description}</Text>
       {showConnect ? (
-        <AnimatedPressable onPress={onPress} style={styles.button}>
-          <Text style={styles.buttonLabel}>{button}</Text>
-        </AnimatedPressable>
+        <View style={styles.actions}>
+          <AnimatedPressable onPress={onPress} style={styles.button}>
+            <Text style={styles.buttonLabel}>{button}</Text>
+          </AnimatedPressable>
+          {onDismiss ? (
+            <AnimatedPressable onPress={onDismiss} style={styles.dismissButton}>
+              <Text style={styles.dismissLabel}>Not now</Text>
+            </AnimatedPressable>
+          ) : null}
+        </View>
       ) : null}
       {showSettings ? (
         <AnimatedPressable onPress={() => void Linking.openSettings()} style={styles.button}>
@@ -62,13 +71,15 @@ function createStyles(theme: AgendaTheme) {
     title: { color: theme.text, fontSize: 17, fontWeight: '700' },
     body: { color: theme.textSecondary, fontSize: 14, lineHeight: 20 },
     button: {
-      marginTop: 8,
       minHeight: 46,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.primary,
       ...continuousCorner(14),
     },
+    actions: { marginTop: 8, gap: 4 },
     buttonLabel: { color: theme.onPrimary, fontSize: 15, fontWeight: '700' },
+    dismissButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
+    dismissLabel: { color: theme.textSecondary, fontSize: 15, fontWeight: '600' },
   });
 }

@@ -1,3 +1,11 @@
+import {
+  FieldGroup,
+  Host,
+  ListItem as NativeListItem,
+  Picker,
+  Switch as NativeSettingsSwitch,
+  Text as NativeText,
+} from '@expo/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -32,6 +40,7 @@ import {
   useAppTheme,
 } from '@/theme';
 
+import { IOSGeneralSettingsForm } from './IOSGeneralSettingsForm';
 import { SettingPicker } from './SettingPicker';
 import { SettingsScaffold, SettingsSection, SettingsTabBar } from './SettingsChrome';
 import {
@@ -87,6 +96,7 @@ export function SettingsScreen({
   const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
 
   const { accent, colorScheme } = useAppAppearance();
+  const nativeSeedColor = settings.general.accent === 'black' ? '#34C759' : accent;
   const { showToast } = useToast();
 
   const reloadDiagnostic = useCallback(async () => {
@@ -204,6 +214,251 @@ export function SettingsScreen({
     );
   };
 
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'general') {
+    return <IOSGeneralSettingsForm general={settings.general} onChange={updateGeneral} />;
+  }
+
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'editor') {
+    const editor = settings.editor;
+    return (
+      <Host
+        colorScheme={colorScheme}
+        seedColor={nativeSeedColor}
+        style={{ flex: 1 }}
+        useViewportSizeMeasurement
+      >
+        <FieldGroup>
+          <FieldGroup.Section title="Today’s Page">
+            <NativePickerRow
+              label="Font"
+              value={editor.font}
+              options={[
+                { label: 'System', value: 'system' },
+                { label: 'Avenir Next', value: 'avenir' },
+                { label: 'Charter', value: 'charter' },
+              ]}
+              onValueChange={(font) => updateEditor({ font })}
+            />
+            <NativePickerRow
+              label="Font Size"
+              value={editor.fontSize}
+              options={[12, 14, 16, 18, 20, 22, 24, 26, 28].map((value) => ({
+                label: `${value} pt`,
+                value,
+              }))}
+              onValueChange={(fontSize) => updateEditor({ fontSize })}
+            />
+            <NativePickerRow
+              label="Page Margin"
+              value={editor.pageMargin}
+              options={[8, 12, 16, 20, 24, 32, 40, 48].map((value) => ({
+                label: `${value} pt`,
+                value,
+              }))}
+              onValueChange={(pageMargin) => updateEditor({ pageMargin })}
+            />
+          </FieldGroup.Section>
+          <FieldGroup.Section title="New Items">
+            <NativePickerRow
+              label="Default Type"
+              value={editor.defaultAddType}
+              options={[
+                { label: 'Task', value: 'task' },
+                { label: 'Event', value: 'event' },
+                { label: 'Note', value: 'note' },
+              ]}
+              onValueChange={(defaultAddType) => updateEditor({ defaultAddType })}
+            />
+            <NativePickerRow
+              label="Event Duration"
+              value={editor.defaultEventDurationMinutes}
+              options={[15, 30, 45, 60, 90].map((value) => ({ label: `${value} min`, value }))}
+              onValueChange={(defaultEventDurationMinutes) =>
+                updateEditor({ defaultEventDurationMinutes })
+              }
+            />
+            <NativePickerRow
+              label="Default Space"
+              value={editor.defaultSpaceId ?? '__inbox__'}
+              options={[
+                { label: 'Inbox', value: '__inbox__' },
+                ...spaces.map((space) => ({ label: space.name, value: space.id })),
+              ]}
+              onValueChange={(defaultSpaceId) =>
+                updateEditor({
+                  defaultSpaceId: defaultSpaceId === '__inbox__' ? null : defaultSpaceId,
+                })
+              }
+            />
+            <NativeSettingsSwitch
+              label="Smart Parsing"
+              value={editor.smartParsingEnabled}
+              onValueChange={(smartParsingEnabled) => updateEditor({ smartParsingEnabled })}
+            />
+            <NativeSettingsSwitch
+              label="Continue Numbered Lists"
+              value={editor.continueNumberedLists}
+              onValueChange={(continueNumberedLists) => updateEditor({ continueNumberedLists })}
+            />
+          </FieldGroup.Section>
+          <FieldGroup.Section title="Markdown">
+            <NativeSettingsSwitch
+              label="Render Markdown"
+              value={editor.renderMarkdown}
+              onValueChange={(renderMarkdown) => updateEditor({ renderMarkdown })}
+            />
+          </FieldGroup.Section>
+          <FieldGroup.Section>
+            <NativeActionRow
+              label="Restore Defaults"
+              onPress={() => {
+                updateEditor(DEFAULT_SETTINGS.editor);
+                showToast('Editor defaults restored', { tone: 'success' });
+              }}
+            />
+          </FieldGroup.Section>
+        </FieldGroup>
+      </Host>
+    );
+  }
+
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'export') {
+    return (
+      <Host
+        colorScheme={colorScheme}
+        seedColor={nativeSeedColor}
+        style={{ flex: 1 }}
+        useViewportSizeMeasurement
+      >
+        <FieldGroup>
+          <FieldGroup.Section title="Today’s Page">
+            <NativeActionRow
+              label="Copy as Text"
+              detail="Daily note and visible agenda items"
+              onPress={() =>
+                void runAction(async () => copyText(await todayText()), 'Today’s page copied')
+              }
+            />
+            <NativeActionRow
+              label="Share"
+              detail="Open the system share sheet"
+              onPress={() =>
+                void runAction(
+                  async () => void (await Share.share({ message: await todayText() })),
+                  'Share sheet opened',
+                )
+              }
+            />
+            <NativeActionRow
+              label="Print or Save as PDF"
+              detail="Open the system print dialog"
+              onPress={() =>
+                void runAction(
+                  async () => printPage(pageTextToHtml(await todayText())),
+                  'Print dialog opened',
+                )
+              }
+            />
+          </FieldGroup.Section>
+          <FieldGroup.Section title="Backup">
+            <FieldGroup.SectionFooter>
+              <NativeText>Backups contain your tasks, notes, drawings, and settings.</NativeText>
+            </FieldGroup.SectionFooter>
+            <NativeActionRow
+              label="Export Backup"
+              detail="Save all Agenda data as JSON"
+              onPress={() =>
+                void runAction(
+                  async () =>
+                    saveBackupFile(JSON.stringify(await createBackup(db, settings), null, 2)),
+                  'Backup ready to save',
+                )
+              }
+            />
+            <NativeActionRow
+              label="Copy Backup"
+              detail="Copy all Agenda data as JSON"
+              onPress={() =>
+                void runAction(
+                  async () => copyText(JSON.stringify(await createBackup(db, settings), null, 2)),
+                  'Backup JSON copied',
+                )
+              }
+            />
+            <NativeActionRow
+              label="Import Backup"
+              detail="Replace local data from a JSON backup"
+              onPress={() => void importBackup()}
+            />
+          </FieldGroup.Section>
+        </FieldGroup>
+      </Host>
+    );
+  }
+
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'sync') {
+    return (
+      <Host
+        colorScheme={colorScheme}
+        seedColor={nativeSeedColor}
+        style={{ flex: 1 }}
+        useViewportSizeMeasurement
+      >
+        <FieldGroup>
+          <FieldGroup.Section title="Local Sync">
+            <NativeListItem supportingText="Search and Daily Notes use a local index">
+              <NativeText>On This iPhone</NativeText>
+            </NativeListItem>
+            <NativeListItem
+              supportingText={lastSync ? new Date(lastSync).toLocaleString() : 'Not yet synced'}
+            >
+              <NativeText>Last Updated</NativeText>
+            </NativeListItem>
+          </FieldGroup.Section>
+          <FieldGroup.Section title="Options">
+            <NativeSettingsSwitch
+              label="Index Daily Notes"
+              value={folderSync}
+              onValueChange={(value) => {
+                setFolderSync(value);
+                void settingsStore.setItem('sync.dailyNotesFolder', String(value));
+              }}
+            />
+            <NativeSettingsSwitch
+              label="Open Today Shortcut"
+              value={todayShortcut}
+              onValueChange={(value) => {
+                setTodayShortcut(value);
+                void settingsStore.setItem('sync.openTodayShortcut', String(value));
+              }}
+            />
+          </FieldGroup.Section>
+          <FieldGroup.Section title="Maintenance">
+            <NativeActionRow
+              label="Update Now"
+              onPress={() => void runAction(syncNow, 'Local indexes refreshed')}
+            />
+            <NativeActionRow
+              label="Reset Local Index"
+              onPress={() =>
+                void runAction(async () => {
+                  await settingsStore.removeItem('sync.localIndex');
+                  await settingsStore.removeItem('sync.lastCompletedAt');
+                  setLastSync(null);
+                }, 'Local sync cache reset')
+              }
+            />
+            <NativeActionRow label="Clear Drawing Cache" onPress={cleanDrawings} />
+          </FieldGroup.Section>
+        </FieldGroup>
+      </Host>
+    );
+  }
+
+  if (Platform.OS === 'ios' && categoryOnly && tab === 'privacy') {
+    return <PrivacySettings />;
+  }
+
   const content =
     tab === 'privacy' ? (
       <PrivacySettings />
@@ -305,6 +560,48 @@ export function SettingsScreen({
     >
       {content}
     </SettingsScaffold>
+  );
+}
+
+function NativeActionRow({
+  detail,
+  label,
+  onPress,
+}: {
+  detail?: string;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <NativeListItem onPress={onPress} supportingText={detail}>
+      <NativeText>{label}</NativeText>
+    </NativeListItem>
+  );
+}
+
+function NativePickerRow<T extends string | number>({
+  label,
+  onValueChange,
+  options,
+  value,
+}: {
+  label: string;
+  onValueChange: (value: T) => void;
+  options: { label: string; value: T }[];
+  value: T;
+}) {
+  return (
+    <NativeListItem
+      trailing={
+        <Picker selectedValue={value} onValueChange={onValueChange}>
+          {options.map((option) => (
+            <Picker.Item key={String(option.value)} label={option.label} value={option.value} />
+          ))}
+        </Picker>
+      }
+    >
+      <NativeText>{label}</NativeText>
+    </NativeListItem>
   );
 }
 

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/AgendaBottomSheet';
 import type { IconName } from '@/components/ui/Icon';
 import { Icon } from '@/components/ui/Icon';
+import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import {
@@ -20,7 +21,7 @@ import {
 } from '@/theme';
 
 import { useLibrary } from './LibraryContext';
-import { defaultSpaceColor } from './spaceAppearance';
+import { defaultSpaceColor, SPACE_COLOR_OPTIONS, SPACE_ICON_OPTIONS } from './spaceAppearance';
 
 export function LibraryHost() {
   const { session, close } = useLibrary();
@@ -37,17 +38,26 @@ function LibrarySheet({
 }) {
   const { repos, refresh, setUI, ui } = useData();
   const { openEditSpace } = useLibrary();
-  const { accent } = useAppAppearance();
+  const { accent, colorScheme } = useAppAppearance();
   const { styles, theme } = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { openEdit } = useItemEditor();
-  const sheetHeight = useMemo(() => Math.round(Dimensions.get('window').height * 0.85), []);
+  const sheetHeight = useMemo(
+    () =>
+      quickCreate
+        ? Math.min(600, Math.round(Dimensions.get('window').height * 0.72))
+        : Math.round(Dimensions.get('window').height * 0.85),
+    [quickCreate],
+  );
   const [presented, setPresented] = useState(true);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [items, setItems] = useState<AgendaItem[]>([]);
   const [notes, setNotes] = useState<DailyNote[]>([]);
   const [browser, setBrowser] = useState<'all' | 'inbox' | 'completed' | string | null>(null);
   const [name, setName] = useState('');
+  const [newSpaceColor, setNewSpaceColor] = useState(() => defaultSpaceColor(accent));
+  const [newSpaceIcon, setNewSpaceIcon] = useState<IconName>('agenda');
+  const [newSpacePinned, setNewSpacePinned] = useState(true);
   const sheetScrollRef = useRef<ScrollView>(null);
 
   const reload = useCallback(() => {
@@ -76,16 +86,21 @@ function LibrarySheet({
     requestClose();
   };
 
-  const add = async () => {
+  const add = async (closeAfter = false) => {
     if (!name.trim()) return;
     await repos.spaces.create({
       name: name.trim(),
-      color: defaultSpaceColor(accent),
-      isPinned: true,
+      color: newSpaceColor,
+      icon: newSpaceIcon,
+      isPinned: newSpacePinned,
     });
     setName('');
     refresh();
-    reload();
+    if (closeAfter) {
+      requestClose();
+    } else {
+      reload();
+    }
   };
 
   const userSpaces = spaces.filter((space) => space.name.toLowerCase() !== 'inbox');
@@ -136,6 +151,82 @@ function LibrarySheet({
           <Text style={styles.empty}>Nothing here yet.</Text>
         )}
       </ScrollView>
+    </View>
+  ) : quickCreate ? (
+    <View style={[styles.quickCreateRoot, { paddingBottom: insets.bottom + 20 }]}>
+      <AgendaSheetHeader
+        title="New Space"
+        onCancel={requestClose}
+        action={{
+          label: 'Add',
+          disabled: !name.trim(),
+          onPress: () => void add(true),
+        }}
+      />
+      <View style={styles.quickCreateContent}>
+        <View style={styles.quickNameRow}>
+          <View style={[styles.quickIconPreview, { backgroundColor: newSpaceColor }]}>
+            <Icon name={newSpaceIcon} color="#FFFFFF" size={22} />
+          </View>
+          <TextInput
+            autoFocus
+            autoCapitalize="words"
+            clearButtonMode="while-editing"
+            onChangeText={setName}
+            onSubmitEditing={() => void add(true)}
+            placeholder="Space name"
+            placeholderTextColor={theme.placeholder}
+            returnKeyType="done"
+            style={styles.quickCreateInput}
+            value={name}
+          />
+        </View>
+
+        <Text style={styles.fieldLabel}>Icon</Text>
+        <View style={styles.quickOptions}>
+          {SPACE_ICON_OPTIONS.map((icon) => (
+            <Pressable
+              accessibilityLabel={`${icon} icon`}
+              accessibilityState={{ selected: newSpaceIcon === icon }}
+              key={icon}
+              onPress={() => setNewSpaceIcon(icon)}
+              style={[styles.quickIconOption, newSpaceIcon === icon && styles.quickOptionSelected]}
+            >
+              <Icon name={icon} color={theme.text} size={21} />
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>Color</Text>
+        <View style={styles.quickColors}>
+          {SPACE_COLOR_OPTIONS.map((color) => (
+            <Pressable
+              accessibilityLabel={`${color.name} color`}
+              accessibilityState={{ selected: newSpaceColor === color.hex }}
+              key={color.name}
+              onPress={() => setNewSpaceColor(color.hex)}
+              style={[
+                styles.quickColor,
+                { backgroundColor: color.hex },
+                newSpaceColor === color.hex && styles.quickColorSelected,
+              ]}
+            />
+          ))}
+        </View>
+
+        <View style={styles.quickPinRow}>
+          <View style={styles.spaceCopy}>
+            <Text style={styles.rowLabel}>Pin to Today</Text>
+            <Text style={styles.meta}>Show this Space in Today’s filters</Text>
+          </View>
+          <NativeSwitch
+            accent={accent}
+            colorScheme={colorScheme}
+            onValueChange={setNewSpacePinned}
+            value={newSpacePinned}
+          />
+        </View>
+      </View>
     </View>
   ) : (
     <ScrollView
@@ -241,7 +332,7 @@ function LibrarySheet({
       height={sheetHeight}
       isPresented={presented}
       onDismiss={finishClose}
-      snapPoints={['full']}
+      snapPoints={quickCreate ? [{ height: sheetHeight }] : ['full']}
     >
       {body}
     </AgendaBottomSheet>
@@ -335,6 +426,61 @@ function createStyles(theme: AgendaTheme) {
       paddingTop: 12,
       paddingBottom: 28,
       gap: 12,
+    },
+    quickCreateRoot: { flex: 1 },
+    quickCreateContent: { paddingHorizontal: 20, paddingTop: 20, gap: 12 },
+    quickNameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    quickIconPreview: {
+      width: 48,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...continuousCorner(12),
+    },
+    fieldLabel: {
+      paddingHorizontal: 4,
+      color: theme.textSecondary,
+      fontFamily: fonts.sans,
+      fontSize: 13,
+    },
+    quickCreateInput: {
+      flex: 1,
+      minHeight: 52,
+      paddingHorizontal: 16,
+      color: theme.text,
+      backgroundColor: theme.section,
+      fontFamily: fonts.sans,
+      fontSize: 17,
+      ...continuousCorner(14),
+    },
+    quickOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    quickIconOption: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.section,
+      ...continuousCorner(11),
+    },
+    quickOptionSelected: { borderWidth: 2, borderColor: theme.primary },
+    quickColors: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    quickColor: { width: 30, height: 30, borderRadius: 15 },
+    quickColorSelected: { borderWidth: 3, borderColor: theme.text },
+    quickPinRow: {
+      minHeight: 58,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 14,
+      backgroundColor: theme.section,
+      ...continuousCorner(14),
+    },
+    fieldHelp: {
+      paddingHorizontal: 4,
+      color: theme.textSecondary,
+      fontFamily: fonts.sans,
+      fontSize: 13,
+      lineHeight: 18,
     },
     browserRoot: { flex: 1 },
     browserList: { padding: 16, gap: 8 },
