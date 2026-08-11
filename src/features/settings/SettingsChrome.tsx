@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { type PropsWithChildren, type ReactNode, type RefObject, useMemo } from 'react';
 import {
   Platform,
+  PlatformColor,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -105,6 +106,12 @@ export function SettingsScaffold({
   const theme = useAppTheme();
   const styles = useMemo(() => createChromeStyles(theme), [theme]);
   const padBottom = bottomInset ?? insets.bottom + spacing.xl;
+  const resolvedHeader =
+    header !== undefined ? (
+      header
+    ) : Platform.OS === 'ios' ? null : (
+      <SettingsHeader title={title} onBack={onBack} showDone={showDone} trailing={trailing} />
+    );
 
   const body = (
     <>
@@ -126,11 +133,12 @@ export function SettingsScaffold({
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+    <SafeAreaView
+      edges={Platform.OS === 'ios' ? ['left', 'right'] : ['top', 'left', 'right']}
+      style={styles.safeArea}
+    >
       <BlurTargetView ref={blurTargetRef} style={styles.blurTarget}>
-        {header ?? (
-          <SettingsHeader title={title} onBack={onBack} showDone={showDone} trailing={trailing} />
-        )}
+        {resolvedHeader}
         {content}
       </BlurTargetView>
       {footer}
@@ -220,8 +228,12 @@ export function SettingsSection({ children, title }: { children: ReactNode; titl
 }
 
 export function createChromeStyles(theme: AgendaTheme) {
+  const iosBackground = Platform.OS === 'ios' ? PlatformColor('systemGroupedBackground') : null;
+  const iosSection =
+    Platform.OS === 'ios' ? PlatformColor('secondarySystemGroupedBackground') : null;
+  const iosSecondaryLabel = Platform.OS === 'ios' ? PlatformColor('secondaryLabel') : null;
   return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background },
+    safeArea: { flex: 1, backgroundColor: iosBackground ?? theme.background },
     blurTarget: { flex: 1 },
     fill: { flex: 1 },
     header: {
@@ -268,13 +280,15 @@ export function createChromeStyles(theme: AgendaTheme) {
     },
     sectionWrap: { gap: 10 },
     sectionTitle: {
-      color: theme.text,
-      fontFamily: fonts.sansSemi,
-      fontSize: 14,
+      color: iosSecondaryLabel ?? theme.textSecondary,
+      fontFamily: Platform.OS === 'ios' ? undefined : fonts.sansSemi,
+      fontSize: 13,
+      fontWeight: Platform.OS === 'ios' ? '400' : undefined,
+      textTransform: Platform.OS === 'ios' ? 'uppercase' : undefined,
     },
     sectionCard: {
       overflow: 'hidden',
-      backgroundColor: theme.section,
+      backgroundColor: iosSection ?? theme.section,
       ...continuousCorner(16),
     },
     tabBarWrap: {

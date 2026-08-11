@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
@@ -45,13 +45,27 @@ export default function RootLayout() {
 
 function ThemedNavigation() {
   const { colorScheme, theme } = useAppAppearance();
+  const navigationTheme = {
+    ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(colorScheme === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.background,
+      border: theme.separator,
+      card: theme.section,
+      primary: theme.primary,
+      text: theme.text,
+    },
+  };
+
   return (
     <>
-      <Stack screenOptions={{ contentStyle: { backgroundColor: theme.background } }}>
-        <Stack.Screen name="(app)" options={{ headerShown: false }} />
-        <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
-      </Stack>
+      <ThemeProvider value={navigationTheme}>
+        <Stack screenOptions={{ contentStyle: { backgroundColor: theme.background } }}>
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="+not-found" options={{ title: 'Not found' }} />
+        </Stack>
+      </ThemeProvider>
       <AgendaToaster />
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </>

@@ -1,4 +1,4 @@
-import { Host, Picker } from '@expo/ui';
+import { Button as NativeButton, Host, Picker, TextInput as IOSTextInput } from '@expo/ui';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Modal,
@@ -100,32 +100,62 @@ export function ItemEditorForm({
   return (
     <View style={[styles.root, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="Cancel"
-          hitSlop={10}
-          onPress={onDismiss}
-          style={({ pressed }) => [styles.headerSide, pressed && styles.pressed]}
-        >
-          <Text style={styles.cancel}>Cancel</Text>
-        </Pressable>
+        {Platform.OS === 'ios' ? (
+          <Host
+            key={`${inputKey}-title`}
+            colorScheme={colorScheme}
+            ignoreSafeArea="all"
+            matchContents
+            seedColor={accent}
+            style={styles.headerSide}
+          >
+            <NativeButton label="Cancel" onPress={onDismiss} variant="text" />
+          </Host>
+        ) : (
+          <Pressable
+            accessibilityLabel="Cancel"
+            hitSlop={10}
+            onPress={onDismiss}
+            style={({ pressed }) => [styles.headerSide, pressed && styles.pressed]}
+          >
+            <Text style={styles.cancel}>Cancel</Text>
+          </Pressable>
+        )}
         <Text numberOfLines={1} style={styles.heading}>
           {heading}
         </Text>
-        <Pressable
-          accessibilityLabel="Save"
-          disabled={!canSave}
-          hitSlop={10}
-          onPress={onSave}
-          style={({ pressed }) => [
-            styles.headerSide,
-            styles.headerSideEnd,
-            pressed && canSave && styles.pressed,
-          ]}
-        >
-          <Text style={[styles.saveLabel, !canSave && styles.saveDisabled]}>
-            {saving ? '…' : 'Save'}
-          </Text>
-        </Pressable>
+        {Platform.OS === 'ios' ? (
+          <Host
+            colorScheme={colorScheme}
+            ignoreSafeArea="all"
+            matchContents
+            seedColor={accent}
+            style={[styles.headerSide, styles.headerSideEnd]}
+          >
+            <NativeButton
+              disabled={!canSave}
+              label={saving ? '…' : 'Save'}
+              onPress={onSave}
+              variant="text"
+            />
+          </Host>
+        ) : (
+          <Pressable
+            accessibilityLabel="Save"
+            disabled={!canSave}
+            hitSlop={10}
+            onPress={onSave}
+            style={({ pressed }) => [
+              styles.headerSide,
+              styles.headerSideEnd,
+              pressed && canSave && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.saveLabel, !canSave && styles.saveDisabled]}>
+              {saving ? '…' : 'Save'}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       <ScrollView
@@ -171,16 +201,35 @@ export function ItemEditorForm({
           </FormSection>
         ) : null}
 
-        <TextInput
-          key={`${inputKey}-title`}
-          autoFocus
-          onChangeText={onTitleChange}
-          placeholder={titlePlaceholder}
-          placeholderTextColor={theme.placeholder}
-          returnKeyType="done"
-          style={styles.titleInput}
-          value={draft.title}
-        />
+        {Platform.OS === 'ios' ? (
+          <Host
+            colorScheme={colorScheme}
+            ignoreSafeArea="all"
+            seedColor={accent}
+            style={styles.nativeTitleHost}
+          >
+            <IOSTextInput
+              autoFocus
+              defaultValue={draft.title}
+              onChangeText={onTitleChange}
+              placeholder={titlePlaceholder}
+              returnKeyType="done"
+              style={{ width: '100%', height: 58 }}
+              textStyle={{ color: theme.text, fontSize: 20, fontWeight: '500' }}
+            />
+          </Host>
+        ) : (
+          <TextInput
+            key={`${inputKey}-title`}
+            autoFocus
+            onChangeText={onTitleChange}
+            placeholder={titlePlaceholder}
+            placeholderTextColor={theme.placeholder}
+            returnKeyType="done"
+            style={styles.titleInput}
+            value={draft.title}
+          />
+        )}
 
         {draft.kind === 'task' ? (
           <TaskFields
@@ -232,16 +281,38 @@ export function ItemEditorForm({
         ) : null}
 
         {draft.kind !== 'routine' ? (
-          <TextInput
-            key={`${inputKey}-details`}
-            multiline
-            onChangeText={(details) => onChange({ details })}
-            placeholder={draft.kind === 'note' ? 'Write something…' : 'Details (optional)'}
-            placeholderTextColor={theme.placeholder}
-            style={[styles.detailsInput, draft.kind === 'note' && styles.noteBody]}
-            textAlignVertical="top"
-            value={draft.details}
-          />
+          Platform.OS === 'ios' ? (
+            <Host
+              key={`${inputKey}-details`}
+              colorScheme={colorScheme}
+              ignoreSafeArea="all"
+              seedColor={accent}
+              style={[
+                styles.nativeDetailsHost,
+                draft.kind === 'note' && styles.nativeNoteDetailsHost,
+              ]}
+            >
+              <IOSTextInput
+                defaultValue={draft.details}
+                multiline
+                onChangeText={(details) => onChange({ details })}
+                placeholder={draft.kind === 'note' ? 'Write something…' : 'Details (optional)'}
+                style={{ width: '100%', height: draft.kind === 'note' ? 180 : 112 }}
+                textStyle={{ color: theme.text, fontSize: 16 }}
+              />
+            </Host>
+          ) : (
+            <TextInput
+              key={`${inputKey}-details`}
+              multiline
+              onChangeText={(details) => onChange({ details })}
+              placeholder={draft.kind === 'note' ? 'Write something…' : 'Details (optional)'}
+              placeholderTextColor={theme.placeholder}
+              style={[styles.detailsInput, draft.kind === 'note' && styles.noteBody]}
+              textAlignVertical="top"
+              value={draft.details}
+            />
+          )
         ) : null}
 
         {showDelete ? (
@@ -802,6 +873,10 @@ function createStyles(theme: AgendaTheme, accent: string) {
       letterSpacing: -0.3,
       backgroundColor: 'transparent',
     },
+    nativeTitleHost: {
+      width: '100%',
+      height: 58,
+    },
     section: {
       gap: 8,
     },
@@ -885,6 +960,16 @@ function createStyles(theme: AgendaTheme, accent: string) {
     },
     noteBody: {
       minHeight: 160,
+    },
+    nativeDetailsHost: {
+      width: '100%',
+      height: 112,
+      overflow: 'hidden',
+      backgroundColor: cardBg,
+      ...continuousCorner(14),
+    },
+    nativeNoteDetailsHost: {
+      height: 180,
     },
     modalBackdrop: {
       flex: 1,

@@ -1,3 +1,4 @@
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -17,9 +18,16 @@ type SearchResult =
   | { id: string; kind: 'routine'; routine: Routine; title: string; subtitle: string }
   | { id: string; kind: 'note'; note: DailyNote; title: string; subtitle: string };
 
-export function SearchSheet({ onDismiss }: { onDismiss: () => void }) {
+export function SearchSheet({
+  embedded = false,
+  onDismiss,
+}: {
+  embedded?: boolean;
+  onDismiss: () => void;
+}) {
   const { repos, revision, setUI } = useData();
   const { openEdit, openEditRoutine } = useItemEditor();
+  const router = useRouter();
   const { styles, theme } = useThemeStyles(createStyles);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<AgendaItem[]>([]);
@@ -95,6 +103,16 @@ export function SearchSheet({ onDismiss }: { onDismiss: () => void }) {
   }, [items, notes, query, routines, spaces]);
 
   const openResult = (result: SearchResult) => {
+    if (embedded) {
+      if (result.kind === 'item') openEdit(result.item.id);
+      else if (result.kind === 'routine') openEditRoutine(result.routine.id);
+      else {
+        setUI({ selectedDate: result.note.date });
+        router.replace('/');
+      }
+      return;
+    }
+
     if (result.kind === 'item') {
       setPresented(false);
       setTimeout(() => {
@@ -115,15 +133,27 @@ export function SearchSheet({ onDismiss }: { onDismiss: () => void }) {
     close();
   };
 
-  return (
-    <AgendaBottomSheet
-      height={sheetHeight}
-      isPresented={presented}
-      onDismiss={finishClose}
-      snapPoints={['half', 'full']}
-    >
-      <View style={styles.root}>
+  const content = (
+    <View style={styles.root}>
+      {embedded ? (
+        <>
+          <Stack.SearchBar
+            autoFocus
+            onChangeText={(event) => setQuery(event.nativeEvent.text)}
+            placeholder="Tasks, routines, and notes"
+          />
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Back to Today"
+              icon="chevron.backward"
+              onPress={() => router.replace('/')}
+            />
+          </Stack.Toolbar>
+        </>
+      ) : (
         <AgendaSheetHeader title="Search" onCancel={close} />
+      )}
+      {!embedded ? (
         <View style={styles.searchBox}>
           <Icon name="search" size={22} color={theme.textSecondary} />
           <TextInput
@@ -137,47 +167,60 @@ export function SearchSheet({ onDismiss }: { onDismiss: () => void }) {
             value={query}
           />
         </View>
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={results}
-          keyboardShouldPersistTaps="handled"
-          keyExtractor={(result) => result.id}
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              {query.trim() ? 'No matching items.' : 'Search across your entire Agenda.'}
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => openResult(item)}
-              style={({ pressed }) => [styles.result, pressed && styles.pressed]}
-            >
-              <View style={styles.resultIcon}>
-                <Icon
-                  name={
-                    item.kind === 'routine'
-                      ? 'refresh'
-                      : item.kind === 'note'
-                        ? 'notebook'
-                        : 'checklist'
-                  }
-                  size={20}
-                  color={theme.primary}
-                />
-              </View>
-              <View style={styles.copy}>
-                <Text numberOfLines={1} style={styles.title}>
-                  {item.title}
-                </Text>
-                <Text numberOfLines={1} style={styles.subtitle}>
-                  {item.subtitle}
-                </Text>
-              </View>
-              <Icon name="chevronRight" size={18} color={theme.textSecondary} />
-            </Pressable>
-          )}
-        />
-      </View>
+      ) : null}
+      <FlatList
+        contentContainerStyle={styles.list}
+        data={results}
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(result) => result.id}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {query.trim() ? 'No matching items.' : 'Search across your entire Agenda.'}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() => openResult(item)}
+            style={({ pressed }) => [styles.result, pressed && styles.pressed]}
+          >
+            <View style={styles.resultIcon}>
+              <Icon
+                name={
+                  item.kind === 'routine'
+                    ? 'refresh'
+                    : item.kind === 'note'
+                      ? 'notebook'
+                      : 'checklist'
+                }
+                size={20}
+                color={theme.primary}
+              />
+            </View>
+            <View style={styles.copy}>
+              <Text numberOfLines={1} style={styles.title}>
+                {item.title}
+              </Text>
+              <Text numberOfLines={1} style={styles.subtitle}>
+                {item.subtitle}
+              </Text>
+            </View>
+            <Icon name="chevronRight" size={18} color={theme.textSecondary} />
+          </Pressable>
+        )}
+      />
+    </View>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <AgendaBottomSheet
+      height={sheetHeight}
+      isPresented={presented}
+      onDismiss={finishClose}
+      snapPoints={['half', 'full']}
+    >
+      {content}
     </AgendaBottomSheet>
   );
 }
@@ -185,6 +228,10 @@ export function SearchSheet({ onDismiss }: { onDismiss: () => void }) {
 export function SearchScreen() {
   const { close } = useAppSheets();
   return <SearchSheet onDismiss={close} />;
+}
+
+export function SearchTabScreen() {
+  return <SearchSheet embedded onDismiss={() => {}} />;
 }
 
 function createStyles(theme: AgendaTheme) {

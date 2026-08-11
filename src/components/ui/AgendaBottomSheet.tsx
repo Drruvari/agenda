@@ -1,9 +1,9 @@
-import { BottomSheet, RNHostView } from '@expo/ui';
+import { BottomSheet, Button as NativeButton, Host, RNHostView } from '@expo/ui';
 import type { PropsWithChildren } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { fonts, useAppTheme } from '@/theme';
+import { fonts, useAppAppearance, useAppTheme } from '@/theme';
 
 export const SHEET_DISMISS_MS = Platform.OS === 'ios' ? 320 : 250;
 
@@ -41,25 +41,52 @@ export function AgendaSheetHeader({
   action?: { label: string; onPress: () => void; icon?: 'add' };
 }) {
   const theme = useAppTheme();
+  const { accent, colorScheme } = useAppAppearance();
   return (
     <View style={[styles.header, { borderBottomColor: theme.separator }]}>
-      <Pressable onPress={onCancel} style={styles.side}>
-        <Text style={[styles.cancel, { color: theme.primary }]}>{cancelLabel}</Text>
-      </Pressable>
+      {Platform.OS === 'ios' ? (
+        <Host
+          colorScheme={colorScheme}
+          ignoreSafeArea="all"
+          matchContents
+          seedColor={accent}
+          style={styles.side}
+        >
+          <NativeButton label={cancelLabel} onPress={onCancel} variant="text" />
+        </Host>
+      ) : (
+        <Pressable onPress={onCancel} style={styles.side}>
+          <Text style={[styles.cancel, { color: theme.primary }]}>{cancelLabel}</Text>
+        </Pressable>
+      )}
       <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
         {title}
       </Text>
-      <Pressable
-        accessibilityLabel={action?.label}
-        disabled={!action}
-        onPress={action?.onPress}
-        style={[styles.side, styles.end]}
-      >
-        {action?.icon === 'add' ? <Icon name="add" size={24} color={theme.primary} /> : null}
-        {action && !action.icon ? (
-          <Text style={[styles.action, { color: theme.primary }]}>{action.label}</Text>
-        ) : null}
-      </Pressable>
+      {Platform.OS === 'ios' ? (
+        <Host
+          colorScheme={colorScheme}
+          ignoreSafeArea="all"
+          matchContents
+          seedColor={accent}
+          style={[styles.side, styles.end]}
+        >
+          {action ? (
+            <NativeButton label={action.label} onPress={action.onPress} variant="text" />
+          ) : null}
+        </Host>
+      ) : (
+        <Pressable
+          accessibilityLabel={action?.label}
+          disabled={!action}
+          onPress={action?.onPress}
+          style={[styles.side, styles.end]}
+        >
+          {action?.icon === 'add' ? <Icon name="add" size={24} color={theme.primary} /> : null}
+          {action && !action.icon ? (
+            <Text style={[styles.action, { color: theme.primary }]}>{action.label}</Text>
+          ) : null}
+        </Pressable>
+      )}
     </View>
   );
 }

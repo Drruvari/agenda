@@ -1,5 +1,5 @@
 import { BlurTargetView } from 'expo-blur';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
@@ -23,7 +23,6 @@ import { PermissionCard } from '@/components/ui/PermissionCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { useToast } from '@/components/ui/ToastProvider';
-import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import {
   addDays,
   type AgendaItem,
@@ -40,6 +39,7 @@ import {
 } from '@/data';
 import { completeAgendaTask, uncompleteAgendaTask } from '@/domain/agendaLifecycle';
 import { isTimePast } from '@/domain/day/isTimePast';
+import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
 import { useItemEditor } from '@/features/item-editor';
 import { useLibrary } from '@/features/library';
@@ -112,7 +112,10 @@ function PlannerGestureScroll({
     <Animated.ScrollView
       ref={scrollRef}
       style={gestureScrollStyles.scrollView}
+      automaticallyAdjustContentInsets={Platform.OS === 'ios'}
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       showsVerticalScrollIndicator={false}
+      contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
       scrollEventThrottle={16}
       scrollEnabled={scrollEnabled}
       bounces={Platform.OS === 'ios'}
@@ -171,6 +174,7 @@ type Task = {
   priority?: Priority;
   late?: boolean;
   completed?: boolean;
+  period?: Mode;
   special?: 'calendar' | 'note' | 'birthday';
   item?: AgendaItem;
   systemReminderId?: string;
@@ -369,11 +373,12 @@ export default function PlannerScreen() {
         subtitle: [spaceName, typeLabel].filter(Boolean).join(', '),
         priority: priorityLabel(item.priority) as Priority,
         completed: item.type === 'task' ? item.completed : false,
+        period: derivedMode,
         special: item.type === 'event' ? 'calendar' : item.type === 'note' ? 'note' : undefined,
         item,
       };
     },
-    [spacesById],
+    [derivedMode, spacesById],
   );
 
   const birthdays = useMemo(
@@ -397,12 +402,14 @@ export default function PlannerScreen() {
                 id: `device:${event.id}`,
                 title: event.title,
                 subtitle: event.calendarTitle ?? 'Device calendar',
+                period: derivedMode,
                 special: 'calendar' as const,
               })),
             ...birthdays.map((birthday) => ({
               id: birthday.id,
               title: birthday.title,
               subtitle: birthday.subtitle,
+              period: derivedMode,
               special: 'birthday' as const,
             })),
             ...systemReminders
@@ -411,12 +418,13 @@ export default function PlannerScreen() {
                 id: `system-reminder:${reminder.id}`,
                 title: reminder.title,
                 subtitle: reminder.listTitle ?? 'Apple Reminders',
+                period: derivedMode,
                 systemReminderId: reminder.id,
               })),
           ]
         : []),
     ],
-    [birthdays, deviceEvents, mapItem, showExternalItems, systemReminders, view?.allDay],
+    [birthdays, derivedMode, deviceEvents, mapItem, showExternalItems, systemReminders, view?.allDay],
   );
 
   const scheduled = useMemo<ScheduledTask[]>(
@@ -457,6 +465,7 @@ export default function PlannerScreen() {
                     id: `device:${event.id}`,
                     title: event.title,
                     subtitle: event.calendarTitle ?? 'Device calendar',
+                    period: derivedMode,
                     time,
                     icon: 'clock' as const,
                     special: 'calendar' as const,
@@ -476,6 +485,7 @@ export default function PlannerScreen() {
                     id: `system-reminder:${reminder.id}`,
                     title: reminder.title,
                     subtitle: reminder.listTitle ?? 'Apple Reminders',
+                    period: derivedMode,
                     time,
                     icon: 'clock' as const,
                     systemReminderId: reminder.id,
@@ -488,7 +498,7 @@ export default function PlannerScreen() {
         if (Boolean(a.late) !== Boolean(b.late)) return a.late ? -1 : 1;
         return a.time.localeCompare(b.time);
       }),
-    [deviceEvents, mapItem, showExternalItems, systemReminders, view?.scheduled],
+    [derivedMode, deviceEvents, mapItem, showExternalItems, systemReminders, view?.scheduled],
   );
 
   const completed = useMemo(() => view?.completed.map(mapItem) ?? [], [mapItem, view?.completed]);
@@ -754,18 +764,48 @@ export default function PlannerScreen() {
           month: 'short',
         })
       : formatLongDate(ui.selectedDate);
-
   const visibleAllDay = ui.allDayExpanded ? allDay : allDay.slice(0, ALL_DAY_PREVIEW_COUNT);
   const hiddenAllDayCount = ui.allDayExpanded
     ? 0
     : Math.max(0, allDay.length - ALL_DAY_PREVIEW_COUNT);
 
   const isDark = colorScheme === 'dark';
-  const headerTop = insets.top + 6;
+  const usesNativeChrome = Platform.OS === 'ios';
+  const headerTop = usesNativeChrome ? 0 : insets.top + 6;
 
   return (
     <View style={styles.safeArea}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+
+      {usesNativeChrome ? (
+        <>
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button onPress={() => void chooseDate(new Date())}>
+              Today
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              accessibilityLabel="Open calendar"
+              icon="calendar"
+              onPress={() => setCalendarPickerOpen(true)}
+            />
+            <Stack.Toolbar.Button
+              accessibilityLabel="Add a task"
+              icon="plus"
+              onPress={() => openCreate('task')}
+            />
+            <Stack.Toolbar.Menu accessibilityLabel="More" icon="ellipsis">
+              <Stack.Toolbar.MenuAction
+                icon="gearshape"
+                onPress={() => router.push('/settings')}
+              >
+                Settings
+              </Stack.Toolbar.MenuAction>
+            </Stack.Toolbar.Menu>
+          </Stack.Toolbar>
+        </>
+      ) : null}
 
       <BlurTargetView ref={blurTarget} style={styles.blurTarget}>
         <Animated.View style={styles.blurTarget}>
@@ -798,8 +838,8 @@ export default function PlannerScreen() {
             contentContainerStyle={[
               styles.scrollContent,
               {
-                paddingTop: headerTop + headerHeight + 12,
-                paddingBottom: Math.max(128, insets.bottom + 108),
+                paddingTop: usesNativeChrome ? 12 : headerTop + headerHeight + 12,
+                paddingBottom: usesNativeChrome ? 32 : Math.max(128, insets.bottom + 108),
               },
             ]}
           >
@@ -1003,7 +1043,11 @@ export default function PlannerScreen() {
                         </AnimatedPressable>
 
                         {ui.completedExpanded ? (
-                          <Animated.View entering={sectionEnter} exiting={sectionExit}>
+                          <Animated.View
+                            entering={sectionEnter}
+                            exiting={sectionExit}
+                            style={styles.completedList}
+                          >
                             {completed.length > 0 ? (
                               completed.map((task) => {
                                 const interaction = interactionFor(task);
@@ -1079,30 +1123,32 @@ export default function PlannerScreen() {
         </Animated.View>
       </BlurTargetView>
 
-      <View
-        onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-        pointerEvents={editorOpen ? 'none' : 'box-none'}
-        style={[styles.stickyHeader, { top: headerTop }]}
-      >
-        <TopBar
-          calendarIndicator={
-            settings.general.calendarIndicators &&
-            Boolean(
-              view &&
-                (view.allDay.length ||
-                  view.scheduled.length ||
-                  view.completed.length ||
-                  view.dailyNote?.bodyText.trim()),
-            )
-          }
-          mode={mode}
-          setMode={setMode}
-          onCalendar={() => setCalendarPickerOpen(true)}
-          onSettings={() => router.push('/settings')}
-        />
-      </View>
+      {!usesNativeChrome ? (
+        <View
+          onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+          pointerEvents={editorOpen ? 'none' : 'box-none'}
+          style={[styles.stickyHeader, { top: headerTop }]}
+        >
+          <TopBar
+            calendarIndicator={
+              settings.general.calendarIndicators &&
+              Boolean(
+                view &&
+                  (view.allDay.length ||
+                    view.scheduled.length ||
+                    view.completed.length ||
+                    view.dailyNote?.bodyText.trim()),
+              )
+            }
+            mode={mode}
+            setMode={setMode}
+            onCalendar={() => setCalendarPickerOpen(true)}
+            onSettings={() => router.push('/settings')}
+          />
+        </View>
+      ) : null}
 
-      {!editorOpen ? (
+      {!editorOpen && !usesNativeChrome ? (
         <BottomBar
           blurTarget={blurTarget}
           bottom={Math.max(16, insets.bottom + 10)}
@@ -1197,6 +1243,58 @@ function specialIconName(special: NonNullable<Task['special']>): IconName {
   return 'calendar';
 }
 
+function taskStatus(task: Task, completed: boolean): {
+  icon: IconName;
+  label: string;
+  tone: 'neutral' | 'danger';
+} | null {
+  if (completed) return null;
+  if (task.special === 'birthday') return { icon: 'birthday', label: 'Birthday', tone: 'neutral' };
+  if (task.special === 'note') return { icon: 'pencil', label: 'Active note', tone: 'neutral' };
+
+  const isEvent = task.special === 'calendar' || task.item?.type === 'event';
+  if (isEvent) {
+    return task.period === 'Recent' || (task.period !== 'Upcoming' && task.late)
+      ? { icon: 'clock', label: 'Ended', tone: 'neutral' }
+      : { icon: 'calendar', label: 'Scheduled', tone: 'neutral' };
+  }
+
+  if (task.period === 'Recent' || (task.period !== 'Upcoming' && task.late)) {
+    return { icon: 'warning', label: 'Overdue', tone: 'danger' };
+  }
+  if (task.period === 'Upcoming') {
+    return { icon: 'calendar', label: 'Planned', tone: 'neutral' };
+  }
+  return { icon: 'checklist', label: 'Open', tone: 'neutral' };
+}
+
+function TaskMetadata({ task, completed }: { task: Task; completed: boolean }) {
+  const { C, styles } = usePlannerTheme();
+  const status = taskStatus(task, completed);
+  const statusColor = status?.tone === 'danger' ? C.danger : C.muted;
+
+  if (!status && !task.subtitle) return null;
+
+  return (
+    <View style={styles.metadataRow}>
+      {task.subtitle ? (
+        <Text numberOfLines={1} style={styles.taskSubtitle}>
+          {task.subtitle}
+        </Text>
+      ) : null}
+      {task.subtitle && status ? <View style={styles.metadataSeparator} /> : null}
+      {status ? (
+        <View style={styles.statusMetadata}>
+          <Icon name={status.icon} size={12} stroke={2} color={statusColor} />
+          <Text numberOfLines={1} style={[styles.statusText, { color: statusColor }]}>
+            {status.label}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function TaskRow({
   task,
   completed = false,
@@ -1247,9 +1345,7 @@ function TaskRow({
               {task.title}
             </Text>
           </View>
-          <Text numberOfLines={1} style={[styles.taskSubtitle, task.late && styles.lateText]}>
-            {task.subtitle}
-          </Text>
+          <TaskMetadata task={task} completed={isDone} />
         </View>
       </View>
     </AnimatedPressable>
@@ -1320,12 +1416,7 @@ function ScheduledRow({
                 {task.title}
               </Text>
             </View>
-            <Text
-              style={[styles.taskSubtitle, task.late && !isDone && styles.lateText]}
-              numberOfLines={1}
-            >
-              {task.late && !isDone ? `Late · ${task.subtitle}` : task.subtitle}
-            </Text>
+            <TaskMetadata task={task} completed={isDone} />
           </View>
         </View>
       </View>
@@ -1742,6 +1833,9 @@ function createStyles(theme: AgendaTheme) {
     completedRow: {
       opacity: 1,
     },
+    completedList: {
+      gap: 8,
+    },
     taskMain: {
       flex: 1,
       minWidth: 0,
@@ -1801,10 +1895,35 @@ function createStyles(theme: AgendaTheme) {
       color: C.muted,
     },
     taskSubtitle: {
+      flexShrink: 1,
       fontFamily: fonts.sans,
       fontSize: 14,
       lineHeight: 16,
       color: C.muted,
+    },
+    metadataRow: {
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    metadataSeparator: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: C.divider,
+      flexShrink: 0,
+    },
+    statusMetadata: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      flexShrink: 0,
+    },
+    statusText: {
+      fontFamily: fonts.sansMedium,
+      fontSize: 12,
+      lineHeight: 16,
     },
     lateText: {
       color: C.danger,
@@ -1840,7 +1959,7 @@ function createStyles(theme: AgendaTheme) {
       paddingLeft: 8,
       fontFamily: fonts.sansMedium,
       fontSize: 16,
-      lineHeight: 16,
+      lineHeight: 20,
       color: C.text,
       fontVariant: ['tabular-nums'],
     },

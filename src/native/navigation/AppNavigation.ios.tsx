@@ -3,11 +3,10 @@ import { Stack } from 'expo-router';
 import { OnboardingGate } from '@/features/onboarding/OnboardingGate';
 import { useAppTheme } from '@/theme';
 
-/**
- * Shared navigation shell — Expo Router mechanics, Agenda chrome drawn in screens.
- */
+/** iOS uses the native stack header and toolbar on the planner screen. */
 export default function AppNavigation() {
   const theme = useAppTheme();
+
   return (
     <OnboardingGate>
       <Stack
