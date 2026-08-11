@@ -1,4 +1,5 @@
 import { Button as NativeButton, Host, Picker, TextInput as IOSTextInput } from '@expo/ui';
+import { frame, padding as nativePadding, textFieldStyle } from '@expo/ui/swift-ui/modifiers';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Modal,
@@ -213,9 +214,12 @@ export function ItemEditorForm({
               defaultValue={draft.title}
               onChangeText={onTitleChange}
               placeholder={titlePlaceholder}
+              placeholderTextColor={theme.placeholder}
               returnKeyType="done"
-              style={{ width: '100%', height: 58 }}
+              selectionColor={accent}
+              style={{ width: '100%', height: 58, paddingHorizontal: 16 }}
               textStyle={{ color: theme.text, fontSize: 20, fontWeight: '500' }}
+              modifiers={[textFieldStyle('plain'), frame({ height: 58, alignment: 'leading' })]}
             />
           </Host>
         ) : (
@@ -295,10 +299,26 @@ export function ItemEditorForm({
               <IOSTextInput
                 defaultValue={draft.details}
                 multiline
+                numberOfLines={draft.kind === 'note' ? 8 : 5}
                 onChangeText={(details) => onChange({ details })}
                 placeholder={draft.kind === 'note' ? 'Write something…' : 'Details (optional)'}
-                style={{ width: '100%', height: draft.kind === 'note' ? 180 : 112 }}
-                textStyle={{ color: theme.text, fontSize: 16 }}
+                placeholderTextColor={theme.placeholder}
+                selectionColor={accent}
+                style={{
+                  width: '100%',
+                  height: draft.kind === 'note' ? 180 : 112,
+                  padding: 16,
+                }}
+                textAlign="left"
+                textStyle={{ color: theme.text, fontSize: 16, lineHeight: 22 }}
+                modifiers={[
+                  textFieldStyle('plain'),
+                  nativePadding({ top: 12, bottom: 12 }),
+                  frame({
+                    height: draft.kind === 'note' ? 180 : 112,
+                    alignment: 'topLeading',
+                  }),
+                ]}
               />
             </Host>
           ) : (
