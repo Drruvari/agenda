@@ -41,21 +41,19 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
   const border = '#D2C9BC';
   const card = '#FBFAF7';
   const danger = '#C0392B';
-
-  const maxRows =
-    environment.widgetFamily === 'systemSmall'
-      ? 3
-      : environment.widgetFamily === 'systemMedium'
-        ? 5
-        : environment.widgetFamily === 'systemLarge'
-          ? 9
-          : 12;
+  const isCompact =
+    environment.widgetFamily === 'systemSmall' || environment.widgetFamily === 'systemMedium';
 
   const rows = Array.isArray(snapshot.rows) ? snapshot.rows : [];
   const allDay = rows.filter((row) => row.section === 'allDay');
   const scheduled = rows.filter((row) => row.section === 'scheduled');
+  const hasBothSections = allDay.length > 0 && scheduled.length > 0;
+  const maxRows = isCompact ? 3 : environment.widgetFamily === 'systemLarge' ? 6 : 8;
 
-  let allDayLimit = Math.min(allDay.length, Math.max(1, Math.ceil(maxRows / 2)));
+  let allDayLimit = Math.min(
+    allDay.length,
+    hasBothSections && isCompact ? 1 : Math.max(1, Math.ceil(maxRows / 2)),
+  );
   let scheduledLimit = Math.min(scheduled.length, maxRows - allDayLimit);
   if (allDay.length === 0) {
     allDayLimit = 0;
@@ -65,7 +63,9 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
     allDayLimit = Math.min(allDay.length, maxRows);
   } else if (allDayLimit + scheduledLimit < maxRows) {
     const leftover = maxRows - allDayLimit - scheduledLimit;
-    if (allDay.length > allDayLimit) {
+    if (isCompact && scheduled.length > scheduledLimit) {
+      scheduledLimit = Math.min(scheduled.length, scheduledLimit + leftover);
+    } else if (allDay.length > allDayLimit) {
       allDayLimit = Math.min(allDay.length, allDayLimit + leftover);
     } else if (scheduled.length > scheduledLimit) {
       scheduledLimit = Math.min(scheduled.length, scheduledLimit + leftover);
@@ -77,13 +77,15 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
   const shown = visibleAllDay.length + visibleScheduled.length;
   const hidden = Math.max(0, rows.length - shown);
 
-  const displayDate = snapshot.date
-    ? new Date(`${snapshot.date}T12:00:00`).toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })
-    : 'Agenda';
+  const displayDate = isCompact
+    ? 'Today'
+    : snapshot.date
+      ? new Date(`${snapshot.date}T12:00:00`).toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        })
+      : 'Agenda';
 
   const children: React.ReactElement[] = [];
 
@@ -112,7 +114,10 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
     children.push(
       <Text
         key={`${keyPrefix}-label`}
-        modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(muted)]}
+        modifiers={[
+          font({ size: isCompact ? 12 : 13, weight: 'semibold' }),
+          foregroundStyle(muted),
+        ]}
       >
         {title}
       </Text>,
@@ -128,13 +133,18 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
         <ZStack>
           <Circle
             modifiers={[
-              frame({ width: 30, height: 30 }),
+              frame({ width: isCompact ? 22 : 30, height: isCompact ? 22 : 30 }),
               foregroundStyle(card),
               strokeBorder({ color: ring, style: { lineWidth: 2 }, shape: 'circle' }),
             ]}
           />
           {row.completed ? (
-            <Circle modifiers={[frame({ width: 22, height: 22 }), foregroundStyle(accent)]} />
+            <Circle
+              modifiers={[
+                frame({ width: isCompact ? 16 : 22, height: isCompact ? 16 : 22 }),
+                foregroundStyle(accent),
+              ]}
+            />
           ) : null}
         </ZStack>
       ) : (
@@ -148,7 +158,7 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
       const titleNode = row.completed ? (
         <Text
           modifiers={[
-            font({ size: 15, weight: 'medium' }),
+            font({ size: isCompact ? 14 : 15, weight: 'medium' }),
             foregroundStyle(titleColor),
             lineLimit(1),
             strikethrough({ isActive: true, pattern: 'solid' }),
@@ -158,7 +168,11 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
         </Text>
       ) : (
         <Text
-          modifiers={[font({ size: 15, weight: 'medium' }), foregroundStyle(titleColor), lineLimit(1)]}
+          modifiers={[
+            font({ size: isCompact ? 14 : 15, weight: 'medium' }),
+            foregroundStyle(titleColor),
+            lineLimit(1),
+          ]}
         >
           {row.title}
         </Text>
@@ -166,16 +180,21 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
 
       const body =
         row.section === 'scheduled' && row.time ? (
-          <HStack spacing={10} alignment="center">
+          <HStack spacing={isCompact ? 7 : 10} alignment="center">
             {leading}
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(timeColor)]}>
+            <Text
+              modifiers={[
+                font({ size: isCompact ? 12 : 13, weight: 'semibold' }),
+                foregroundStyle(timeColor),
+              ]}
+            >
               {row.time}
             </Text>
             {titleNode}
             <Spacer />
           </HStack>
         ) : (
-          <HStack spacing={10} alignment="center">
+          <HStack spacing={isCompact ? 7 : 10} alignment="center">
             {leading}
             {titleNode}
             <Spacer />
@@ -185,9 +204,14 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
       if (!checkable) {
         if (row.section === 'scheduled' && row.time) {
           children.push(
-            <HStack key={row.id} spacing={10} alignment="center">
+            <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
               {leading}
-              <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(timeColor)]}>
+              <Text
+                modifiers={[
+                  font({ size: isCompact ? 12 : 13, weight: 'semibold' }),
+                  foregroundStyle(timeColor),
+                ]}
+              >
                 {row.time}
               </Text>
               {titleNode}
@@ -196,7 +220,7 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
           );
         } else {
           children.push(
-            <HStack key={row.id} spacing={10} alignment="center">
+            <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
               {leading}
               {titleNode}
               <Spacer />
@@ -215,7 +239,11 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
             (() => {
               const nextRows = rows.map((item) =>
                 item.id === row.id
-                  ? { ...item, completed: !item.completed, late: item.completed ? item.late : false }
+                  ? {
+                      ...item,
+                      completed: !item.completed,
+                      late: item.completed ? item.late : false,
+                    }
                   : item,
               );
               return {
@@ -235,7 +263,7 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
   pushSection('All day', visibleAllDay, 'allday');
   pushSection('Scheduled', visibleScheduled, 'scheduled');
 
-  if (hidden > 0) {
+  if (hidden > 0 && !isCompact) {
     children.push(
       <Text key="more" modifiers={[font({ size: 13, weight: 'medium' }), foregroundStyle(muted)]}>
         {`+${hidden} more`}
@@ -247,11 +275,16 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
 
   return (
     <VStack
-      spacing={8}
+      spacing={isCompact ? 3 : 8}
       alignment="leading"
       modifiers={[
         frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'topLeading' }),
-        padding({ top: 8, leading: 10, bottom: 8, trailing: 10 }),
+        padding({
+          top: isCompact ? 3 : 8,
+          leading: isCompact ? 8 : 10,
+          bottom: isCompact ? 3 : 8,
+          trailing: isCompact ? 8 : 10,
+        }),
       ]}
     >
       {children}
