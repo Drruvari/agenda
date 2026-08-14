@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
 
@@ -24,8 +24,8 @@ function createStyles(theme: AgendaTheme) {
       paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.card,
-      ...continuousCorner(16),
+      backgroundColor: Platform.OS === 'ios' ? 'transparent' : theme.card,
+      ...continuousCorner(Platform.OS === 'ios' ? 0 : 16),
     },
     cardCompact: {
       minHeight: 40,

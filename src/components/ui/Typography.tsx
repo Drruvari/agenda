@@ -40,6 +40,7 @@ function createStyles(theme: AgendaTheme) {
     title: {
       fontSize: typography.title,
       fontFamily: fonts.sansSemi,
+      fontWeight: '600',
     },
     page: {
       fontSize: 24,
@@ -48,18 +49,22 @@ function createStyles(theme: AgendaTheme) {
     body: {
       fontSize: typography.body,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
     },
     label: {
       fontSize: typography.label,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
     },
     caption: {
       fontSize: typography.caption,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
     },
     section: {
       fontSize: typography.caption,
       fontFamily: fonts.sansSemi,
+      fontWeight: '600',
       letterSpacing: 0.8,
       textTransform: 'uppercase',
       color: theme.textSecondary,

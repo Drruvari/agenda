@@ -1,28 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Icon } from '@/components/ui/Icon';
+import { SettingRadioGroup } from '@/components/ui/settings/SettingRadioGroup';
 import { useAppLock } from '@/features/privacy';
-import {
-  NOTIFICATION_PREVIEW_OPTIONS,
-  type NotificationPreviewMode,
-} from '@/features/privacy/types';
+import { NOTIFICATION_PREVIEW_OPTIONS } from '@/features/privacy/types';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
 import {
   getReminderAccessState,
   type ReminderAccessState,
   requestReminderAccess,
 } from '@/native/notifications/reminders';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  useAppAppearance,
-  useThemeStyles,
-} from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
 
 export function NotificationSettingsScreen() {
-  const { accent } = useAppAppearance();
   const { styles } = useThemeStyles(createStyles);
   const { prefs, setNotificationPreview } = useAppLock();
   const [access, setAccess] = useState<ReminderAccessState>('undetermined');
@@ -70,32 +60,11 @@ export function NotificationSettingsScreen() {
             Controls what appears on the lock screen for Agenda reminders.
           </Text>
         </View>
-        {NOTIFICATION_PREVIEW_OPTIONS.map((option, index) => {
-          const selected = prefs.notificationPreview === option.value;
-          const last = index === NOTIFICATION_PREVIEW_OPTIONS.length - 1;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              onPress={() => void setNotificationPreview(option.value as NotificationPreviewMode)}
-              style={({ pressed }) => [
-                styles.previewOption,
-                last && styles.lastRow,
-                selected && styles.previewSelected,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.previewCopy}>
-                <Text style={[styles.previewLabel, selected && { color: accent }]}>
-                  {option.label}
-                </Text>
-                <Text style={styles.previewSubtitle}>{option.subtitle}</Text>
-              </View>
-              {selected ? <Icon color={accent} name="check" size={20} stroke={2.2} /> : null}
-            </Pressable>
-          );
-        })}
+        <SettingRadioGroup
+          onValueChange={(value) => void setNotificationPreview(value)}
+          options={NOTIFICATION_PREVIEW_OPTIONS}
+          value={prefs.notificationPreview}
+        />
       </SettingsSection>
     </SettingsScaffold>
   );
@@ -122,29 +91,11 @@ function createStyles(theme: AgendaTheme) {
       backgroundColor: theme.primary,
       ...continuousCorner(12),
     },
-    buttonText: { color: theme.onPrimary, fontFamily: fonts.sansSemi, fontSize: 15 },
-    previewOption: {
-      minHeight: 58,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.separator,
+    buttonText: {
+      color: theme.onPrimary,
+      fontFamily: fonts.sansSemi,
+      fontWeight: '600',
+      fontSize: 15,
     },
-    lastRow: { borderBottomWidth: 0 },
-    previewSelected: {
-      backgroundColor: theme.primarySoft,
-    },
-    previewCopy: { flex: 1, gap: 2 },
-    previewLabel: { color: theme.text, fontFamily: fonts.sansMedium, fontSize: 15 },
-    previewSubtitle: {
-      color: theme.textSecondary,
-      fontFamily: fonts.sans,
-      fontSize: 12.5,
-      lineHeight: 17,
-    },
-    pressed: { opacity: 0.72 },
   });
 }

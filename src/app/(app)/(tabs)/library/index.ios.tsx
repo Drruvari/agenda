@@ -1,6 +1,8 @@
 import { FieldGroup, Host, Icon, ListItem, Text } from '@expo/ui';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { PlatformColor, StyleSheet, Text as RNText } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
 import { useLibrary } from '@/features/library';
@@ -31,60 +33,90 @@ export default function LibraryScreen() {
   }, [repos, revision]);
 
   return (
-    <Host
-      colorScheme={colorScheme}
-      seedColor={accent}
-      style={{ flex: 1 }}
-      useViewportSizeMeasurement
-    >
-      <FieldGroup>
-        <FieldGroup.Section title="Collections">
-          <LibraryRow
-            count={items.length}
-            icon="tray.full"
-            label="All Items"
-            onPress={() => router.push('/library/items')}
-          />
-          <LibraryRow
-            count={items.filter((item) => !item.spaceId).length}
-            icon="tray"
-            label="Inbox"
-            onPress={() => router.push('/library/items?filter=inbox' as never)}
-          />
-          <LibraryRow
-            count={items.filter((item) => item.type === 'task' && item.completed).length}
-            icon="checkmark.circle"
-            label="Completed"
-            onPress={() => router.push('/library/completed')}
-          />
-          <LibraryRow
-            count={notes.length}
-            icon="book.pages"
-            label="Daily Notes"
-            onPress={() => router.push('/library/notes')}
-          />
-        </FieldGroup.Section>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+      <RNText accessibilityRole="header" style={styles.title}>
+        Library
+      </RNText>
+      <Host
+        colorScheme={colorScheme}
+        seedColor={accent}
+        style={styles.host}
+        useViewportSizeMeasurement
+      >
+        <FieldGroup>
+          <FieldGroup.Section title="Collections">
+            <LibraryRow
+              count={items.length}
+              icon="tray.full"
+              label="All Items"
+              onPress={() => router.push('/library/items')}
+            />
+            <LibraryRow
+              count={items.filter((item) => !item.spaceId).length}
+              icon="tray"
+              label="Inbox"
+              onPress={() => router.push('/library/items?filter=inbox' as never)}
+            />
+            <LibraryRow
+              count={items.filter((item) => item.type === 'task' && item.completed).length}
+              icon="checkmark.circle"
+              label="Completed"
+              onPress={() => router.push('/library/completed')}
+            />
+            <LibraryRow
+              count={notes.length}
+              icon="book.pages"
+              label="Daily Notes"
+              onPress={() => router.push('/library/notes')}
+            />
+          </FieldGroup.Section>
 
-        <FieldGroup.Section title="Spaces">
-          {spaces.map((space) => (
+          <FieldGroup.Section title="Spaces">
+            {spaces.map((space) => (
+              <ListItem
+                key={space.id}
+                leading={<Icon color={space.color} name="circle.fill" size={18} />}
+                onPress={() => router.push(`/library/space/${space.id}` as never)}
+                supportingText={space.isPinned ? 'Pinned to Today' : 'Space'}
+                trailing={<Icon name="chevron.right" size={14} />}
+              >
+                <Text>{space.name}</Text>
+              </ListItem>
+            ))}
+            <ListItem leading={<Icon name="plus.circle" size={20} />} onPress={openCreateSpace}>
+              <Text>Add Space</Text>
+            </ListItem>
+          </FieldGroup.Section>
+          <FieldGroup.Section title="App">
             <ListItem
-              key={space.id}
-              leading={<Icon color={space.color} name="circle.fill" size={18} />}
-              onPress={() => router.push(`/library/space/${space.id}` as never)}
-              supportingText={space.isPinned ? 'Pinned to Today' : 'Space'}
+              leading={<Icon name="gearshape" size={19} />}
+              onPress={() => router.push('/settings')}
               trailing={<Icon name="chevron.right" size={14} />}
             >
-              <Text>{space.name}</Text>
+              <Text>Settings</Text>
             </ListItem>
-          ))}
-          <ListItem leading={<Icon name="plus.circle" size={20} />} onPress={openCreateSpace}>
-            <Text>Add Space</Text>
-          </ListItem>
-        </FieldGroup.Section>
-      </FieldGroup>
-    </Host>
+          </FieldGroup.Section>
+        </FieldGroup>
+      </Host>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: PlatformColor('systemGroupedBackground') },
+  title: {
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    color: PlatformColor('label'),
+    fontFamily: 'System',
+    fontSize: 34,
+    lineHeight: 41,
+    fontWeight: '700',
+    letterSpacing: -0.7,
+  },
+  host: { flex: 1 },
+});
 
 function LibraryRow({
   count,

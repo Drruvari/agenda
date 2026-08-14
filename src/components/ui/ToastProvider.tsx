@@ -8,7 +8,6 @@ import Animated, {
   FadeOutDown,
   FadeOutUp,
   ReduceMotion,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -16,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FullWindowOverlay } from 'react-native-screens';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { triggerHaptic } from '@/lib/haptics';
@@ -229,7 +229,7 @@ function AgendaToast({
       const distance = placement === 'top' ? event.translationY : -event.translationY;
       const velocity = placement === 'top' ? event.velocityY : -event.velocityY;
       if (distance < -40 || velocity < -650) {
-        runOnJS(hideToast)(item.id);
+        scheduleOnRN(hideToast, item.id);
         return;
       }
       dragY.value = withSpring(0, { damping: 18, stiffness: 220 });

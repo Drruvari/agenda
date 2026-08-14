@@ -141,6 +141,7 @@ function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
     edit: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.primary,
     },
@@ -154,12 +155,14 @@ function createStyles(theme: AgendaTheme) {
     },
     filterChipLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 14,
       color: theme.primary,
     },
     section: { gap: 8, marginBottom: 16 },
     sectionTitle: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 13,
       letterSpacing: 0.4,
       textTransform: 'uppercase',
@@ -181,6 +184,7 @@ function createStyles(theme: AgendaTheme) {
     lastRow: { borderBottomWidth: 0 },
     rowTitle: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.text,
     },

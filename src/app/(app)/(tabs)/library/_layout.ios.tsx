@@ -5,22 +5,18 @@ export default function LibraryLayout() {
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: PlatformColor('systemBackground') },
+        contentStyle: { backgroundColor: PlatformColor('systemGroupedBackground') },
+        headerShown: false,
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: PlatformColor('systemBackground') },
+        headerStyle: { backgroundColor: PlatformColor('systemGroupedBackground') },
         headerTintColor: PlatformColor('label'),
       }}
     >
-      <Stack.Screen
-        name="index"
-        options={{
-          title: 'Library',
-        }}
-      />
-      <Stack.Screen name="items" options={{ title: 'All Items' }} />
-      <Stack.Screen name="completed" options={{ title: 'Completed' }} />
-      <Stack.Screen name="notes" options={{ title: 'Daily Notes' }} />
-      <Stack.Screen name="space/[id]" options={{ title: 'Space' }} />
+      <Stack.Screen name="index" options={{ title: '' }} />
+      <Stack.Screen name="items" options={{ headerShown: true, title: 'All Items' }} />
+      <Stack.Screen name="completed" options={{ headerShown: true, title: 'Completed' }} />
+      <Stack.Screen name="notes" options={{ headerShown: true, title: 'Daily Notes' }} />
+      <Stack.Screen name="space/[id]" options={{ headerShown: true, title: 'Space' }} />
     </Stack>
   );
 }

@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon } from '@/components/ui/Icon';
 import { triggerHaptic } from '@/lib/haptics';
@@ -36,11 +36,11 @@ export function SwipeableRow({ children, enabled = true, onComplete }: Props) {
       const reached = translateX.value >= COMPLETE_THRESHOLD;
       if (reached !== thresholdReached.value) {
         thresholdReached.value = reached;
-        if (reached) runOnJS(triggerHaptic)('selection');
+        if (reached) scheduleOnRN(triggerHaptic, 'selection');
       }
     })
     .onEnd(() => {
-      if (thresholdReached.value) runOnJS(onComplete)();
+      if (thresholdReached.value) scheduleOnRN(onComplete);
     })
     .onFinalize(() => {
       translateX.value = withSpring(0, motion.settle);
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     overflow: 'hidden',
-    ...continuousCorner(16),
+    ...continuousCorner(18),
   },
   action: {
     position: 'absolute',

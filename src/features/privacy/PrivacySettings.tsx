@@ -3,6 +3,7 @@ import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Icon } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
+import { SettingRadioGroup } from '@/components/ui/settings/SettingRadioGroup';
 import { useToast } from '@/components/ui/ToastProvider';
 import { SettingPicker } from '@/features/settings/SettingPicker';
 import { SettingsSection } from '@/features/settings/SettingsChrome';
@@ -15,7 +16,6 @@ import {
   type LockDelay,
   lockDelayLabel,
   NOTIFICATION_PREVIEW_OPTIONS,
-  type NotificationPreviewMode,
 } from './types';
 
 export function PrivacySettings() {
@@ -93,30 +93,11 @@ export function PrivacySettings() {
             Controls what appears on the lock screen for Agenda reminders.
           </Text>
         </View>
-        {NOTIFICATION_PREVIEW_OPTIONS.map((option, index) => {
-          const selected = prefs.notificationPreview === option.value;
-          const last = index === NOTIFICATION_PREVIEW_OPTIONS.length - 1;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              onPress={() => void setNotificationPreview(option.value as NotificationPreviewMode)}
-              style={({ pressed }) => [
-                styles.previewOption,
-                last && styles.lastRow,
-                selected && styles.previewOptionSelected,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.rowCopy}>
-                <Text style={[styles.rowTitle, selected && { color: accent }]}>{option.label}</Text>
-                <Text style={styles.rowSubtitle}>{option.subtitle}</Text>
-              </View>
-              {selected ? <Icon color={accent} name="check" size={20} stroke={2.2} /> : null}
-            </Pressable>
-          );
-        })}
+        <SettingRadioGroup
+          onValueChange={(value) => void setNotificationPreview(value)}
+          options={NOTIFICATION_PREVIEW_OPTIONS}
+          value={prefs.notificationPreview}
+        />
       </SettingsSection>
 
       <SettingsSection title="Data">
@@ -289,19 +270,6 @@ function createStyles(theme: AgendaTheme) {
       fontFamily: fonts.sans,
       fontSize: 12.5,
       lineHeight: 17,
-    },
-    previewOption: {
-      minHeight: 58,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.separator,
-    },
-    previewOptionSelected: {
-      backgroundColor: theme.primarySoft,
     },
     footnote: {
       marginHorizontal: 8,

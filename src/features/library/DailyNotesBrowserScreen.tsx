@@ -62,6 +62,7 @@ function createStyles(theme: AgendaTheme) {
     },
     date: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.primary,
     },

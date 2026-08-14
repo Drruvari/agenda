@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
-} from '@/components/ui/AgendaBottomSheet';
+} from '@/components/ui/sheet/Sheet';
 import type { IconName } from '@/components/ui/Icon';
 import { Icon } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
@@ -428,7 +437,11 @@ function createStyles(theme: AgendaTheme) {
       gap: 12,
     },
     quickCreateRoot: { flex: 1 },
-    quickCreateContent: { paddingHorizontal: 20, paddingTop: 20, gap: 12 },
+    quickCreateContent: {
+      paddingHorizontal: Platform.OS === 'ios' ? 16 : 20,
+      paddingTop: Platform.OS === 'ios' ? 16 : 20,
+      gap: Platform.OS === 'ios' ? 16 : 12,
+    },
     quickNameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     quickIconPreview: {
       width: 48,
@@ -483,7 +496,12 @@ function createStyles(theme: AgendaTheme) {
       lineHeight: 18,
     },
     browserRoot: { flex: 1 },
-    browserList: { padding: 16, gap: 8 },
+    browserList: {
+      paddingHorizontal: 16,
+      paddingTop: Platform.OS === 'ios' ? 8 : 16,
+      paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+      gap: Platform.OS === 'ios' ? 0 : 8,
+    },
     browserRow: {
       minHeight: 64,
       paddingHorizontal: 16,
@@ -495,6 +513,7 @@ function createStyles(theme: AgendaTheme) {
     },
     sectionLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 13,
       letterSpacing: 0.4,
       textTransform: 'uppercase',
@@ -528,6 +547,7 @@ function createStyles(theme: AgendaTheme) {
     collectionLabel: {
       flex: 1,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.text,
     },
@@ -554,6 +574,7 @@ function createStyles(theme: AgendaTheme) {
     lastRow: { borderBottomWidth: 0 },
     rowLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.text,
     },
@@ -591,6 +612,7 @@ function createStyles(theme: AgendaTheme) {
     },
     editLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.primary,
       paddingHorizontal: 4,
@@ -622,6 +644,7 @@ function createStyles(theme: AgendaTheme) {
     },
     addLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.onPrimary,
     },
@@ -633,6 +656,7 @@ function createStyles(theme: AgendaTheme) {
     },
     allChipLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.primary,
     },

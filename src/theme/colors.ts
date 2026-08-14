@@ -3,7 +3,7 @@ import { type ColorValue, Platform } from 'react-native';
 /** Four appearance modes — Light / Dark / Light HC / Dark HC. */
 export type AppearanceMode = 'light' | 'dark' | 'lightHighContrast' | 'darkHighContrast';
 
-export type ModeValues = Record<AppearanceMode, string>;
+type ModeValues = Record<AppearanceMode, string>;
 
 export function rgba(hex: string, alpha: number): string {
   const value = hex.replace('#', '');
@@ -91,9 +91,6 @@ export const categoryColorValues = {
 
 export type CategoryColorName = keyof typeof categoryColorValues;
 
-/** @deprecated Prefer `CategoryColorName` — kept for space color pickers. */
-export type SpaceColorName = CategoryColorName;
-
 /** Light-mode category hexes for storing space colors. */
 export const spaceColors: Record<CategoryColorName, string> = Object.fromEntries(
   (Object.keys(categoryColorValues) as CategoryColorName[]).map((name) => [
@@ -102,7 +99,7 @@ export const spaceColors: Record<CategoryColorName, string> = Object.fromEntries
   ]),
 ) as Record<CategoryColorName, string>;
 
-export const neutralColorValues = {
+const neutralColorValues = {
   gray1: {
     light: '#77736C',
     dark: '#999B9C',
@@ -141,70 +138,19 @@ export const neutralColorValues = {
   },
 } as const satisfies Record<string, ModeValues>;
 
-export type NeutralColorName = keyof typeof neutralColorValues;
-
-/** Material / glass effect tokens — not RGB; map to BlurView / UIVisualEffect. */
-export type MaterialToken =
-  'ultraThin' | 'thin' | 'regular' | 'thick' | 'glassRegular' | 'glassClear';
-
 export type AgendaTheme = {
   mode: AppearanceMode;
   isDark: boolean;
   isHighContrast: boolean;
 
-  brand: {
-    primary: ColorValue;
-    primarySoft: ColorValue;
-    onPrimary: ColorValue;
-  };
-  content: {
-    text: ColorValue;
-    secondary: ColorValue;
-    tertiary: ColorValue;
-    quaternary: ColorValue;
-    placeholder: ColorValue;
-    link: ColorValue;
-    disabled: ColorValue;
-  };
-  surface: {
-    background: ColorValue;
-    secondary: ColorValue;
-    tertiary: ColorValue;
-    grouped: ColorValue;
-    groupedSecondary: ColorValue;
-    groupedTertiary: ColorValue;
-  };
   control: {
     fill: ColorValue;
     fillSecondary: ColorValue;
-    fillTertiary: ColorValue;
     fillQuaternary: ColorValue;
-    input: ColorValue;
-    inputClear: ColorValue;
-    selected: ColorValue;
     pressed: ColorValue;
-    disabled: ColorValue;
-  };
-  boundary: {
-    separator: ColorValue;
-    border: ColorValue;
-    borderStrong: ColorValue;
-    focus: ColorValue;
-  };
-  status: {
-    info: ColorValue;
-    infoSoft: ColorValue;
-    success: ColorValue;
-    successSoft: ColorValue;
-    warning: ColorValue;
-    warningSoft: ColorValue;
-    danger: ColorValue;
-    dangerSoft: ColorValue;
   };
   category: Record<CategoryColorName, ColorValue>;
-  neutral: Record<NeutralColorName, ColorValue>;
   overlay: ColorValue;
-  material: Record<MaterialToken, MaterialToken>;
 
   /**
    * Flat aliases (string fallbacks) for Icon / Text props and StyleSheet.
@@ -218,7 +164,6 @@ export type AgendaTheme = {
   textSecondary: string;
   textTertiary: string;
   placeholder: string;
-  link: string;
   primary: string;
   primarySoft: string;
   onPrimary: string;
@@ -227,17 +172,16 @@ export type AgendaTheme = {
   input: string;
   warning: string;
   danger: string;
-  success: string;
   floating: string;
   floatingText: string;
   floatingTextMuted: string;
 };
 
-export function getCategoryReference(name: CategoryColorName, mode: AppearanceMode): string {
+function getCategoryReference(name: CategoryColorName, mode: AppearanceMode): string {
   return categoryColorValues[name][mode];
 }
 
-export function getCategoryColor(name: CategoryColorName, mode: AppearanceMode): ColorValue {
+function getCategoryColor(name: CategoryColorName, mode: AppearanceMode): ColorValue {
   return getCategoryReference(name, mode);
 }
 
@@ -262,7 +206,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
   const useNeutralIOSPalette = Platform.OS === 'ios';
   const useMaterialAndroidPalette = Platform.OS === 'android';
   const primaryReference = getCategoryReference('indigo', mode);
-  const primary = getCategoryColor('indigo', mode);
   const onPrimary = isDark ? '#000000' : '#FFFFFF';
   const primarySoft = rgba(primaryReference, softAlpha(mode));
 
@@ -272,13 +215,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
       getCategoryColor(name, mode),
     ]),
   ) as Record<CategoryColorName, ColorValue>;
-
-  const neutral = Object.fromEntries(
-    (Object.keys(neutralColorValues) as NeutralColorName[]).map((name) => [
-      name,
-      neutralColorValues[name][mode],
-    ]),
-  ) as Record<NeutralColorName, ColorValue>;
 
   const text = useNeutralIOSPalette
     ? isDark
@@ -313,17 +249,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
       : isDark
         ? '#85888A'
         : '#928A80';
-  const quaternaryText = useNeutralIOSPalette
-    ? isDark
-      ? '#5A5A5E'
-      : '#AEAEB2'
-    : useMaterialAndroidPalette
-      ? isDark
-        ? '#79747E'
-        : '#938F99'
-      : isDark
-        ? '#666B6E'
-        : '#B0A79C';
   const surfaceBackground = useNeutralIOSPalette
     ? isDark
       ? '#000000'
@@ -379,8 +304,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
         ? '#30383F'
         : '#DDD4C7';
   const inputFallback = rgba(fillBase, 0.12 + alphaBoost);
-  const blueRef = getCategoryReference('blue', mode);
-  const greenRef = getCategoryReference('green', mode);
   const orangeRef = getCategoryReference('orange', mode);
   const redRef = getCategoryReference('red', mode);
 
@@ -388,66 +311,14 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     mode,
     isDark,
     isHighContrast,
-    brand: {
-      primary,
-      primarySoft,
-      onPrimary,
-    },
-    content: {
-      text,
-      secondary: secondaryText,
-      tertiary: tertiaryText,
-      quaternary: quaternaryText,
-      placeholder: tertiaryText,
-      link: blueRef,
-      disabled: quaternaryText,
-    },
-    surface: {
-      background: surfaceBackground,
-      secondary: surfaceSecondary,
-      tertiary: surfaceTertiary,
-      grouped: surfaceSecondary,
-      groupedSecondary: surfaceTertiary,
-      groupedTertiary: surfaceSecondary,
-    },
     control: {
       fill: rgba(fillBase, 0.2 + alphaBoost),
       fillSecondary: rgba(fillBase, 0.16 + alphaBoost),
-      fillTertiary: inputFallback,
       fillQuaternary: rgba(fillBase, 0.08 + alphaBoost),
-      input: inputFallback,
-      inputClear: 'transparent',
-      selected: primarySoft,
       pressed: rgba(primaryReference, softAlpha(mode) + 0.08),
-      disabled: rgba(fillBase, 0.08 + alphaBoost),
-    },
-    boundary: {
-      separator: separatorFallback,
-      border: neutral.gray4,
-      borderStrong: neutralColorValues.gray3[mode],
-      focus: primary,
-    },
-    status: {
-      info: category.blue,
-      infoSoft: rgba(blueRef, softAlpha(mode)),
-      success: category.green,
-      successSoft: rgba(greenRef, softAlpha(mode)),
-      warning: category.orange,
-      warningSoft: rgba(orangeRef, softAlpha(mode)),
-      danger: category.red,
-      dangerSoft: rgba(redRef, softAlpha(mode)),
     },
     category,
-    neutral,
     overlay: rgba('#000000', isDark ? 0.55 : 0.25),
-    material: {
-      ultraThin: 'ultraThin',
-      thin: 'thin',
-      regular: 'regular',
-      thick: 'thick',
-      glassRegular: 'glassRegular',
-      glassClear: 'glassClear',
-    },
     // Flat string aliases for components that require string colors
     background: surfaceBackground,
     section: surfaceSecondary,
@@ -456,7 +327,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     textSecondary: secondaryText,
     textTertiary: tertiaryText,
     placeholder: tertiaryText,
-    link: blueRef,
     primary: primaryReference,
     primarySoft,
     onPrimary,
@@ -465,7 +335,6 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     input: inputFallback,
     warning: orangeRef,
     danger: redRef,
-    success: greenRef,
     floating: useNeutralIOSPalette
       ? isDark
         ? rgba('#1C1C1E', 0.86)
@@ -498,28 +367,13 @@ export function withBrandAccent(
 
   return {
     ...theme,
-    brand: {
-      primary: accentHex,
-      primarySoft,
-      onPrimary,
-    },
     control: {
       ...theme.control,
-      selected: primarySoft,
       pressed: rgba(accentHex, softAlpha(mode) + 0.08),
-    },
-    boundary: {
-      ...theme.boundary,
-      focus: accentHex,
-    },
-    content: {
-      ...theme.content,
-      link: accentHex,
     },
     primary: accentHex,
     primarySoft,
     onPrimary,
-    link: accentHex,
   };
 }
 

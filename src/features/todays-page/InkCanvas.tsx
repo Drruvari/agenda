@@ -2,8 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, PointerType } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   createStroke,
@@ -272,26 +272,32 @@ export function InkCanvas({
       .onStart((event) => {
         'worklet';
         if (isErase) {
-          runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
+          scheduleOnRN(eraseAtJS, event.x, event.y, event.pointerType);
           return;
         }
-        runOnJS(beginStrokeJS)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
+        scheduleOnRN(
+          beginStrokeJS,
+          event.x,
+          event.y,
+          event.pointerType,
+          event.stylusData?.pressure,
+        );
       })
       .onUpdate((event) => {
         'worklet';
         if (isErase) {
-          runOnJS(eraseAtJS)(event.x, event.y, event.pointerType);
+          scheduleOnRN(eraseAtJS, event.x, event.y, event.pointerType);
           return;
         }
-        runOnJS(moveStrokeJS)(event.x, event.y, event.pointerType, event.stylusData?.pressure);
+        scheduleOnRN(moveStrokeJS, event.x, event.y, event.pointerType, event.stylusData?.pressure);
       })
       .onEnd(() => {
         'worklet';
-        if (!isErase) runOnJS(endStrokeJS)();
+        if (!isErase) scheduleOnRN(endStrokeJS);
       })
       .onFinalize((_event, success) => {
         'worklet';
-        if (!success && !isErase) runOnJS(cancelStrokeJS)();
+        if (!success && !isErase) scheduleOnRN(cancelStrokeJS);
       });
   }, [beginStrokeJS, cancelStrokeJS, enabled, endStrokeJS, eraseAtJS, moveStrokeJS, penOnly, tool]);
 

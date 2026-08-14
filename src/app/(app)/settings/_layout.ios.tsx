@@ -6,12 +6,20 @@ export default function SettingsLayout() {
     <Stack
       screenOptions={{
         contentStyle: { backgroundColor: PlatformColor('systemGroupedBackground') },
+        headerShown: true,
         headerShadowVisible: false,
         headerStyle: { backgroundColor: PlatformColor('systemGroupedBackground') },
         headerTintColor: PlatformColor('label'),
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Settings', headerTitleAlign: 'left' }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          title: 'Settings',
+          headerLargeTitle: true,
+          headerLargeTitleShadowVisible: false,
+        }}
+      />
       <Stack.Screen name="appearance" options={{ title: 'General' }} />
       <Stack.Screen name="editor" options={{ title: 'Editor' }} />
       <Stack.Screen name="sync" options={{ title: 'Sync' }} />

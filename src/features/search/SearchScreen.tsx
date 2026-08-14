@@ -1,12 +1,23 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Dimensions,
+  FlatList,
+  Platform,
+  PlatformColor,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
-} from '@/components/ui/AgendaBottomSheet';
+} from '@/components/ui/sheet/Sheet';
 import { Icon } from '@/components/ui/Icon';
 import { type AgendaItem, type DailyNote, type Routine, type Space, useData } from '@/data';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
@@ -137,18 +148,16 @@ export function SearchSheet({
     <View style={styles.root}>
       {embedded ? (
         <>
+          <SafeAreaView edges={['top', 'left', 'right']} style={styles.embeddedHeader}>
+            <Text accessibilityRole="header" style={styles.pageTitle}>
+              Search
+            </Text>
+          </SafeAreaView>
           <Stack.SearchBar
             autoFocus
             onChangeText={(event) => setQuery(event.nativeEvent.text)}
             placeholder="Tasks, routines, and notes"
           />
-          <Stack.Toolbar placement="left">
-            <Stack.Toolbar.Button
-              accessibilityLabel="Back to Today"
-              icon="chevron.backward"
-              onPress={() => router.replace('/')}
-            />
-          </Stack.Toolbar>
         </>
       ) : (
         <AgendaSheetHeader title="Search" onCancel={close} />
@@ -236,7 +245,21 @@ export function SearchTabScreen() {
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    root: { flex: 1, paddingHorizontal: 18 },
+    root: { flex: 1, paddingHorizontal: Platform.OS === 'ios' ? 0 : 18 },
+    embeddedHeader: {
+      paddingTop: 8,
+      paddingHorizontal: 20,
+      paddingBottom: 8,
+      backgroundColor: PlatformColor('systemBackground'),
+    },
+    pageTitle: {
+      color: PlatformColor('label'),
+      fontFamily: fonts.sans,
+      fontSize: 34,
+      lineHeight: 41,
+      fontWeight: '700',
+      letterSpacing: -0.7,
+    },
     searchBox: {
       minHeight: 52,
       marginTop: 12,
@@ -254,15 +277,24 @@ function createStyles(theme: AgendaTheme) {
       color: theme.text,
       paddingVertical: 12,
     },
-    list: { paddingTop: 16, paddingBottom: 40, gap: 8, flexGrow: 1 },
+    list: {
+      paddingTop: Platform.OS === 'ios' ? 8 : 16,
+      paddingBottom: 40,
+      paddingHorizontal: Platform.OS === 'ios' ? 16 : 0,
+      gap: Platform.OS === 'ios' ? 0 : 8,
+      flexGrow: 1,
+    },
     result: {
       minHeight: 68,
-      padding: 12,
+      paddingVertical: 10,
+      paddingHorizontal: Platform.OS === 'ios' ? 0 : 12,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      backgroundColor: theme.card,
-      ...continuousCorner(16),
+      backgroundColor: Platform.OS === 'ios' ? 'transparent' : theme.card,
+      borderBottomWidth: Platform.OS === 'ios' ? StyleSheet.hairlineWidth : 0,
+      borderBottomColor: theme.separator,
+      ...continuousCorner(Platform.OS === 'ios' ? 0 : 16),
     },
     resultIcon: {
       width: 40,
@@ -270,10 +302,10 @@ function createStyles(theme: AgendaTheme) {
       borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.primarySoft,
+      backgroundColor: Platform.OS === 'ios' ? theme.section : theme.primarySoft,
     },
     copy: { flex: 1, gap: 3 },
-    title: { fontFamily: fonts.sansMedium, fontSize: 16, color: theme.text },
+    title: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 16, color: theme.text },
     subtitle: { fontFamily: fonts.sans, fontSize: 13, color: theme.textSecondary },
     empty: {
       paddingTop: 48,

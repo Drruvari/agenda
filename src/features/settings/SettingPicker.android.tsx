@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AgendaBottomSheet } from '@/components/ui/AgendaBottomSheet';
+import { AgendaBottomSheet } from '@/components/ui/sheet/Sheet';
 import { Icon } from '@/components/ui/Icon';
 import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
 

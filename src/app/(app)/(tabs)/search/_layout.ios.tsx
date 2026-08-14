@@ -1,19 +1,18 @@
 import { Stack } from 'expo-router';
-
-import { useAppTheme } from '@/theme';
+import { PlatformColor } from 'react-native';
 
 export default function SearchLayout() {
-  const theme = useAppTheme();
-
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: theme.background },
+        contentStyle: { backgroundColor: PlatformColor('systemBackground') },
+        headerShown: false,
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: theme.background },
+        headerStyle: { backgroundColor: PlatformColor('systemBackground') },
+        headerTintColor: PlatformColor('label'),
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Search', headerTitleAlign: 'left' }} />
+      <Stack.Screen name="index" options={{ title: '' }} />
     </Stack>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/AgendaBottomSheet';
+import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { Icon } from '@/components/ui/Icon';
 import { type Space, useData } from '@/data';
 import {
@@ -157,6 +157,7 @@ function createStyles(theme: AgendaTheme) {
     },
     title: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 20,
       color: theme.text,
       marginBottom: 8,
@@ -175,6 +176,7 @@ function createStyles(theme: AgendaTheme) {
     optionLabel: {
       flex: 1,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.text,
     },
@@ -193,6 +195,7 @@ function createStyles(theme: AgendaTheme) {
     },
     newSpaceLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.primary,
     },
@@ -216,6 +219,7 @@ function createStyles(theme: AgendaTheme) {
     },
     addLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.onPrimary,
     },

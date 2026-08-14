@@ -206,7 +206,7 @@ function createStyles(theme: AgendaTheme) {
       overflow: 'hidden',
     },
     androidShell: {
-      backgroundColor: theme.surface.tertiary,
+      backgroundColor: theme.card,
     },
     bar: {
       flexDirection: 'row',
@@ -239,7 +239,7 @@ function createStyles(theme: AgendaTheme) {
     divider: {
       width: StyleSheet.hairlineWidth,
       height: 20,
-      backgroundColor: theme.boundary.separator,
+      backgroundColor: theme.separator,
       marginHorizontal: 2,
     },
     swatchHit: {

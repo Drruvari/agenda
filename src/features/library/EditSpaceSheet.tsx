@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +15,7 @@ import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
-} from '@/components/ui/AgendaBottomSheet';
+} from '@/components/ui/sheet/Sheet';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { type Space, useData } from '@/data';
@@ -221,7 +222,7 @@ function createStyles(theme: AgendaTheme) {
       paddingHorizontal: 16,
       paddingTop: 20,
       paddingBottom: 40,
-      gap: 18,
+      gap: Platform.OS === 'ios' ? 16 : 18,
     },
     nameRow: {
       flexDirection: 'row',
@@ -245,11 +246,13 @@ function createStyles(theme: AgendaTheme) {
       color: theme.text,
       backgroundColor: theme.input,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 17,
       ...continuousCorner(14),
     },
     sectionLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 13,
       letterSpacing: 0.4,
       textTransform: 'uppercase',
@@ -290,6 +293,7 @@ function createStyles(theme: AgendaTheme) {
     pinCopy: { flex: 1, gap: 2 },
     rowLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.text,
     },
@@ -309,6 +313,7 @@ function createStyles(theme: AgendaTheme) {
     },
     deleteLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.danger,
     },

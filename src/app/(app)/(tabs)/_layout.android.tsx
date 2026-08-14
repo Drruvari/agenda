@@ -29,7 +29,7 @@ export default function AndroidTabsLayout() {
       <Tabs.Screen
         name="(today)"
         options={{
-          title: 'Today',
+          title: 'Agenda',
           tabBarIcon: ({ color, focused, size }) => (
             <Icon name="calendar" color={color as string} size={focused ? size + 2 : size} />
           ),

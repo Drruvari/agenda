@@ -257,6 +257,7 @@ export function createChromeStyles(theme: AgendaTheme) {
       flex: 1,
       color: theme.text,
       fontFamily: fonts.sansSemi,
+      fontWeight: '600',
       fontSize: 22,
       letterSpacing: -0.3,
     },
@@ -267,7 +268,7 @@ export function createChromeStyles(theme: AgendaTheme) {
       paddingHorizontal: 18,
       ...continuousCorner(22),
     },
-    doneLabel: { fontFamily: fonts.sansMedium, fontSize: 16 },
+    doneLabel: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 16 },
     description: {
       marginBottom: 18,
       color: theme.textSecondary,
@@ -277,10 +278,10 @@ export function createChromeStyles(theme: AgendaTheme) {
     },
     scrollContent: {
       paddingHorizontal: 16,
-      paddingTop: 12,
-      gap: 16,
+      paddingTop: Platform.OS === 'ios' ? 8 : 12,
+      gap: Platform.OS === 'ios' ? 24 : 16,
     },
-    sectionWrap: { gap: 10 },
+    sectionWrap: { gap: Platform.OS === 'ios' ? 8 : 10 },
     sectionTitle: {
       color: iosSecondaryLabel ?? theme.textSecondary,
       fontFamily: Platform.OS === 'ios' ? undefined : fonts.sansSemi,
@@ -290,7 +291,7 @@ export function createChromeStyles(theme: AgendaTheme) {
     sectionCard: {
       overflow: 'hidden',
       backgroundColor: iosSection ?? theme.section,
-      ...continuousCorner(20),
+      ...continuousCorner(Platform.OS === 'ios' ? 14 : 20),
     },
     tabBarWrap: {
       position: 'absolute',
@@ -327,6 +328,7 @@ export function createChromeStyles(theme: AgendaTheme) {
     tabLabel: {
       color: theme.floatingTextMuted,
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 10,
       letterSpacing: -0.1,
     },

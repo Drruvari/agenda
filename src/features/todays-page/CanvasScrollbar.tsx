@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { type AgendaTheme, useAppTheme } from '@/theme';
 
@@ -77,7 +77,7 @@ export function CanvasScrollbar({
         .onBegin(() => {
           dragStartScroll.value = scrollY.value;
           active.value = withSpring(1, { damping: 18, stiffness: 220 });
-          runOnJS(setDraggingJS)(true);
+          scheduleOnRN(setDraggingJS, true);
         })
         .onUpdate((event) => {
           const usableTrack = Math.max(1, trackHeight.value - TRACK_INSET * 2);
@@ -91,11 +91,11 @@ export function CanvasScrollbar({
             Math.max(0, dragStartScroll.value + (event.translationY / travel) * maxScroll),
           );
           scrollY.value = next;
-          runOnJS(onScrollTo)(next);
+          scheduleOnRN(onScrollTo, next);
         })
         .onFinalize(() => {
           active.value = withSpring(0, { damping: 16, stiffness: 180 });
-          runOnJS(setDraggingJS)(false);
+          scheduleOnRN(setDraggingJS, false);
         }),
     [
       active,

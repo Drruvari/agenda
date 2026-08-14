@@ -1,5 +1,17 @@
-import { Button as NativeButton, Host, Picker, TextInput as IOSTextInput } from '@expo/ui';
-import { frame, padding as nativePadding, textFieldStyle } from '@expo/ui/swift-ui/modifiers';
+import { Host, Picker, TextInput as IOSTextInput } from '@expo/ui';
+import { Button as NativeButton } from '@expo/ui/swift-ui';
+import {
+  accessibilityLabel,
+  buttonBorderShape,
+  buttonStyle,
+  controlSize,
+  disabled as nativeDisabled,
+  frame,
+  labelStyle,
+  padding as nativePadding,
+  textFieldStyle,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   Modal,
@@ -123,7 +135,19 @@ export function ItemEditorForm({
             seedColor={accent}
             style={styles.headerSide}
           >
-            <NativeButton label="Cancel" onPress={onDismiss} variant="text" />
+            <NativeButton
+              label="Close"
+              modifiers={[
+                labelStyle('iconOnly'),
+                accessibilityLabel('Close editor'),
+                buttonStyle('glass'),
+                buttonBorderShape('circle'),
+                controlSize('large'),
+                tint(theme.textSecondary),
+              ]}
+              onPress={onDismiss}
+              systemImage="xmark"
+            />
           </Host>
         ) : (
           <Pressable
@@ -148,10 +172,17 @@ export function ItemEditorForm({
             style={[styles.headerSide, styles.headerSideEnd]}
           >
             <NativeButton
-              disabled={!canSave}
-              label={saving ? '…' : 'Save'}
+              label="Save"
+              modifiers={[
+                labelStyle('iconOnly'),
+                accessibilityLabel('Save item'),
+                buttonStyle('glassProminent'),
+                buttonBorderShape('circle'),
+                controlSize('large'),
+                nativeDisabled(!canSave),
+              ]}
               onPress={onSave}
-              variant="text"
+              systemImage={saving ? 'ellipsis' : 'checkmark'}
             />
           </Host>
         ) : (
@@ -930,7 +961,8 @@ function EditorPickerRow({
 }
 
 function createStyles(theme: AgendaTheme, accent: string) {
-  const cardBg = theme.isDark ? '#2C2C2E' : '#FFFFFF';
+  const cardBg = theme.isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(118, 118, 128, 0.09)';
+  const destructiveBg = theme.isDark ? 'rgba(255, 69, 58, 0.16)' : 'rgba(255, 59, 48, 0.1)';
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -1183,7 +1215,7 @@ function createStyles(theme: AgendaTheme, accent: string) {
       minHeight: 48,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: cardBg,
+      backgroundColor: destructiveBg,
       ...continuousCorner(14),
     },
     deleteLabel: {

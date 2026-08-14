@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Dimensions } from 'react-native';
 
-import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/AgendaBottomSheet';
+import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { useToast } from '@/components/ui/ToastProvider';
 import { localDateTime, parseLocalDate, useData } from '@/data';
 import type { AgendaItem, Routine } from '@/data/schema/types';

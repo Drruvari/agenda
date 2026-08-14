@@ -1,6 +1,16 @@
-import { BottomSheet, Button as NativeButton, Host, RNHostView } from '@expo/ui';
+import { BottomSheet, Host, RNHostView } from '@expo/ui';
+import { Button as NativeButton } from '@expo/ui/swift-ui';
+import {
+  accessibilityLabel,
+  buttonBorderShape,
+  buttonStyle,
+  controlSize,
+  disabled as nativeDisabled,
+  labelStyle,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 import type { PropsWithChildren } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { fonts, useAppAppearance, useAppTheme } from '@/theme';
@@ -18,9 +28,12 @@ type Props = PropsWithChildren<{
 
 /** Single native sheet boundary used by every React Native-backed Agenda sheet. */
 export function AgendaBottomSheet({ children, height, isPresented, onDismiss, snapPoints }: Props) {
+  const resolvedSnapPoints =
+    snapPoints ?? (Platform.OS === 'ios' ? ([{ fraction: 0.92 }] as SnapPoint[]) : undefined);
+  const hostHeight = Platform.OS === 'ios' ? Dimensions.get('window').height : height;
   return (
-    <BottomSheet isPresented={isPresented} onDismiss={onDismiss} snapPoints={snapPoints}>
-      <RNHostView style={{ width: '100%', height, backgroundColor: 'transparent' }}>
+    <BottomSheet isPresented={isPresented} onDismiss={onDismiss} snapPoints={resolvedSnapPoints}>
+      <RNHostView style={{ width: '100%', height: hostHeight, backgroundColor: 'transparent' }}>
         <View collapsable={false} style={styles.host}>
           {children}
         </View>
@@ -43,7 +56,7 @@ export function AgendaSheetHeader({
   const theme = useAppTheme();
   const { accent, colorScheme } = useAppAppearance();
   return (
-    <View style={[styles.header, { borderBottomColor: theme.separator }]}>
+    <View style={[styles.header, Platform.OS !== 'ios' && { borderBottomColor: theme.separator }]}>
       {Platform.OS === 'ios' ? (
         <Host
           colorScheme={colorScheme}
@@ -52,7 +65,19 @@ export function AgendaSheetHeader({
           seedColor={accent}
           style={styles.side}
         >
-          <NativeButton label={cancelLabel} onPress={onCancel} variant="text" />
+          <NativeButton
+            label={cancelLabel}
+            modifiers={[
+              labelStyle('iconOnly'),
+              accessibilityLabel(cancelLabel),
+              buttonStyle('glass'),
+              buttonBorderShape('circle'),
+              controlSize('large'),
+              tint(theme.textSecondary),
+            ]}
+            onPress={onCancel}
+            systemImage="xmark"
+          />
         </Host>
       ) : (
         <Pressable onPress={onCancel} style={styles.side}>
@@ -72,10 +97,17 @@ export function AgendaSheetHeader({
         >
           {action ? (
             <NativeButton
-              disabled={action.disabled}
               label={action.label}
+              modifiers={[
+                labelStyle('iconOnly'),
+                accessibilityLabel(action.label),
+                buttonStyle('glassProminent'),
+                buttonBorderShape('circle'),
+                controlSize('large'),
+                nativeDisabled(Boolean(action.disabled)),
+              ]}
               onPress={action.onPress}
-              variant="text"
+              systemImage={action.icon === 'add' ? 'plus' : 'checkmark'}
             />
           ) : null}
         </Host>
@@ -99,11 +131,11 @@ export function AgendaSheetHeader({
 const styles = StyleSheet.create({
   host: { flex: 1 },
   header: {
-    height: 58,
+    height: 54,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: Platform.OS === 'ios' ? 0 : StyleSheet.hairlineWidth,
   },
   side: { width: 76, minHeight: 44, justifyContent: 'center' },
   end: { alignItems: 'flex-end' },

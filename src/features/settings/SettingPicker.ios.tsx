@@ -65,7 +65,7 @@ function createStyles(theme: AgendaTheme) {
     },
     lastRow: { borderBottomWidth: 0 },
     rowCopy: { flex: 1, minWidth: 0, gap: 3 },
-    rowTitle: { color: theme.text, fontFamily: fonts.sansMedium, fontSize: 16 },
+    rowTitle: { color: theme.text, fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 16 },
     rowSubtitle: {
       color: theme.textSecondary,
       fontFamily: fonts.sans,

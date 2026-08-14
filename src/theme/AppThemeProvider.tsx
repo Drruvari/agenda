@@ -13,8 +13,8 @@ import type { AccentColor, AppSettings } from '@/data/schema/types';
 import {
   type AgendaTheme,
   type AppearanceMode,
-  categoryColorValues,
   type CategoryColorName,
+  categoryColorValues,
   lightTheme,
   resolveAppearanceMode,
   softAlpha,

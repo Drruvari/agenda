@@ -34,6 +34,7 @@ import IconNotebook from '@tabler/icons-react-native/IconNotebook';
 import IconPencil from '@tabler/icons-react-native/IconPencil';
 import IconPlus from '@tabler/icons-react-native/IconPlus';
 import IconRefresh from '@tabler/icons-react-native/IconRefresh';
+import IconRepeat from '@tabler/icons-react-native/IconRepeat';
 import IconSearch from '@tabler/icons-react-native/IconSearch';
 import IconSettings from '@tabler/icons-react-native/IconSettings';
 import IconShare from '@tabler/icons-react-native/IconShare';
@@ -84,6 +85,7 @@ const icons = {
   orbit: AgendaLogo,
   pencil: IconPencil,
   refresh: IconRefresh,
+  repeat: IconRepeat,
   redo: IconArrowForwardUp,
   undo: IconArrowBackUp,
   search: IconSearch,

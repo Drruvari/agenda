@@ -157,6 +157,7 @@ function createStyles(theme: AgendaTheme) {
     },
     title: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 16,
       color: theme.text,
     },
@@ -173,12 +174,14 @@ function createStyles(theme: AgendaTheme) {
     dot: { color: theme.textSecondary },
     spaceLink: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 13,
       color: theme.primary,
     },
     detailLink: { alignItems: 'center', paddingVertical: 12 },
     detailLinkLabel: {
       fontFamily: fonts.sansMedium,
+      fontWeight: '500',
       fontSize: 15,
       color: theme.primary,
     },

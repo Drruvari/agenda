@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
-} from '@/components/ui/AgendaBottomSheet';
+} from '@/components/ui/sheet/Sheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { type Routine, useData } from '@/data';
@@ -118,7 +118,12 @@ export function RoutinesScreen() {
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
     root: { flex: 1 },
-    list: { padding: 16, gap: 8 },
+    list: {
+      paddingHorizontal: 16,
+      paddingTop: Platform.OS === 'ios' ? 8 : 16,
+      paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+      gap: Platform.OS === 'ios' ? 0 : 8,
+    },
     row: {
       minHeight: 64,
       paddingHorizontal: 14,

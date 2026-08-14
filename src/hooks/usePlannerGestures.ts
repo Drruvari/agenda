@@ -4,13 +4,13 @@ import { Gesture } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
-  runOnJS,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { triggerHaptic } from '@/lib/haptics';
 import { motion } from '@/theme/motion';
@@ -21,21 +21,11 @@ export const PULL_ADD_MAX = 112;
 type Options = {
   onShiftDay: (delta: number) => void;
   onPullAdd: () => void;
-  /** Master kill (e.g. finger drawing active). */
   gesturesEnabled?: boolean;
-  /** Horizontal swipe between days. */
   swipeToChangeDay?: boolean;
-  /** Pull down at top to open quick add. */
   pullDownToAdd?: boolean;
 };
 
-/**
- * Planner scroll + day-swipe + pull-to-add.
- *
- * A single simultaneous composition keeps native scrolling, horizontal day
- * navigation, and Android pull-to-add on the UI thread without making one
- * recognizer wait for another to fail.
- */
 export function usePlannerGestures({
   onShiftDay,
   onPullAdd,
@@ -48,6 +38,7 @@ export function usePlannerGestures({
   const pullArmed = useSharedValue(false);
   const wasRubberBanding = useSharedValue(false);
   const isAtTopSV = useSharedValue(true);
+  const restingOffsetY = useSharedValue<number | null>(null);
   const touchStartX = useSharedValue(0);
   const touchStartY = useSharedValue(0);
 
@@ -57,7 +48,10 @@ export function usePlannerGestures({
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
-      const y = event.contentOffset.y;
+      if (Platform.OS === 'ios' && restingOffsetY.get() == null) {
+        restingOffsetY.set(event.contentOffset.y);
+      }
+      const y = event.contentOffset.y - (restingOffsetY.get() ?? 0);
       isAtTopSV.set(y <= 4);
 
       if (Platform.OS === 'ios' && pullDownToAdd && y < 0) {
@@ -67,7 +61,7 @@ export function usePlannerGestures({
         const armed = next >= PULL_ADD_THRESHOLD;
         if (armed !== pullArmed.get()) {
           pullArmed.set(armed);
-          if (armed) runOnJS(hapticJS)('selection');
+          if (armed) scheduleOnRN(hapticJS, 'selection');
         }
       } else if (wasRubberBanding.get() && y >= 0) {
         wasRubberBanding.set(false);
@@ -78,13 +72,24 @@ export function usePlannerGestures({
   });
 
   const onScrollEndDrag = useCallback(
-    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+    (event: {
+      nativeEvent: {
+        adjustedContentInset?: { top: number };
+        contentInset?: { top: number };
+        contentOffset: { y: number };
+      };
+    }) => {
       if (!pullDownToAdd || Platform.OS !== 'ios') return;
-      if (event.nativeEvent.contentOffset.y <= -PULL_ADD_THRESHOLD) {
+      const y = event.nativeEvent.contentOffset.y - (restingOffsetY.get() ?? 0);
+      if (y <= -PULL_ADD_THRESHOLD) {
         onPullAdd();
       }
+
+      wasRubberBanding.set(false);
+      pullY.set(withSpring(0, motion.settle));
+      pullArmed.set(false);
     },
-    [onPullAdd, pullDownToAdd],
+    [onPullAdd, pullArmed, pullDownToAdd, pullY, restingOffsetY, wasRubberBanding],
   );
 
   const makeDaySwipe = useCallback(() => {
@@ -97,8 +102,8 @@ export function usePlannerGestures({
       .onEnd((event) => {
         const wentLeft = event.translationX <= -44 || event.velocityX < -520;
         const wentRight = event.translationX >= 44 || event.velocityX > 520;
-        if (wentLeft) runOnJS(onShiftDay)(1);
-        else if (wentRight) runOnJS(onShiftDay)(-1);
+        if (wentLeft) scheduleOnRN(onShiftDay, 1);
+        else if (wentRight) scheduleOnRN(onShiftDay, -1);
       });
   }, [gesturesEnabled, onShiftDay, swipeToChangeDay]);
 
@@ -158,11 +163,11 @@ export function usePlannerGestures({
         const armed = pullY.get() >= PULL_ADD_THRESHOLD;
         if (armed !== pullArmed.get()) {
           pullArmed.set(armed);
-          if (armed) runOnJS(hapticJS)('selection');
+          if (armed) scheduleOnRN(hapticJS, 'selection');
         }
       })
       .onEnd(() => {
-        if (pullArmed.get()) runOnJS(onPullAdd)();
+        if (pullArmed.get()) scheduleOnRN(onPullAdd);
       })
       .onFinalize(() => {
         pullY.set(withSpring(0, motion.settle));

@@ -232,11 +232,7 @@ export function SettingsScreen({
             <NativePickerRow
               label="Font"
               value={editor.font}
-              options={[
-                { label: 'System', value: 'system' },
-                { label: 'Avenir Next', value: 'avenir' },
-                { label: 'Charter', value: 'charter' },
-              ]}
+              options={[{ label: 'System', value: 'system' }]}
               onValueChange={(font) => updateEditor({ font })}
             />
             <NativePickerRow
@@ -798,11 +794,7 @@ function EditorSettings({
           title="Font"
           subtitle="Typeface used in the daily note."
           value={editor.font}
-          options={[
-            { label: 'System', value: 'system' },
-            { label: 'Avenir Next', value: 'avenir' },
-            { label: 'Charter', value: 'charter' },
-          ]}
+          options={[{ label: 'System', value: 'system' }]}
           onValueChange={(font) => onEditor({ font })}
         />
         <StepperRow
@@ -1209,6 +1201,7 @@ function createStyles(theme: AgendaTheme) {
     backupWarningTitle: {
       color: theme.text,
       fontFamily: fonts.sansSemi,
+      fontWeight: '600',
       fontSize: 15,
     },
     backupWarningBody: {
@@ -1305,7 +1298,7 @@ function createStyles(theme: AgendaTheme) {
       backgroundColor: iosSection ?? theme.section,
       ...continuousCorner(16),
     },
-    actionText: { fontFamily: fonts.sansMedium, fontSize: 15 },
+    actionText: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 15 },
     pressed: { opacity: 0.62 },
     statusCard: { gap: 7, marginHorizontal: 16, paddingVertical: 16 },
     progressTrack: {

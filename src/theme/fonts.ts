@@ -2,31 +2,31 @@ import { Platform } from 'react-native';
 
 export const fonts = {
   sans: Platform.select({
-    ios: 'Avenir Next',
+    ios: 'System',
     android: 'sans-serif',
-    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
   sansMedium: Platform.select({
-    ios: 'AvenirNext-Medium',
+    ios: 'System',
     android: 'sans-serif-medium',
-    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
   sansSemi: Platform.select({
-    ios: 'AvenirNext-DemiBold',
+    ios: 'System',
     android: 'sans-serif-medium',
-    web: 'Avenir Next, ui-sans-serif, system-ui, sans-serif',
+    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
   serif: Platform.select({
-    ios: 'Charter',
+    ios: 'System',
     android: 'serif',
     web: 'Charter, Georgia, serif',
     default: 'serif',
   }),
   serifItalic: Platform.select({
-    ios: 'Charter-Italic',
+    ios: 'System',
     android: 'serif',
     web: 'Charter, Georgia, serif',
     default: 'serif',
@@ -34,6 +34,7 @@ export const fonts = {
 } as const;
 
 export function editorFontFamily(font: string): string | undefined {
+  if (Platform.OS === 'ios') return fonts.sans;
   if (font === 'avenir' || font === 'switzer' || font === 'instrument-sans') return fonts.sans;
   if (font === 'charter' || font === 'zodiak' || font === 'instrument-serif') return fonts.serif;
   return undefined;
