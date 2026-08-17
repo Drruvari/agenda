@@ -1,10 +1,10 @@
 import type { TableName } from './types';
 
 type Mapper = {
+  keyColumns: readonly string[];
   toRow: (record: Record<string, unknown>) => Record<string, unknown>;
   fromRow: (row: Record<string, unknown>) => Record<string, unknown>;
-  idField: string;
-  columns: string[];
+  columns: readonly string[];
 };
 
 function boolToInt(value: unknown): number {
@@ -16,7 +16,7 @@ function intToBool(value: unknown): boolean {
 }
 
 const spacesMapper: Mapper = {
-  idField: 'id',
+  keyColumns: ['id'],
   columns: ['id', 'name', 'color', 'icon', 'is_pinned', 'is_system', 'sort_order', 'created_at'],
   toRow: (record) => ({
     id: record.id,
@@ -41,7 +41,7 @@ const spacesMapper: Mapper = {
 };
 
 const agendaItemsMapper: Mapper = {
-  idField: 'id',
+  keyColumns: ['id'],
   columns: [
     'id',
     'type',
@@ -122,7 +122,7 @@ const agendaItemsMapper: Mapper = {
 };
 
 const routinesMapper: Mapper = {
-  idField: 'id',
+  keyColumns: ['id'],
   columns: ['id', 'name', 'space_id', 'sort_order', 'active', 'created_at', 'updated_at'],
   toRow: (record) => ({
     id: record.id,
@@ -145,7 +145,7 @@ const routinesMapper: Mapper = {
 };
 
 const routineCompletionsMapper: Mapper = {
-  idField: 'routineId',
+  keyColumns: ['routine_id', 'date'],
   columns: ['routine_id', 'date', 'completed_at'],
   toRow: (record) => ({
     routine_id: record.routineId,
@@ -160,7 +160,7 @@ const routineCompletionsMapper: Mapper = {
 };
 
 const dailyNotesMapper: Mapper = {
-  idField: 'id',
+  keyColumns: ['id'],
   columns: ['id', 'date', 'body_text', 'drawing_id', 'updated_at'],
   toRow: (record) => ({
     id: record.id,
@@ -179,7 +179,7 @@ const dailyNotesMapper: Mapper = {
 };
 
 const noteDraftsMapper: Mapper = {
-  idField: 'date',
+  keyColumns: ['date'],
   columns: ['date', 'body_text', 'base_updated_at', 'updated_at'],
   toRow: (record) => ({
     date: record.date,
@@ -196,7 +196,7 @@ const noteDraftsMapper: Mapper = {
 };
 
 const drawingsMapper: Mapper = {
-  idField: 'id',
+  keyColumns: ['id'],
   columns: ['id', 'note_id', 'format', 'data', 'created_at', 'updated_at'],
   toRow: (record) => ({
     id: record.id,
@@ -217,7 +217,7 @@ const drawingsMapper: Mapper = {
 };
 
 const metaMapper: Mapper = {
-  idField: 'key',
+  keyColumns: ['key'],
   columns: ['key', 'value'],
   toRow: (record) => ({
     key: record.key,
@@ -239,6 +239,25 @@ export const TABLE_MAPPERS: Record<TableName, Mapper> = {
   drawings: drawingsMapper,
   meta: metaMapper,
 };
+
+function quoteIdent(column: string): string {
+  return column === 'date' || column === 'time' ? `"${column}"` : column;
+}
+
+export function buildUpsertSql(table: TableName): string {
+  const mapper = TABLE_MAPPERS[table];
+  const columns = mapper.columns.map(quoteIdent);
+  const conflictColumns = mapper.keyColumns.map(quoteIdent).join(', ');
+  const updates = mapper.columns
+    .filter((column) => !mapper.keyColumns.includes(column))
+    .map((column) => {
+      const quoted = quoteIdent(column);
+      return `${quoted} = excluded.${quoted}`;
+    })
+    .join(', ');
+
+  return `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')}) ON CONFLICT (${conflictColumns}) DO UPDATE SET ${updates}`;
+}
 
 export function compoundKey(table: TableName, record: Record<string, unknown>): string {
   if (table === 'routine_completions') {

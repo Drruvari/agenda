@@ -14,7 +14,7 @@ export function Select<T extends string | number>({
 }: {
   disabled?: boolean;
   onValueChange: (value: T) => void;
-  options: SelectOption<T>[];
+  options: readonly SelectOption<T>[];
   style?: StyleProp<ViewStyle>;
   value: T;
 }) {

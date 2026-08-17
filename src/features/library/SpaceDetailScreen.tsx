@@ -44,8 +44,8 @@ export function SpaceDetailScreen() {
     const upcoming = active
       .filter((item) => item.date > today)
       .sort((a, b) => a.date.localeCompare(b.date));
-    const later = active.filter((item) => item.date < today);
-    return { todayItems, upcoming, later, completed };
+    const past = active.filter((item) => item.date < today);
+    return { todayItems, upcoming, past, completed };
   }, [items, today]);
 
   return (
@@ -83,7 +83,7 @@ export function SpaceDetailScreen() {
           styles={styles}
           showDate
         />
-        <Section title="Later" items={sections.later} onOpen={openEdit} styles={styles} showDate />
+        <Section title="Past" items={sections.past} onOpen={openEdit} styles={styles} showDate />
         <Section
           title="Completed"
           items={sections.completed}

@@ -31,7 +31,6 @@ function timeToDate(time: string): Date {
   return date;
 }
 
-/** Native SwiftUI compact date picker — same Host pattern as settings pickers. */
 export function NativeDateField({ onChange, value }: DateFieldProps) {
   const { accent, colorScheme } = useAppAppearance();
   const date = useMemo(() => parseLocalDate(value), [value]);
@@ -54,15 +53,11 @@ export function NativeDateField({ onChange, value }: DateFieldProps) {
   );
 }
 
-/** Native SwiftUI compact time picker — same Host pattern as settings pickers. */
 export function NativeTimeField({ onChange, optional = true, value }: TimeFieldProps) {
   const { accent, colorScheme } = useAppAppearance();
   const theme = useAppTheme();
   const hasTime = Boolean(value.trim());
-  const date = useMemo(
-    () => (hasTime ? timeToDate(value) : new Date()),
-    [hasTime, value],
-  );
+  const date = useMemo(() => (hasTime ? timeToDate(value) : new Date()), [hasTime, value]);
 
   if (!hasTime && optional) {
     return (

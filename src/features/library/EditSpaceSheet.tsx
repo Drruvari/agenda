@@ -11,21 +11,15 @@ import {
   View,
 } from 'react-native';
 
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { Icon, type IconName } from '@/components/ui/Icon';
-import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { type Space, useData } from '@/data';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  useAppAppearance,
-  useThemeStyles,
-} from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
 
 import { useLibrary } from './LibraryContext';
 import { SPACE_COLOR_OPTIONS, SPACE_ICON_OPTIONS } from './spaceAppearance';
@@ -38,7 +32,6 @@ export function EditSpaceHost() {
 
 function EditSpaceSheet({ spaceId, onDismiss }: { spaceId: string; onDismiss: () => void }) {
   const { repos, refresh, setUI, ui } = useData();
-  const { accent, colorScheme } = useAppAppearance();
   const { styles, theme } = useThemeStyles(createStyles);
   const sheetHeight = useMemo(
     () => Math.min(720, Math.round(Dimensions.get('window').height * 0.76)),
@@ -190,8 +183,6 @@ function EditSpaceSheet({ spaceId, onDismiss }: { spaceId: string; onDismiss: ()
               <Text style={styles.meta}>Show in quick filters on Today</Text>
             </View>
             <NativeSwitch
-              accent={accent}
-              colorScheme={colorScheme}
               value={space.isPinned}
               onValueChange={(isPinned) => void persist({ isPinned })}
             />

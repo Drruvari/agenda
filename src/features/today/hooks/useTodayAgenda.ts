@@ -19,7 +19,10 @@ export type AgendaPriority = '' | '!' | '!!' | '!!!';
 export type TodayAgendaTask = {
   id: string;
   title: string;
+  /** Primary metadata line (space, date, calendar name, …). */
   subtitle: string;
+  /** Optional lighter line above subtitle (e.g. task details / notes). */
+  detail?: string;
   priority?: AgendaPriority;
   late?: boolean;
   completed?: boolean;
@@ -32,6 +35,8 @@ export type TodayAgendaTask = {
 
 export type TodayScheduledTask = TodayAgendaTask & {
   time: string;
+  /** Duration chip on the trailing edge, e.g. "30 min". */
+  durationLabel?: string;
   icon?: 'clock';
 };
 
@@ -50,6 +55,10 @@ type Options = {
   systemReminders: DeviceSystemReminder[];
   view: TodayViewModel | null;
 };
+
+function isTimestampPast(value: string): boolean {
+  return new Date(value).getTime() < Date.now();
+}
 
 export function useTodayAgenda({
   activeSpaceId,
@@ -80,9 +89,11 @@ export function useTodayAgenda({
           : item.type === 'note'
             ? 'Note'
             : 'Task';
+      const detail = item.details?.trim() || undefined;
       return {
         id: item.id,
         title: item.title,
+        detail,
         subtitle: [spaceName, typeLabel].filter(Boolean).join(', '),
         priority: priorityLabel(item.priority) as AgendaPriority,
         completed: item.type === 'task' ? item.completed : false,
@@ -146,9 +157,16 @@ export function useTodayAgenda({
         ...(view?.scheduled.map((item) => {
           const completed = item.type === 'task' && item.completed;
           const time = item.time ?? '';
+          const mapped = mapItem(item);
+          const spaceName = item.spaceId ? spacesById.get(item.spaceId) : undefined;
           return {
-            ...mapItem(item),
+            ...mapped,
             time,
+            subtitle: [spaceName, time].filter(Boolean).join(', ') || mapped.subtitle,
+            durationLabel:
+              item.type === 'event' && item.durationMinutes > 0
+                ? `${item.durationMinutes} min`
+                : undefined,
             icon: item.type === 'event' ? ('clock' as const) : undefined,
             late: Boolean(time) && !completed && isTimePast(time),
             completed,
@@ -169,27 +187,37 @@ export function useTodayAgenda({
                   });
                 })
                 .map((event) => {
-                  const time = new Date(event.startDate).toLocaleTimeString(undefined, {
+                  const start = new Date(event.startDate);
+                  const time = start.toLocaleTimeString(undefined, {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false,
                   });
+                  const durationMs =
+                    new Date(event.endDate).getTime() - new Date(event.startDate).getTime();
+                  const durationMinutes =
+                    durationMs > 0 ? Math.round(durationMs / 60_000) : undefined;
                   return {
                     id: `device:${event.id}`,
                     title: event.title,
-                    subtitle: event.calendarTitle ?? 'Device calendar',
+                    subtitle: [event.calendarTitle ?? 'Device calendar', time]
+                      .filter(Boolean)
+                      .join(', '),
                     period: mode,
                     time,
+                    durationLabel:
+                      durationMinutes && durationMinutes > 0 ? `${durationMinutes} min` : undefined,
                     icon: 'clock' as const,
                     special: 'calendar' as const,
                     deviceEventId: event.id,
-                    late: isTimePast(time),
+                    late: isTimestampPast(event.startDate),
                   };
                 }),
               ...systemReminders
                 .filter((reminder) => !reminder.allDay && reminder.dueDate)
                 .map((reminder) => {
-                  const time = new Date(reminder.dueDate as string).toLocaleTimeString(undefined, {
+                  const due = new Date(reminder.dueDate as string);
+                  const time = due.toLocaleTimeString(undefined, {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false,
@@ -197,12 +225,14 @@ export function useTodayAgenda({
                   return {
                     id: `system-reminder:${reminder.id}`,
                     title: reminder.title,
-                    subtitle: reminder.listTitle ?? 'Apple Reminders',
+                    subtitle: [reminder.listTitle ?? 'Apple Reminders', time]
+                      .filter(Boolean)
+                      .join(', '),
                     period: mode,
                     time,
                     icon: 'clock' as const,
                     systemReminderId: reminder.id,
-                    late: isTimePast(time),
+                    late: isTimestampPast(reminder.dueDate as string),
                   };
                 }),
             ]
@@ -211,7 +241,7 @@ export function useTodayAgenda({
         if (Boolean(a.late) !== Boolean(b.late)) return a.late ? -1 : 1;
         return a.time.localeCompare(b.time);
       }),
-    [deviceEvents, mapItem, mode, showExternalItems, systemReminders, view?.scheduled],
+    [deviceEvents, mapItem, mode, showExternalItems, spacesById, systemReminders, view?.scheduled],
   );
 
   const completed = useMemo(() => view?.completed.map(mapItem) ?? [], [mapItem, view?.completed]);

@@ -1,17 +1,14 @@
 import * as SQLite from 'expo-sqlite';
 
-import {
-  DROP_ALL_TABLES_STATEMENTS,
-  MIGRATION_001_STATEMENTS,
-} from '@/data/migrations/001_initial';
+import { MIGRATION_001_STATEMENTS } from '@/data/migrations/001_initial';
 import { MIGRATION_002_STATEMENTS } from '@/data/migrations/002_note_drafts';
 
-import { TABLE_MAPPERS } from './mappers';
+import { buildUpsertSql, TABLE_MAPPERS } from './mappers';
 import type { DatabaseClient, SqlValue, TableName } from './types';
 import { SCHEMA_VERSION } from './types';
 
-/** Bumped when schema requires a clean file (v3 adds note_drafts). */
 const DATABASE_NAME = 'agenda.v3.db';
+const LEGACY_DATABASE_NAMES = ['agenda.v1.db'] as const;
 
 let clientPromise: Promise<DatabaseClient> | null = null;
 
@@ -102,14 +99,9 @@ function createSqliteClient(db: SQLite.SQLiteDatabase): DatabaseClient {
     async put(table: TableName, record: object): Promise<void> {
       const mapper = TABLE_MAPPERS[table];
       const row = mapper.toRow(record as Record<string, unknown>);
-      const columns = mapper.columns.map(quoteIdent);
-      const placeholders = columns.map(() => '?').join(', ');
       const values = mapper.columns.map((column) => (row[column] ?? null) as SqlValue);
 
-      await db.runAsync(
-        `INSERT OR REPLACE INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
-        ...values,
-      );
+      await db.runAsync(buildUpsertSql(table), ...values);
     },
 
     async delete(table: TableName, id: string): Promise<void> {
@@ -149,6 +141,22 @@ function createSqliteClient(db: SQLite.SQLiteDatabase): DatabaseClient {
       return result.changes;
     },
 
+    async putDailyNoteIfUpdatedAtMatches(note, expectedUpdatedAt): Promise<boolean> {
+      const row = TABLE_MAPPERS.daily_notes.toRow(note as unknown as Record<string, unknown>);
+      const result = await db.runAsync(
+        `UPDATE daily_notes
+         SET "date" = ?, body_text = ?, drawing_id = ?, updated_at = ?
+         WHERE id = ? AND updated_at = ?`,
+        row.date as SqlValue,
+        row.body_text as SqlValue,
+        (row.drawing_id ?? null) as SqlValue,
+        row.updated_at as SqlValue,
+        row.id as SqlValue,
+        expectedUpdatedAt,
+      );
+      return result.changes === 1;
+    },
+
     async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
       let result!: T;
       await db.withTransactionAsync(async () => {
@@ -166,7 +174,11 @@ function createSqliteClient(db: SQLite.SQLiteDatabase): DatabaseClient {
     },
 
     async setMeta(key: string, value: string): Promise<void> {
-      await db.runAsync('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', key, value);
+      await db.runAsync(
+        'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+        key,
+        value,
+      );
     },
   };
 }
@@ -188,14 +200,6 @@ async function agendaItemsHasDateColumn(db: SQLite.SQLiteDatabase): Promise<bool
   return columns.some((column) => column.name === 'date');
 }
 
-async function resetSchema(db: SQLite.SQLiteDatabase): Promise<void> {
-  await db.execAsync('PRAGMA foreign_keys = OFF;');
-  for (const statement of DROP_ALL_TABLES_STATEMENTS) {
-    await db.execAsync(statement);
-  }
-  await db.execAsync('PRAGMA foreign_keys = ON;');
-}
-
 async function applyInitialSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`PRAGMA journal_mode = 'wal';`);
   await db.execAsync('PRAGMA foreign_keys = ON;');
@@ -208,6 +212,34 @@ async function applyInitialSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   }
 }
 
+async function hasApplicationTables(db: SQLite.SQLiteDatabase): Promise<boolean> {
+  const row = await db.getFirstAsync<{ name: string }>(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1`,
+  );
+  return Boolean(row?.name);
+}
+
+async function hasUserData(db: SQLite.SQLiteDatabase): Promise<boolean> {
+  for (const table of [
+    'spaces',
+    'agenda_items',
+    'routines',
+    'routine_completions',
+    'daily_notes',
+    'note_drafts',
+    'drawings',
+  ] as const) {
+    if (!(await tableExists(db, table))) {
+      continue;
+    }
+    const row = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) AS count FROM ${table}`);
+    if ((row?.count ?? 0) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
@@ -215,10 +247,24 @@ async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
   const hasDate = await agendaItemsHasDateColumn(db);
   const healthy = hasMeta && hasDate;
 
-  if (!healthy) {
-    await resetSchema(db);
+  await db.execAsync(`PRAGMA journal_mode = 'wal';`);
+  await db.execAsync('PRAGMA foreign_keys = ON;');
+
+  if (current > SCHEMA_VERSION) {
+    throw new Error(
+      `Agenda database schema ${current} is newer than supported schema ${SCHEMA_VERSION}`,
+    );
+  }
+
+  if (!(await hasApplicationTables(db))) {
     await applyInitialSchema(db);
   } else {
+    if (!healthy) {
+      throw new Error(
+        'Agenda database schema is incomplete or unsupported. The database was left unchanged.',
+      );
+    }
+
     if (current < 2) {
       const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(agenda_items)');
       const names = new Set(columns.map((column) => column.name));
@@ -245,17 +291,65 @@ async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
+const TABLE_COPY_ORDER: readonly TableName[] = [
+  'spaces',
+  'agenda_items',
+  'routines',
+  'routine_completions',
+  'daily_notes',
+  'note_drafts',
+  'drawings',
+  'meta',
+];
+
+async function importLegacyDatabaseIfNeeded(db: SQLite.SQLiteDatabase): Promise<boolean> {
+  if (await hasApplicationTables(db)) {
+    const healthy = (await tableExists(db, 'meta')) && (await agendaItemsHasDateColumn(db));
+    if (!healthy || (await hasUserData(db))) {
+      return false;
+    }
+  }
+
+  for (const name of LEGACY_DATABASE_NAMES) {
+    const legacyDb = await SQLite.openDatabaseAsync(name);
+    try {
+      if (!(await hasApplicationTables(legacyDb))) {
+        continue;
+      }
+
+      await migrateIfNeeded(legacyDb);
+      await applyInitialSchema(db);
+
+      const source = createSqliteClient(legacyDb);
+      const target = createSqliteClient(db);
+      await db.withTransactionAsync(async () => {
+        for (const table of TABLE_COPY_ORDER) {
+          const records = await source.getAll<Record<string, unknown>>(table);
+          for (const record of records) {
+            await target.put(table, record);
+          }
+        }
+      });
+      return true;
+    } finally {
+      await legacyDb.closeAsync();
+    }
+  }
+
+  return false;
+}
+
 let sqliteDb: SQLite.SQLiteDatabase | null = null;
 
 export async function openDatabase(): Promise<DatabaseClient> {
   if (!clientPromise) {
     clientPromise = (async () => {
       sqliteDb = await SQLite.openDatabaseAsync(DATABASE_NAME);
+      await importLegacyDatabaseIfNeeded(sqliteDb);
       await migrateIfNeeded(sqliteDb);
       return createSqliteClient(sqliteDb);
     })();
   } else if (sqliteDb) {
-    // Re-apply idempotent migrations after Metro Fast Refresh loads newer schema code.
     await migrateIfNeeded(sqliteDb);
   }
 

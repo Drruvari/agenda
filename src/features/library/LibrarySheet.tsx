@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -11,14 +12,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { IconName } from '@/components/ui/Icon';
+import { Icon } from '@/components/ui/Icon';
+import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import type { IconName } from '@/components/ui/Icon';
-import { Icon } from '@/components/ui/Icon';
-import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import {
@@ -46,8 +47,9 @@ function LibrarySheet({
   quickCreate?: boolean;
 }) {
   const { repos, refresh, setUI, ui } = useData();
+  const router = useRouter();
   const { openEditSpace } = useLibrary();
-  const { accent, colorScheme } = useAppAppearance();
+  const { accent } = useAppAppearance();
   const { styles, theme } = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { openEdit } = useItemEditor();
@@ -228,12 +230,7 @@ function LibrarySheet({
             <Text style={styles.rowLabel}>Pin to Today</Text>
             <Text style={styles.meta}>Show this Space in Today’s filters</Text>
           </View>
-          <NativeSwitch
-            accent={accent}
-            colorScheme={colorScheme}
-            onValueChange={setNewSpacePinned}
-            value={newSpacePinned}
-          />
+          <NativeSwitch onValueChange={setNewSpacePinned} value={newSpacePinned} />
         </View>
       </View>
     </View>
@@ -275,10 +272,8 @@ function LibrarySheet({
           icon="notebook"
           label="Daily Notes"
           onPress={() => {
-            if (notes[0]) {
-              setUI({ selectedDate: notes[0].date });
-              requestClose();
-            }
+            requestClose();
+            setTimeout(() => router.push('/library/notes'), SHEET_DISMISS_MS);
           }}
           styles={styles}
         />

@@ -31,6 +31,19 @@ describe('parseSmartInput', () => {
     });
   });
 
+  it.each(['0m', '0h', '1h99m'])('keeps invalid duration %s in the title', (duration) => {
+    expect(parseSmartInput(`Meeting ${duration}`)).toEqual({
+      title: `Meeting ${duration}`,
+    });
+  });
+
+  it('parses a valid minute-qualified duration', () => {
+    expect(parseSmartInput('Meeting 1h30m')).toEqual({
+      title: 'Meeting',
+      durationMinutes: 90,
+    });
+  });
+
   it('marks recognized syntax without changing the entered text', () => {
     const input = '/event dentist friday 14:30 1h #personal !!';
     const segments = tokenizeSmartInput(input);
@@ -81,6 +94,20 @@ describe('parseSmartInput', () => {
       raw: '#familja_ime',
       start: 5,
       end: 17,
+    });
+  });
+
+  it('keeps note commands as literal title text', () => {
+    expect(parseSmartInput('/note Call Alice')).toEqual({ title: '/note Call Alice' });
+  });
+
+  it('keeps unknown spaces in the title when known spaces are supplied', () => {
+    expect(parseSmartInput('Plan #unknown', '2026-08-11', ['Personal'])).toEqual({
+      title: 'Plan #unknown',
+    });
+    expect(parseSmartInput('Plan #personal', '2026-08-11', ['Personal'])).toEqual({
+      title: 'Plan',
+      spaceName: 'personal',
     });
   });
 });

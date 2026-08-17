@@ -20,7 +20,7 @@ import {
   type TodayAgendaTask,
   type TodayScheduledTask,
 } from '@/features/today/hooks/useTodayAgenda';
-import { type AgendaTheme, continuousCorner, fonts, motion, useAppTheme } from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, motion, spacing, useAppTheme } from '@/theme';
 
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const rowEnter = FadeInDown.duration(motion.duration.normal)
@@ -87,7 +87,7 @@ export function AgendaSections({
   scheduled,
   showCompleted,
 }: AgendaSectionsProps) {
-  const { C, styles } = useAgendaSectionTheme();
+  const { styles } = useAgendaSectionTheme(compact);
   const visibleAllDay = allDayExpanded ? allDay : allDay.slice(0, ALL_DAY_PREVIEW_COUNT);
   const hiddenAllDayCount = allDayExpanded ? 0 : Math.max(0, allDay.length - ALL_DAY_PREVIEW_COUNT);
 
@@ -96,60 +96,23 @@ export function AgendaSections({
       <View style={styles.groupCard}>
         <View style={styles.allDayHeader}>
           <Text style={styles.sectionLabel}>All day</Text>
-          {allDay.length > ALL_DAY_PREVIEW_COUNT ? (
-            <SectionIconButton
-              accessibilityLabel={
-                allDayExpanded ? 'Collapse all-day section' : 'Expand all-day section'
-              }
-              name={allDayExpanded ? 'chevronUp' : 'chevronDown'}
-              onPress={() => onAllDayExpandedChange(!allDayExpanded)}
-            />
-          ) : null}
+          <SectionIconButton
+            accessibilityLabel={
+              allDayExpanded ? 'Collapse all-day section' : 'Expand all-day section'
+            }
+            compact={compact}
+            disabled={allDay.length <= ALL_DAY_PREVIEW_COUNT}
+            name={allDayExpanded ? 'minimize' : 'expand'}
+            onPress={() => onAllDayExpandedChange(!allDayExpanded)}
+          />
         </View>
 
-        {visibleAllDay.length > 0 ? (
-          visibleAllDay.map((task) => {
-            const interaction = interactionFor(task);
-            return (
-              <TaskRow
-                compact={compact}
-                completed={Boolean(task.completed)}
-                key={task.id}
-                task={task}
-                onComplete={interaction.onSwipeComplete}
-                onLongPress={interaction.onLongPress}
-                onPress={interaction.onPress}
-                onToggleComplete={interaction.onToggleComplete}
-              />
-            );
-          })
-        ) : (
-          <EmptyState compact message={emptyHint ?? 'Nothing all day. Add a task or event.'} />
-        )}
-
-        {hiddenAllDayCount > 0 ? (
-          <AnimatedPressable
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${hiddenAllDayCount} more all-day items`}
-            haptic="selection"
-            onPress={() => onAllDayExpandedChange(true)}
-            pressedStyle={styles.pressed}
-            style={styles.moreRow}
-          >
-            <Text style={styles.moreText}>+{hiddenAllDayCount} more</Text>
-          </AnimatedPressable>
-        ) : null}
-
-        <Animated.View style={styles.scheduledSection}>
-          <View style={styles.scheduledHeader}>
-            <Text style={styles.sectionLabel}>Scheduled</Text>
-            <Text style={styles.sectionCount}>{scheduled.length}</Text>
-          </View>
-          {scheduled.length > 0 ? (
-            scheduled.map((task) => {
+        <View style={styles.listBlock}>
+          {visibleAllDay.length > 0 ? (
+            visibleAllDay.map((task) => {
               const interaction = interactionFor(task);
               return (
-                <ScheduledRow
+                <TaskRow
                   compact={compact}
                   completed={Boolean(task.completed)}
                   key={task.id}
@@ -162,35 +125,78 @@ export function AgendaSections({
               );
             })
           ) : (
-            <EmptyState compact message={emptyHint ?? 'No scheduled items yet.'} />
+            <EmptyState compact message={emptyHint ?? 'Nothing all day. Add a task or event.'} />
           )}
+
+          {hiddenAllDayCount > 0 ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityLabel={`Show ${hiddenAllDayCount} more all-day items`}
+              haptic="selection"
+              onPress={() => onAllDayExpandedChange(true)}
+              pressedStyle={styles.pressed}
+              style={styles.moreRow}
+            >
+              <Text style={styles.moreText}>+{hiddenAllDayCount} more</Text>
+            </AnimatedPressable>
+          ) : null}
+        </View>
+
+        <View style={styles.sectionDivider}>
+          <View style={styles.sectionDividerLine} />
+        </View>
+
+        <Animated.View style={styles.scheduledSection}>
+          <View style={styles.scheduledHeader}>
+            <Text style={styles.sectionLabel}>Scheduled</Text>
+            <Text style={styles.sectionCount}>{scheduled.length}</Text>
+          </View>
+          <View style={styles.listBlock}>
+            {scheduled.length > 0 ? (
+              scheduled.map((task) => {
+                const interaction = interactionFor(task);
+                return (
+                  <ScheduledRow
+                    compact={compact}
+                    completed={Boolean(task.completed)}
+                    key={task.id}
+                    task={task}
+                    onComplete={interaction.onSwipeComplete}
+                    onLongPress={interaction.onLongPress}
+                    onPress={interaction.onPress}
+                    onToggleComplete={interaction.onToggleComplete}
+                  />
+                );
+              })
+            ) : (
+              <EmptyState compact message={emptyHint ?? 'No scheduled items yet.'} />
+            )}
+          </View>
         </Animated.View>
       </View>
 
       {showCompleted ? (
         <View style={styles.groupCard}>
-          <AnimatedPressable
-            onPress={() => onCompletedExpandedChange(!completedExpanded)}
-            accessibilityRole="button"
-            accessibilityLabel="Toggle completed tasks"
-            accessibilityState={{ expanded: completedExpanded }}
-            haptic="selection"
-            pressedStyle={styles.pressed}
-            style={styles.completedHeader}
-          >
-            <Text style={styles.sectionLabel}>{completed.length} Completed</Text>
-            <Icon
-              name={completedExpanded ? 'chevronUp' : 'chevronDown'}
-              size={20}
-              color={C.muted}
-            />
-          </AnimatedPressable>
+          <View style={styles.completedHeader}>
+            <Text style={styles.sectionLabel}>Completed</Text>
+            <View style={styles.completedHeaderRight}>
+              <Text style={styles.sectionCount}>{completed.length}</Text>
+              <SectionIconButton
+                accessibilityLabel={
+                  completedExpanded ? 'Collapse completed section' : 'Expand completed section'
+                }
+                compact={compact}
+                name={completedExpanded ? 'minimize' : 'expand'}
+                onPress={() => onCompletedExpandedChange(!completedExpanded)}
+              />
+            </View>
+          </View>
 
           {completedExpanded ? (
             <Animated.View
               entering={sectionEnter}
               exiting={sectionExit}
-              style={styles.completedList}
+              style={styles.listBlock}
             >
               {completed.length > 0 ? (
                 completed.map((task) => {
@@ -208,7 +214,7 @@ export function AgendaSections({
                   );
                 })
               ) : (
-                <EmptyState message="No completed items yet." />
+                <EmptyState compact message="No completed items yet." />
               )}
             </Animated.View>
           ) : null}
@@ -220,47 +226,52 @@ export function AgendaSections({
 
 function SectionIconButton({
   accessibilityLabel,
+  compact = false,
+  disabled = false,
   name,
   onPress,
 }: {
   accessibilityLabel: string;
+  compact?: boolean;
+  disabled?: boolean;
   name: IconName;
   onPress: () => void;
 }) {
-  const { C, styles } = useAgendaSectionTheme();
+  const { C, styles } = useAgendaSectionTheme(compact);
   return (
     <AnimatedPressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       haptic="light"
       onPress={onPress}
       pressedStyle={styles.pressed}
-      style={styles.squareButton}
+      style={[styles.squareButton, disabled && styles.squareButtonDisabled]}
     >
-      <Icon name={name} size={24} color={C.muted} />
+      <Icon name={name} size={18} color={C.muted} stroke={1.5} />
     </AnimatedPressable>
   );
 }
 
-function useAgendaSectionTheme() {
+function useAgendaSectionTheme(compact = false) {
   const theme = useAppTheme();
   return useMemo(
     () => ({
       C: {
         accent: theme.primary,
-        birthday: String(theme.category.pink),
+        checkbox: theme.border,
+        checkboxDone: theme.text,
         danger: theme.danger,
-        event: String(theme.category.blue),
         muted: theme.textSecondary,
-        note: String(theme.category.purple),
-        reminder: String(theme.category.green),
-        task: theme.primary,
+        note: theme.textTertiary,
+        special: theme.border,
         text: theme.text,
         warning: theme.warning,
       },
-      styles: createStyles(theme),
+      styles: createStyles(theme, compact),
     }),
-    [theme],
+    [compact, theme],
   );
 }
 
@@ -270,27 +281,13 @@ function specialIconName(special: NonNullable<TodayAgendaTask['special']>): Icon
   return 'calendar';
 }
 
-function itemAccent(
-  task: TodayAgendaTask,
-  completed: boolean,
-  C: ReturnType<typeof useAgendaSectionTheme>['C'],
-): string {
-  if (completed) return C.muted;
-  if (task.period === 'Recent' || (task.period !== 'Upcoming' && task.late)) return C.danger;
-  if (task.special === 'birthday') return C.birthday;
-  if (task.special === 'note') return C.note;
-  if (task.special === 'calendar' || task.item?.type === 'event') return C.event;
-  if (task.systemReminderId) return C.reminder;
-  return C.task;
-}
-
 function priorityColor(
   priority: Priority | undefined,
   C: ReturnType<typeof useAgendaSectionTheme>['C'],
 ) {
   if (priority === '!!!') return C.danger;
   if (priority === '!!') return C.warning;
-  return C.task;
+  return C.accent;
 }
 
 function recurrenceLabel(task: TodayAgendaTask): string | null {
@@ -329,19 +326,23 @@ const metadataStyles = StyleSheet.create({
   iconHost: { width: 16, height: 16 },
 });
 
-function TaskMetadata({ task }: { task: TodayAgendaTask }) {
-  const { C, styles } = useAgendaSectionTheme();
+function TaskMetadata({ compact = false, task }: { compact?: boolean; task: TodayAgendaTask }) {
+  const { C, styles } = useAgendaSectionTheme(compact);
   const recurrence = recurrenceLabel(task);
-  if (!task.subtitle && !recurrence) return null;
+  if (!task.detail && !task.subtitle && !recurrence) return null;
 
   return (
-    <View style={styles.metadataRow}>
+    <View style={styles.metadataBlock}>
+      {task.detail ? (
+        <Text numberOfLines={1} style={styles.taskDetail}>
+          {task.detail}
+        </Text>
+      ) : null}
       {task.subtitle ? (
         <Text numberOfLines={1} style={styles.taskSubtitle}>
           {task.subtitle}
         </Text>
       ) : null}
-      {task.subtitle && recurrence ? <View style={styles.metadataSeparator} /> : null}
       {recurrence ? (
         <View style={styles.indicatorMetadata}>
           <RepeatIndicator
@@ -372,9 +373,8 @@ export function TaskRow({
   onPress,
   onToggleComplete,
 }: RowInteractionProps & { task: TodayAgendaTask }) {
-  const { C, styles } = useAgendaSectionTheme();
+  const { C, styles } = useAgendaSectionTheme(compact);
   const isDone = completed || Boolean(task.completed);
-  const accent = itemAccent(task, isDone, C);
   const interactive = Boolean(onPress || onLongPress);
   const content = (
     <AnimatedPressable
@@ -386,22 +386,17 @@ export function TaskRow({
       accessibilityState={onToggleComplete ? undefined : onPress ? { checked: isDone } : undefined}
       pressScale={0.99}
       pressedStyle={styles.pressed}
-      style={[
-        styles.itemSurface,
-        styles.taskRow,
-        compact && styles.taskRowCompact,
-        isDone && styles.completedRow,
-      ]}
+      style={styles.taskRow}
     >
-      <View style={styles.taskMain}>
-        {task.special ? (
-          <View style={styles.checkboxSlot}>
-            <Icon name={specialIconName(task.special)} size={22} stroke={2} color={accent} />
-          </View>
-        ) : (
-          <RoundCheckbox checked={isDone} color={accent} onPress={onToggleComplete} />
-        )}
-        <View style={styles.taskCopy}>
+      <View style={styles.taskBody}>
+        <View style={styles.titleLine}>
+          {task.special ? (
+            <View style={styles.checkboxSlot}>
+              <Icon name={specialIconName(task.special)} size={24} stroke={2} color={C.special} />
+            </View>
+          ) : (
+            <RoundCheckbox checked={isDone} compact={compact} onPress={onToggleComplete} />
+          )}
           <View style={styles.titleRow}>
             {!!task.priority && !isDone ? (
               <Text style={[styles.priorityInline, { color: priorityColor(task.priority, C) }]}>
@@ -412,8 +407,8 @@ export function TaskRow({
               {task.title}
             </Text>
           </View>
-          <TaskMetadata task={task} />
         </View>
+        <TaskMetadata compact={compact} task={task} />
       </View>
     </AnimatedPressable>
   );
@@ -434,40 +429,42 @@ export function ScheduledRow({
   onPress,
   onToggleComplete,
 }: RowInteractionProps & { task: TodayScheduledTask }) {
-  const { C, styles } = useAgendaSectionTheme();
+  const { C, styles } = useAgendaSectionTheme(compact);
   const isDone = completed || Boolean(task.completed);
-  const accent = itemAccent(task, isDone, C);
   const interactive = Boolean(onPress || onLongPress);
   const isEvent = task.special === 'calendar' || task.item?.type === 'event';
   const body = (
     <>
-      <Text style={[styles.timeText, isDone && styles.taskTitleCompleted, { color: accent }]}>
-        {task.time}
-      </Text>
-      <View style={[styles.scheduleAccentBar, { backgroundColor: accent }]} />
-      <View style={[styles.scheduledTask, compact && styles.scheduledTaskCompact]}>
-        <View style={styles.taskMain}>
+      <View style={[styles.taskBody, styles.scheduledCopy]}>
+        <View style={styles.titleLine}>
           {!isEvent ? (
-            <RoundCheckbox checked={isDone} color={accent} onPress={onToggleComplete} />
-          ) : null}
-          <View style={styles.taskCopy}>
-            <View style={styles.titleRow}>
-              {!!task.priority && !isDone ? (
-                <Text style={[styles.priorityInline, { color: priorityColor(task.priority, C) }]}>
-                  {task.priority}
-                </Text>
-              ) : null}
-              <Text
-                style={[styles.taskTitle, isDone && styles.taskTitleCompleted]}
-                numberOfLines={1}
-              >
-                {task.title}
-              </Text>
+            <RoundCheckbox checked={isDone} compact={compact} onPress={onToggleComplete} />
+          ) : (
+            <View style={styles.checkboxSlot}>
+              <Icon name="calendar" size={24} stroke={2} color={C.special} />
             </View>
-            <TaskMetadata task={task} />
+          )}
+          <View style={styles.titleRow}>
+            {!!task.priority && !isDone ? (
+              <Text style={[styles.priorityInline, { color: priorityColor(task.priority, C) }]}>
+                {task.priority}
+              </Text>
+            ) : null}
+            <Text
+              style={[styles.taskTitle, isDone && styles.taskTitleCompleted]}
+              numberOfLines={1}
+            >
+              {task.title}
+            </Text>
           </View>
         </View>
+        <TaskMetadata compact={compact} task={task} />
       </View>
+      {task.durationLabel ? (
+        <View style={styles.durationBadge}>
+          <Text style={styles.durationBadgeText}>{task.durationLabel}</Text>
+        </View>
+      ) : null}
     </>
   );
 
@@ -481,7 +478,7 @@ export function ScheduledRow({
       disabled={!interactive}
       onLongPress={onLongPress}
       onPress={onPress}
-      style={[styles.itemSurface, styles.scheduledRow, compact && styles.scheduledRowCompact]}
+      style={styles.scheduledRow}
     >
       {body}
     </TouchableOpacity>
@@ -492,21 +489,27 @@ export function ScheduledRow({
 
 function RoundCheckbox({
   checked = false,
-  color,
+  compact = false,
   onPress,
 }: {
   checked?: boolean;
-  color: string;
+  compact?: boolean;
   onPress?: () => void;
 }) {
-  const { styles } = useAgendaSectionTheme();
+  const { C, styles } = useAgendaSectionTheme(compact);
   const content = (
-    <View style={[styles.checkbox, { borderColor: color }, checked && styles.checkboxChecked]}>
+    <View
+      style={[
+        styles.checkbox,
+        { borderColor: checked ? C.checkboxDone : C.checkbox },
+        checked && styles.checkboxChecked,
+      ]}
+    >
       {checked ? (
         <Animated.View
           entering={checkEnter}
           exiting={checkExit}
-          style={[styles.checkboxFill, { backgroundColor: color }]}
+          style={[styles.checkboxFill, { backgroundColor: C.checkboxDone }]}
         />
       ) : null}
     </View>
@@ -526,11 +529,20 @@ function RoundCheckbox({
   );
 }
 
-function createStyles(theme: AgendaTheme) {
+function createStyles(theme: AgendaTheme, compact: boolean) {
+  const dividerColor = theme.isDark ? theme.separator : '#E6E6E6';
+  const completedTitle = theme.isDark ? theme.textSecondary : 'rgba(60, 60, 67, 0.6)';
+  const badgeText = theme.isDark ? theme.textSecondary : 'rgba(60, 60, 67, 0.6)';
+  const padX = spacing.lg;
+  const padY = compact ? spacing.xs : spacing.sm;
+  const rowGap = compact ? spacing.sm : spacing.md;
+  const sectionGap = compact ? spacing.xs : spacing.sm;
+
   return StyleSheet.create({
     allDayHeader: {
-      minHeight: 32,
-      paddingHorizontal: 4,
+      paddingTop: padY,
+      paddingBottom: padY,
+      paddingHorizontal: padX,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -539,45 +551,60 @@ function createStyles(theme: AgendaTheme) {
       width: 24,
       height: 24,
       borderRadius: 12,
-      borderWidth: 1,
+      borderWidth: 2,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
-      backgroundColor: 'transparent',
+      backgroundColor: theme.card,
     },
-    checkboxChecked: { borderColor: theme.primary, padding: 2 },
-    checkboxFill: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.primary },
+    checkboxChecked: { padding: 2 },
+    checkboxFill: { width: 16, height: 16, borderRadius: 8 },
     checkboxSlot: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-    completedRow: { opacity: 1 },
     completedHeader: {
-      minHeight: 36,
-      paddingHorizontal: 4,
+      paddingTop: padY,
+      paddingBottom: padY,
+      paddingHorizontal: padX,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
-    completedList: { gap: 8 },
+    completedHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    durationBadge: {
+      paddingVertical: 3,
+      paddingHorizontal: spacing.sm,
+      borderRadius: 999,
+      backgroundColor: theme.isDark ? theme.section : theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    durationBadgeText: {
+      fontFamily: fonts.sansMedium,
+      fontWeight: '500',
+      fontSize: 12,
+      lineHeight: 16,
+      color: badgeText,
+    },
     groupCard: {
-      padding: 12,
-      ...continuousCorner(24),
+      paddingTop: padY,
+      paddingBottom: compact ? spacing.md : spacing.lg,
+      ...continuousCorner(26),
       backgroundColor: theme.card,
-      gap: 8,
+      gap: sectionGap,
       overflow: 'hidden',
     },
     indicatorMetadata: { flexDirection: 'row', alignItems: 'center', gap: 3, flexShrink: 0 },
-    itemSurface: {
-      ...continuousCorner(18),
-      backgroundColor: theme.isDark ? '#2C2C2E' : '#F2F2F7',
+    listBlock: { gap: rowGap, alignSelf: 'stretch' },
+    metadataBlock: {
+      paddingLeft: 34,
+      gap: 0,
+      alignSelf: 'stretch',
     },
-    metadataRow: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
-    metadataSeparator: {
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: theme.separator,
-      flexShrink: 0,
-    },
-    moreRow: { minHeight: 36, paddingHorizontal: 16, justifyContent: 'center' },
+    moreRow: { paddingVertical: spacing.xs, paddingHorizontal: padX, justifyContent: 'center' },
     moreText: {
       fontFamily: fonts.sansMedium,
       fontWeight: '500',
@@ -591,82 +618,79 @@ function createStyles(theme: AgendaTheme) {
       fontFamily: fonts.sans,
       fontSize: 14,
       lineHeight: 18,
-      color: theme.primary,
+      color: theme.danger,
     },
-    scheduleAccentBar: { width: 3, height: 36, marginRight: 12, borderRadius: 2 },
+    scheduledCopy: { flex: 1, minWidth: 0 },
     scheduledHeader: {
-      minHeight: 32,
-      paddingHorizontal: 4,
+      paddingHorizontal: padX,
+      paddingBottom: padY,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
     scheduledRow: {
-      minHeight: 64,
+      paddingHorizontal: padX,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
+      gap: spacing.sm,
     },
-    scheduledRowCompact: { minHeight: 46 },
-    scheduledTask: {
-      minHeight: 64,
-      flex: 1,
-      paddingVertical: 10,
-      backgroundColor: 'transparent',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    scheduledTaskCompact: { minHeight: 46, paddingVertical: 4 },
     scheduledSection: {
-      marginTop: 2,
-      paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.separator,
-      gap: 8,
+      gap: sectionGap,
+      alignSelf: 'stretch',
     },
     sectionCount: {
-      fontFamily: fonts.sansMedium,
-      fontWeight: '500',
+      fontFamily: fonts.sansSemi,
+      fontWeight: '600',
       fontSize: 14,
       lineHeight: 18,
+      textTransform: 'uppercase',
       color: theme.textSecondary,
+    },
+    sectionDivider: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.xl,
+      alignSelf: 'stretch',
+    },
+    sectionDividerLine: {
+      height: StyleSheet.hairlineWidth * 2,
+      backgroundColor: dividerColor,
+      alignSelf: 'stretch',
     },
     sectionLabel: {
       fontFamily: fonts.sansSemi,
       fontWeight: '600',
       fontSize: 15,
-      lineHeight: 20,
-      letterSpacing: 0.35,
+      lineHeight: 18,
       textTransform: 'uppercase',
       color: theme.textSecondary,
     },
     squareButton: {
-      width: 44,
-      height: 44,
-      ...continuousCorner(12),
+      width: 28,
+      height: 28,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: 'transparent',
     },
-    taskCopy: { flex: 1, minWidth: 0, gap: 4, justifyContent: 'center' },
-    taskMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
-    taskRow: {
-      minHeight: 58,
-      paddingVertical: 9,
-      paddingHorizontal: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
+    squareButtonDisabled: { opacity: 0.35 },
+    taskBody: {
+      gap: 0,
+      alignSelf: 'stretch',
+      justifyContent: 'center',
     },
-    taskRowCompact: { minHeight: 46, paddingVertical: 4 },
-    taskSubtitle: {
-      flexShrink: 1,
+    taskDetail: {
       fontFamily: fonts.sans,
       fontSize: 14,
-      lineHeight: 16,
+      lineHeight: 17,
+      color: theme.textTertiary,
+    },
+    taskRow: {
+      paddingHorizontal: padX,
+      justifyContent: 'center',
+    },
+    taskSubtitle: {
+      fontFamily: fonts.sans,
+      fontSize: 14,
+      lineHeight: 17,
       color: theme.textSecondary,
     },
     taskTitle: {
@@ -674,19 +698,25 @@ function createStyles(theme: AgendaTheme) {
       fontFamily: fonts.sansMedium,
       fontWeight: '500',
       fontSize: 16,
-      lineHeight: 20,
-      color: theme.text,
-    },
-    taskTitleCompleted: { textDecorationLine: 'line-through', color: theme.textSecondary },
-    timeText: {
-      width: 54,
-      fontFamily: fonts.sansMedium,
-      fontWeight: '500',
-      fontSize: 15,
       lineHeight: 19,
       color: theme.text,
-      fontVariant: ['tabular-nums'],
     },
-    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 },
+    taskTitleCompleted: {
+      textDecorationLine: 'line-through',
+      color: completedTitle,
+    },
+    titleLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm + 2,
+      minWidth: 0,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 1,
+      minWidth: 0,
+      flexShrink: 1,
+    },
   });
 }

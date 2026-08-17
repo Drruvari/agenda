@@ -1,6 +1,5 @@
-import { Button, Circle, HStack, Image, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
+import { Circle, HStack, Image, Spacer, Text, VStack, ZStack } from '@expo/ui/swift-ui';
 import {
-  buttonStyle,
   font,
   foregroundStyle,
   frame,
@@ -180,7 +179,7 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
 
       const body =
         row.section === 'scheduled' && row.time ? (
-          <HStack spacing={isCompact ? 7 : 10} alignment="center">
+          <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
             {leading}
             <Text
               modifiers={[
@@ -194,69 +193,14 @@ function AgendaWidgetView(snapshot: WidgetSnapshot, environment: WidgetEnvironme
             <Spacer />
           </HStack>
         ) : (
-          <HStack spacing={isCompact ? 7 : 10} alignment="center">
+          <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
             {leading}
             {titleNode}
             <Spacer />
           </HStack>
         );
 
-      if (!checkable) {
-        if (row.section === 'scheduled' && row.time) {
-          children.push(
-            <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
-              {leading}
-              <Text
-                modifiers={[
-                  font({ size: isCompact ? 12 : 13, weight: 'semibold' }),
-                  foregroundStyle(timeColor),
-                ]}
-              >
-                {row.time}
-              </Text>
-              {titleNode}
-              <Spacer />
-            </HStack>,
-          );
-        } else {
-          children.push(
-            <HStack key={row.id} spacing={isCompact ? 7 : 10} alignment="center">
-              {leading}
-              {titleNode}
-              <Spacer />
-            </HStack>,
-          );
-        }
-        continue;
-      }
-
-      children.push(
-        <Button
-          key={row.id}
-          target={`toggle:${row.id}`}
-          modifiers={[buttonStyle('plain')]}
-          onPress={
-            (() => {
-              const nextRows = rows.map((item) =>
-                item.id === row.id
-                  ? {
-                      ...item,
-                      completed: !item.completed,
-                      late: item.completed ? item.late : false,
-                    }
-                  : item,
-              );
-              return {
-                ...snapshot,
-                rows: nextRows,
-                remainingCount: nextRows.filter((item) => !item.completed).length,
-              };
-            }) as () => void
-          }
-        >
-          {body}
-        </Button>,
-      );
+      children.push(body);
     }
   };
 

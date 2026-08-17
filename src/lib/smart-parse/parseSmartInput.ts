@@ -29,7 +29,7 @@ export type SmartTokenSegment = {
   kind?: SmartTokenKind;
 };
 
-const COMMAND_PATTERN = /(^|\s)\/(task|event|note)(?=\s|$)/giu;
+const COMMAND_PATTERN = /(^|\s)\/(task|event)(?=\s|$)/giu;
 const SPACE_PATTERN = /(^|\s)#([\p{L}\p{N}_-]+)(?=\s|$)/gu;
 const PRIORITY_PATTERN = /(^|\s)(!{1,3})(?=\s|$)/g;
 const DAY_PATTERN =
@@ -79,6 +79,18 @@ function priorityFromBang(token: string): Priority {
   return 'low';
 }
 
+function parseDuration(raw: string): number | undefined {
+  const match = /^(?:(\d{1,2})h(?:(\d{1,2})m)?|(\d{1,3})m)$/i.exec(raw);
+  if (!match) return undefined;
+
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? match[3] ?? 0);
+  if (match[1] && minutes > 59) return undefined;
+
+  const total = hours * 60 + minutes;
+  return total > 0 ? total : undefined;
+}
+
 function tokensFromPattern(text: string, pattern: RegExp, kind: SmartTokenKind): SmartToken[] {
   return [...text.matchAll(pattern)].map((match) => {
     const leadingWhitespace = match[1]?.length ?? 0;
@@ -107,7 +119,9 @@ export function lexSmartInput(input: string): SmartToken[] {
   let masked = maskTokenRanges(input, explicit);
   const dates = tokensFromPattern(masked, DAY_PATTERN, 'date');
   masked = maskTokenRanges(masked, dates);
-  const durations = tokensFromPattern(masked, DURATION_PATTERN, 'time');
+  const durations = tokensFromPattern(masked, DURATION_PATTERN, 'time').filter(
+    (token) => parseDuration(token.raw) !== undefined,
+  );
   masked = maskTokenRanges(masked, durations);
   const times = tokensFromPattern(masked, TIME_PATTERN, 'time');
 
@@ -138,8 +152,16 @@ function titleWithoutTokens(input: string, tokens: SmartToken[]): string {
 export function parseSmartInput(
   input: string,
   referenceDate = toLocalDateString(),
+  knownSpaceNames?: readonly string[],
 ): SmartParseResult {
-  const tokens = lexSmartInput(input);
+  const tokens = lexSmartInput(input).filter(
+    (token) =>
+      token.kind !== 'space' ||
+      knownSpaceNames === undefined ||
+      knownSpaceNames.some(
+        (name) => name.toLocaleLowerCase() === token.raw.slice(1).toLocaleLowerCase(),
+      ),
+  );
   const result: SmartParseResult = { title: titleWithoutTokens(input, tokens) };
 
   const type = tokens.find((token) => token.kind === 'type');
@@ -168,16 +190,12 @@ export function parseSmartInput(
   }
 
   const timeTokens = tokens.filter((token) => token.kind === 'time');
-  const clockTime = timeTokens.find((token) => !/^\d+(?:h(?:\d+m)?|m)$/i.test(token.raw));
+  const clockTime = timeTokens.find((token) => parseDuration(token.raw) === undefined);
   if (clockTime) result.time = normalizeTime(clockTime.raw);
 
-  const duration = timeTokens.find((token) => /^\d+(?:h(?:\d+m)?|m)$/i.test(token.raw));
+  const duration = timeTokens.find((token) => parseDuration(token.raw) !== undefined);
   if (duration) {
-    const match = duration.raw.match(/^(?:(\d{1,2})h(?:(\d{1,2})m)?|(\d{1,3})m)$/i);
-    if (match) {
-      const minutes = Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0) + Number(match[3] ?? 0);
-      if (minutes > 0) result.durationMinutes = minutes;
-    }
+    result.durationMinutes = parseDuration(duration.raw);
   }
 
   return result;

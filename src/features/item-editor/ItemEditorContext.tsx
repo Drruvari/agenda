@@ -11,7 +11,6 @@ import type { EditorKind, ItemEditorMode, ItemEditorSession } from './types';
 
 type ItemEditorContextValue = {
   session: ItemEditorSession | null;
-  open: (mode: ItemEditorMode) => void;
   openCreate: (kind?: EditorKind) => void;
   openEdit: (itemId: string) => void;
   openEditRoutine: (routineId: string) => void;
@@ -58,8 +57,8 @@ export function ItemEditorProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo(
-    () => ({ session, open, openCreate, openEdit, openEditRoutine, openQuickAdd, close }),
-    [session, open, openCreate, openEdit, openEditRoutine, openQuickAdd, close],
+    () => ({ session, openCreate, openEdit, openEditRoutine, openQuickAdd, close }),
+    [session, openCreate, openEdit, openEditRoutine, openQuickAdd, close],
   );
 
   return <ItemEditorContext.Provider value={value}>{children}</ItemEditorContext.Provider>;

@@ -1,8 +1,9 @@
 import { loadTodayView } from '@/data/queries/today';
 import type { Repositories } from '@/data/repositories';
-import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
+import { localDateTime, parseLocalDate, toLocalDateString } from '@/data/schema/ids';
 import { isTimePast } from '@/domain/day/isTimePast';
 import { getCalendarAccessState, listDeviceEvents } from '@/native/calendar/deviceCalendar';
+import { mergeNativeBirthdays } from '@/native/calendar/mergeNativeBirthdays';
 import { getBirthdayAccessState, listDeviceBirthdays } from '@/native/contacts/deviceBirthdays';
 import {
   getSystemReminderAccessState,
@@ -12,6 +13,7 @@ import {
 import type { WidgetRow, WidgetSnapshot, WidgetSourceStatus } from './types';
 
 type SourceResult<T> = { status: WidgetSourceStatus; value: T };
+type SortableWidgetRow = WidgetRow & { sortAt?: number };
 
 function errorResult<T>(value: T, source: string, error: unknown): SourceResult<T> {
   console.warn(`[widget-sync] ${source}`, error);
@@ -61,7 +63,7 @@ export async function buildWidgetSnapshot(
     ),
   ]);
 
-  const agendaRows: WidgetRow[] = [...agenda.allDay, ...agenda.scheduled].map((item) => {
+  const agendaRows: SortableWidgetRow[] = [...agenda.allDay, ...agenda.scheduled].map((item) => {
     const checkable = item.type === 'task';
     const completed = checkable && item.completed;
     const section = item.time ? ('scheduled' as const) : ('allDay' as const);
@@ -74,37 +76,44 @@ export async function buildWidgetSnapshot(
       checkable,
       late: Boolean(item.time) && !completed && isTimePast(item.time!, now),
       source: 'agenda' as const,
+      sortAt: item.time ? (localDateTime(date, item.time)?.getTime() ?? undefined) : undefined,
     };
   });
-  const externalRows: WidgetRow[] = [
-    ...calendar.value.map((event) => {
-      const time = event.allDay
-        ? undefined
-        : new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return {
-        id: `calendar:${event.id}`,
-        title: event.title,
-        section: event.allDay ? ('allDay' as const) : ('scheduled' as const),
-        time,
-        completed: false,
-        checkable: false,
-        late: Boolean(time) && isTimePast(time!, now),
-        source: event.kind === 'birthday' ? ('birthday' as const) : ('calendar' as const),
-      };
-    }),
-    ...birthdays.value.map((birthday) => ({
-      id: `birthday:${birthday.id}`,
-      title: birthday.name,
+  const mergedBirthdays = mergeNativeBirthdays(calendar.value, birthdays.value);
+  const externalRows: SortableWidgetRow[] = [
+    ...calendar.value
+      .filter((event) => event.kind === 'event')
+      .map((event) => {
+        const startAt = new Date(event.startDate);
+        const time = event.allDay
+          ? undefined
+          : startAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return {
+          id: `calendar:${event.id}`,
+          title: event.title,
+          section: event.allDay ? ('allDay' as const) : ('scheduled' as const),
+          time,
+          completed: false,
+          checkable: false,
+          late: Boolean(time) && startAt.getTime() < now.getTime(),
+          source: 'calendar' as const,
+          sortAt: event.allDay ? undefined : startAt.getTime(),
+        };
+      }),
+    ...mergedBirthdays.map((birthday) => ({
+      id: birthday.id,
+      title: birthday.title,
       section: 'allDay' as const,
       completed: false,
       checkable: false,
       source: 'birthday' as const,
     })),
     ...reminders.value.map((reminder) => {
+      const due = reminder.dueDate ? new Date(reminder.dueDate) : null;
       const time =
-        reminder.allDay || !reminder.dueDate
+        reminder.allDay || !due
           ? undefined
-          : new Date(reminder.dueDate).toLocaleTimeString([], {
+          : due.toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             });
@@ -116,21 +125,27 @@ export async function buildWidgetSnapshot(
         time,
         completed: false,
         checkable: false,
-        late: Boolean(time) && isTimePast(time!, now),
+        late: Boolean(due && due.getTime() < now.getTime()),
         source: 'reminder' as const,
+        sortAt: reminder.allDay || !due ? undefined : due.getTime(),
       };
     }),
   ];
-  const rows = [...agendaRows, ...externalRows].sort((left, right) => {
-    if (left.section !== right.section) return left.section === 'allDay' ? -1 : 1;
-    if (left.section === 'scheduled' && !left.completed && !right.completed && left.late !== right.late) {
-      return left.late ? -1 : 1;
-    }
-    if (left.completed !== right.completed) return left.completed ? 1 : -1;
-    return (
-      (left.time ?? '').localeCompare(right.time ?? '') || left.title.localeCompare(right.title)
-    );
-  });
+  const rows = [...agendaRows, ...externalRows]
+    .sort((left, right) => {
+      if (left.section !== right.section) return left.section === 'allDay' ? -1 : 1;
+      if (
+        left.section === 'scheduled' &&
+        !left.completed &&
+        !right.completed &&
+        left.late !== right.late
+      ) {
+        return left.late ? -1 : 1;
+      }
+      if (left.completed !== right.completed) return left.completed ? 1 : -1;
+      return (left.sortAt ?? 0) - (right.sortAt ?? 0) || left.title.localeCompare(right.title);
+    })
+    .map(({ sortAt: _sortAt, ...row }) => row);
 
   return {
     schemaVersion: 1,

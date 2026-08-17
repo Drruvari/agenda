@@ -72,7 +72,7 @@ export async function scheduleReminder(
   const Notifications = getNotifications();
   if (!Notifications) return null;
   if (when.getTime() <= Date.now()) return null;
-  if ((await requestReminderAccess()) !== 'granted') return null;
+  if ((await getReminderAccessState()) !== 'granted') return null;
 
   const preview = applyNotificationPrivacy(title, body);
 

@@ -1,9 +1,9 @@
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { type CSSProperties, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
-import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, useAppTheme } from '@/theme';
 
 type DateFieldProps = {
   embedded?: boolean;
@@ -20,10 +20,8 @@ type TimeFieldProps = {
 
 export function NativeDateField({ embedded = false, onChange, value }: DateFieldProps) {
   const theme = useAppTheme();
-  const { colorScheme } = useAppAppearance();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(() => parseLocalDate(value));
   const date = parseLocalDate(value);
 
   if (Platform.OS === 'web') {
@@ -33,7 +31,6 @@ export function NativeDateField({ embedded = false, onChange, value }: DateField
   }
 
   const openPicker = () => {
-    setDraft(date);
     setOpen(true);
   };
 
@@ -48,7 +45,7 @@ export function NativeDateField({ embedded = false, onChange, value }: DateField
         <Text style={styles.triggerText}>{formatDisplayDate(date)}</Text>
       </Pressable>
 
-      {Platform.OS === 'android' && open ? (
+      {open ? (
         <DateTimePicker
           accentColor={theme.primary}
           mode="date"
@@ -61,42 +58,6 @@ export function NativeDateField({ embedded = false, onChange, value }: DateField
           value={date}
         />
       ) : null}
-
-      {Platform.OS === 'ios' ? (
-        <Modal
-          animationType="fade"
-          transparent
-          visible={open}
-          onRequestClose={() => setOpen(false)}
-        >
-          <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
-            <Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}>
-              <View style={styles.modalHeader}>
-                <Pressable onPress={() => setOpen(false)}>
-                  <Text style={styles.modalAction}>Cancel</Text>
-                </Pressable>
-                <Text style={styles.modalTitle}>Date</Text>
-                <Pressable
-                  onPress={() => {
-                    onChange(toLocalDateString(draft));
-                    setOpen(false);
-                  }}
-                >
-                  <Text style={[styles.modalAction, styles.modalDone]}>Done</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                accentColor={theme.primary}
-                display="spinner"
-                mode="date"
-                onValueChange={(_, next) => setDraft(next)}
-                themeVariant={colorScheme}
-                value={draft}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      ) : null}
     </View>
   );
 }
@@ -108,12 +69,10 @@ export function NativeTimeField({
   value,
 }: TimeFieldProps) {
   const theme = useAppTheme();
-  const { colorScheme } = useAppAppearance();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [open, setOpen] = useState(false);
   const hasTime = Boolean(value.trim());
   const date = hasTime ? timeToDate(value) : new Date();
-  const [draft, setDraft] = useState(date);
 
   if (Platform.OS === 'web') {
     return (
@@ -129,7 +88,6 @@ export function NativeTimeField({
   }
 
   const openPicker = () => {
-    setDraft(hasTime ? timeToDate(value) : new Date());
     setOpen(true);
   };
 
@@ -155,7 +113,7 @@ export function NativeTimeField({
         </Pressable>
       ) : null}
 
-      {Platform.OS === 'android' && open ? (
+      {open ? (
         <DateTimePicker
           accentColor={theme.primary}
           is24Hour
@@ -168,42 +126,6 @@ export function NativeTimeField({
           presentation="dialog"
           value={date}
         />
-      ) : null}
-
-      {Platform.OS === 'ios' ? (
-        <Modal
-          animationType="fade"
-          transparent
-          visible={open}
-          onRequestClose={() => setOpen(false)}
-        >
-          <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
-            <Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}>
-              <View style={styles.modalHeader}>
-                <Pressable onPress={() => setOpen(false)}>
-                  <Text style={styles.modalAction}>Cancel</Text>
-                </Pressable>
-                <Text style={styles.modalTitle}>Time</Text>
-                <Pressable
-                  onPress={() => {
-                    onChange(toLocalTimeString(draft));
-                    setOpen(false);
-                  }}
-                >
-                  <Text style={[styles.modalAction, styles.modalDone]}>Done</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                accentColor={theme.primary}
-                display="spinner"
-                mode="time"
-                onValueChange={(_, next) => setDraft(next)}
-                themeVariant={colorScheme}
-                value={draft}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
       ) : null}
     </View>
   );
@@ -316,42 +238,6 @@ function createStyles(theme: AgendaTheme) {
       color: theme.primary,
       fontFamily: fonts.sansSemi,
       fontSize: 15,
-    },
-    modalBackdrop: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      padding: 16,
-    },
-    modalCard: {
-      overflow: 'hidden',
-      backgroundColor: theme.card,
-      ...continuousCorner(18),
-    },
-    modalHeader: {
-      height: 48,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.separator,
-    },
-    modalTitle: {
-      color: theme.text,
-      fontFamily: fonts.sansSemi,
-      fontSize: 17,
-    },
-    modalAction: {
-      color: theme.textSecondary,
-      fontFamily: fonts.sansMedium,
-      fontSize: 16,
-      minWidth: 64,
-    },
-    modalDone: {
-      color: theme.primary,
-      textAlign: 'right',
-      fontFamily: fonts.sansSemi,
     },
   });
 }

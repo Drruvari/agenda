@@ -6,11 +6,9 @@ export type ButtonProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  icon?: string;
-  iconOnly?: boolean;
   role?: 'default' | 'cancel' | 'destructive';
   style?: StyleProp<ViewStyle>;
-  variant?: 'default' | 'glass' | 'prominent';
+  variant?: 'default' | 'prominent';
 };
 
 export function Button({

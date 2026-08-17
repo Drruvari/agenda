@@ -15,7 +15,7 @@ export class NoteConflictError extends Error {
 export function shouldRecoverDraft(note: DailyNote, draft: NoteDraft | null): boolean {
   if (!draft) return false;
   if (draft.bodyText === note.bodyText) return false;
-  return draft.updatedAt > note.updatedAt;
+  return draft.baseUpdatedAt === note.updatedAt && draft.updatedAt > note.updatedAt;
 }
 
 /** Ensure each write gets a strictly newer ISO timestamp (avoids same-ms CAS collisions). */
@@ -67,11 +67,7 @@ export function createNotesRepository(db: DatabaseClient) {
      * Persist note body. When `expectedUpdatedAt` is provided, rejects with
      * {@link NoteConflictError} if the stored row has a different timestamp.
      */
-    async saveBody(
-      date: string,
-      bodyText: string,
-      expectedUpdatedAt?: string,
-    ): Promise<DailyNote> {
+    async saveBody(date: string, bodyText: string, expectedUpdatedAt?: string): Promise<DailyNote> {
       const note = await this.getOrCreateForDate(date);
 
       if (expectedUpdatedAt !== undefined && note.updatedAt !== expectedUpdatedAt) {
@@ -83,7 +79,16 @@ export function createNotesRepository(db: DatabaseClient) {
         bodyText,
         updatedAt: nextUpdatedAt(note.updatedAt),
       };
-      await db.put('daily_notes', next);
+      if (expectedUpdatedAt !== undefined) {
+        const saved = await db.putDailyNoteIfUpdatedAtMatches(next, expectedUpdatedAt);
+        if (!saved) {
+          const current = await this.getByDate(date);
+          if (current) throw new NoteConflictError(current);
+          throw new Error(`Daily note for ${date} disappeared while saving`);
+        }
+      } else {
+        await db.put('daily_notes', next);
+      }
       return next;
     },
 
@@ -91,11 +96,7 @@ export function createNotesRepository(db: DatabaseClient) {
       return db.getById<NoteDraft>('note_drafts', date);
     },
 
-    async upsertDraft(
-      date: string,
-      bodyText: string,
-      baseUpdatedAt: string,
-    ): Promise<NoteDraft> {
+    async upsertDraft(date: string, bodyText: string, baseUpdatedAt: string): Promise<NoteDraft> {
       const existing = await this.getDraft(date);
       const draft: NoteDraft = {
         date,
@@ -158,8 +159,7 @@ export function createNotesRepository(db: DatabaseClient) {
 
       await db.put('drawings', drawing);
 
-      const allNotes = await db.getAll<DailyNote>('daily_notes');
-      const note = allNotes.find((entry) => entry.id === noteId);
+      const note = await db.getById<DailyNote>('daily_notes', noteId);
       if (note) {
         await db.put('daily_notes', {
           ...note,
@@ -179,8 +179,7 @@ export function createNotesRepository(db: DatabaseClient) {
 
       await db.delete('drawings', drawingId);
 
-      const notes = await db.getAll<DailyNote>('daily_notes');
-      const note = notes.find((entry) => entry.id === drawing.noteId);
+      const note = await db.getById<DailyNote>('daily_notes', drawing.noteId);
       if (note?.drawingId === drawingId) {
         await db.put('daily_notes', {
           ...note,

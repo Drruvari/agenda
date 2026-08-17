@@ -1,6 +1,7 @@
 import { type Href, Link } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Icon } from '@/components/ui/Icon';
 import { Typography } from '@/components/ui/Typography';
 import { type AgendaTheme, continuousCorner, radius, spacing, useThemeStyles } from '@/theme';
 
@@ -26,9 +27,7 @@ export function NavigationLink({ detail, href, label }: NavigationLinkProps) {
             </Typography>
           ) : null}
         </View>
-        <Typography variant="title" color={theme.textSecondary} style={styles.arrow}>
-          →
-        </Typography>
+        <Icon name="chevronRight" size={18} color={theme.textSecondary} />
       </Pressable>
     </Link>
   );
@@ -46,7 +45,7 @@ function createStyles(theme: AgendaTheme) {
       borderColor: theme.border,
       ...continuousCorner(radius.md),
       backgroundColor: theme.card,
-      paddingHorizontal: 18,
+      paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
     },
     pressed: {
@@ -55,9 +54,6 @@ function createStyles(theme: AgendaTheme) {
     copy: {
       flex: 1,
       gap: 3,
-    },
-    arrow: {
-      fontWeight: '400',
     },
   });
 }

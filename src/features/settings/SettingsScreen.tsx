@@ -682,21 +682,18 @@ function GeneralSettings({
           })}
         </View>
         <SettingToggle
-          accent={accent}
           title="Show Completed section"
           subtitle="Move finished tasks into a separate section."
           value={general.showCompleted}
           onValueChange={(showCompleted) => onGeneral({ showCompleted })}
         />
         <SettingToggle
-          accent={accent}
           title="Compact day list"
           subtitle="Use tighter rows on Today."
           value={general.compactStream}
           onValueChange={(compactStream) => onGeneral({ compactStream })}
         />
         <SettingToggle
-          accent={accent}
           title="Keep Space filter"
           subtitle="Keep the selected Space when changing days."
           value={general.keepFilterWhileChangingDays}
@@ -705,7 +702,6 @@ function GeneralSettings({
           }
         />
         <SettingToggle
-          accent={accent}
           title="Pull down to quick add"
           subtitle="Pull down on Today to create an item."
           value={general.pullDownToAdd}
@@ -717,7 +713,6 @@ function GeneralSettings({
           }
         />
         <SettingToggle
-          accent={accent}
           title="Pull down to search"
           subtitle="Pull down on Today to search."
           value={general.pullDownToSearch}
@@ -729,21 +724,18 @@ function GeneralSettings({
           }
         />
         <SettingToggle
-          accent={accent}
           title="Swipe to change day"
           subtitle="Swipe left or right on Today."
           value={general.swipeToChangeDay}
           onValueChange={(swipeToChangeDay) => onGeneral({ swipeToChangeDay })}
         />
         <SettingToggle
-          accent={accent}
           title="Calendar dots"
           subtitle="Mark dates that contain items or a daily note."
           value={general.calendarIndicators}
           onValueChange={(calendarIndicators) => onGeneral({ calendarIndicators })}
         />
         <SettingToggle
-          accent={accent}
           last
           title="Tap to edit"
           subtitle="Tap an item to edit it instead of completing it."
@@ -754,7 +746,6 @@ function GeneralSettings({
 
       <SettingsSection title="Drawing">
         <SettingToggle
-          accent={accent}
           last
           title="Pen-only drawing"
           subtitle={
@@ -846,14 +837,12 @@ function EditorSettings({
           }
         />
         <SettingToggle
-          accent={accent}
           title="Smart parsing"
           subtitle="Recognize dates, times, Spaces, and priority as you type."
           value={editor.smartParsingEnabled}
           onValueChange={(smartParsingEnabled) => onEditor({ smartParsingEnabled })}
         />
         <SettingToggle
-          accent={accent}
           last
           title="Continue numbered lists"
           subtitle="Start the next number when you press Return."
@@ -864,7 +853,6 @@ function EditorSettings({
 
       <SettingsSection title="Markdown">
         <SettingToggle
-          accent={accent}
           last
           title="Render markdown"
           subtitle="Format supported Markdown in the daily note."
@@ -997,14 +985,12 @@ function SyncSettings({
 
       <SettingsSection title="Sync">
         <SettingToggle
-          accent={accent}
           title="Daily Notes folder sync"
           subtitle="Mirrors dated text into the searchable local index."
           value={folderSync}
           onValueChange={onFolderSync}
         />
         <SettingToggle
-          accent={accent}
           last
           title="Open Today shortcut"
           subtitle="Enables today deep-link recovery."
@@ -1093,21 +1079,18 @@ function SettingRow({
 }
 
 function SettingToggle({
-  accent,
   last,
   onValueChange,
   subtitle,
   title,
   value,
 }: {
-  accent: string;
   last?: boolean;
   onValueChange: (value: boolean) => void;
   subtitle?: string;
   title: string;
   value: boolean;
 }) {
-  const { colorScheme } = useAppAppearance();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
@@ -1117,12 +1100,7 @@ function SettingToggle({
         {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
       </View>
       <View style={styles.trailingControl}>
-        <NativeSwitch
-          accent={accent}
-          colorScheme={colorScheme}
-          onValueChange={onValueChange}
-          value={value}
-        />
+        <NativeSwitch onValueChange={onValueChange} value={value} />
       </View>
     </View>
   );

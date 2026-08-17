@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { SettingPicker } from '@/features/settings/SettingPicker';
 import { SettingsSection } from '@/features/settings/SettingsChrome';
 import { getReminderAccessState, type ReminderAccessState } from '@/native/notifications/reminders';
-import { type AgendaTheme, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { type AgendaTheme, fonts, useAppTheme } from '@/theme';
 
 import { useAppLock } from './AppLockProvider';
 import {
@@ -19,7 +19,6 @@ import {
 } from './types';
 
 export function PrivacySettings() {
-  const { accent, colorScheme } = useAppAppearance();
   const { showToast } = useToast();
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -61,8 +60,6 @@ export function PrivacySettings() {
     <View style={styles.sections}>
       <SettingsSection title="Security">
         <SettingToggle
-          accent={accent}
-          colorScheme={colorScheme}
           title="App Lock"
           subtitle="Require Face ID, Touch ID, fingerprint, or your device passcode when opening Agenda."
           value={prefs.enabled}
@@ -189,16 +186,12 @@ function SettingRow({
 }
 
 function SettingToggle({
-  accent,
-  colorScheme,
   last,
   onValueChange,
   subtitle,
   title,
   value,
 }: {
-  accent: string;
-  colorScheme: 'light' | 'dark';
   last?: boolean;
   onValueChange: (value: boolean) => void;
   subtitle?: string;
@@ -214,12 +207,7 @@ function SettingToggle({
         {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
       </View>
       <View style={styles.trailingControl}>
-        <NativeSwitch
-          accent={accent}
-          colorScheme={colorScheme}
-          onValueChange={onValueChange}
-          value={value}
-        />
+        <NativeSwitch onValueChange={onValueChange} value={value} />
       </View>
     </View>
   );

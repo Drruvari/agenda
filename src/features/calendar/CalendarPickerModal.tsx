@@ -6,13 +6,11 @@ import { type AgendaTheme, continuousCorner, useAppTheme } from '@/theme';
 type Props = {
   onChange: (date: Date) => void;
   onClose: () => void;
-  onToday: () => void;
   value: Date;
   visible: boolean;
-  weekStartsOn?: 'sunday' | 'monday';
 };
 
-export function CalendarPickerModal({ onChange, onClose, onToday, value, visible }: Props) {
+export function CalendarPickerModal({ onChange, onClose, value, visible }: Props) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const webInputStyle = useMemo<CSSProperties>(
@@ -56,9 +54,6 @@ export function CalendarPickerModal({ onChange, onClose, onToday, value, visible
             value={inputValue}
           />
           <View style={styles.actions}>
-            <Pressable onPress={onToday} style={styles.actionButton}>
-              <Text style={styles.actionLabel}>Today</Text>
-            </Pressable>
             <Pressable onPress={onClose} style={styles.actionButton}>
               <Text style={styles.actionLabel}>Done</Text>
             </Pressable>

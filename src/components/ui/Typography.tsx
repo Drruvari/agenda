@@ -1,4 +1,4 @@
-import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { type AgendaTheme, fonts, typography, useThemeStyles } from '@/theme';
 
@@ -20,7 +20,7 @@ export function Typography({ variant = 'body', color, muted, style, ...props }: 
         styles[variant],
         muted ? styles.muted : null,
         color ? { color } : null,
-        style as TextStyle,
+        style,
       ]}
     />
   );
@@ -71,7 +71,6 @@ function createStyles(theme: AgendaTheme) {
     },
     muted: {
       color: theme.textSecondary,
-      fontFamily: fonts.sans,
     },
   });
 }

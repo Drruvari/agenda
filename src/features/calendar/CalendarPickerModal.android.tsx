@@ -5,10 +5,8 @@ import { useAppTheme } from '@/theme';
 type Props = {
   onChange: (date: Date) => void;
   onClose: () => void;
-  onToday: () => void;
   value: Date;
   visible: boolean;
-  weekStartsOn?: 'sunday' | 'monday';
 };
 
 /** Material 3 date dialog — mounts only while visible. */

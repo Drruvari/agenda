@@ -1,5 +1,3 @@
-/** Initial SQLite schema (migration 001). */
-
 export const MIGRATION_001_STATEMENTS: string[] = [
   `CREATE TABLE IF NOT EXISTS spaces (
   id TEXT PRIMARY KEY NOT NULL,
@@ -67,15 +65,4 @@ export const MIGRATION_001_STATEMENTS: string[] = [
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
 )`,
-];
-
-export const DROP_ALL_TABLES_STATEMENTS: string[] = [
-  'DROP TABLE IF EXISTS drawings',
-  'DROP TABLE IF EXISTS note_drafts',
-  'DROP TABLE IF EXISTS daily_notes',
-  'DROP TABLE IF EXISTS routine_completions',
-  'DROP TABLE IF EXISTS routines',
-  'DROP TABLE IF EXISTS agenda_items',
-  'DROP TABLE IF EXISTS spaces',
-  'DROP TABLE IF EXISTS meta',
 ];

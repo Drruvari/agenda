@@ -13,9 +13,7 @@ import { continuousCorner, continuousCornerBottom, radius, rgba, useAppAppearanc
 
 type Props = PropsWithChildren<{
   blurTarget?: RefObject<NativeView | null>;
-  /** Uniform corner radius. Ignored when `borderBottomRadius` is set. */
   borderRadius?: number;
-  /** Round only the bottom corners (sticky headers). */
   borderBottomRadius?: number;
   contentStyle?: StyleProp<ViewStyle>;
   elevated?: boolean;

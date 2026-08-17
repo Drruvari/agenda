@@ -248,3 +248,5 @@ export function usePlannerGestures({
     releaseLabelStyle,
   };
 }
+
+export type PlannerGestures = ReturnType<typeof usePlannerGestures>;

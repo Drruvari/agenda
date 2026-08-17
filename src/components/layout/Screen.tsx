@@ -9,34 +9,34 @@ import { type AgendaTheme, spacing, useThemeStyles } from '@/theme';
 
 type ScreenProps = PropsWithChildren<{
   description?: string;
-  title: string;
   showBack?: boolean;
+  title: string;
 }>;
 
-export function Screen({ children, description, title, showBack = true }: ScreenProps) {
+export function Screen({ children, description, showBack = true, title }: ScreenProps) {
   const { styles } = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
-  const canBack = showBack && router.canGoBack();
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {canBack ? (
+      {showBack && router.canGoBack() ? (
         <View style={styles.topBar}>
-          <IconButton name="back" onPress={() => router.back()} />
+          <IconButton accessibilityLabel="Go back" name="back" onPress={router.back} />
         </View>
       ) : null}
+
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xl }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
       >
-        <Typography variant="display" style={styles.title}>
-          {title}
-        </Typography>
+        <Typography variant="display">{title}</Typography>
+
         {description ? (
-          <Typography variant="body" muted style={styles.description}>
+          <Typography muted style={styles.description} variant="body">
             {description}
           </Typography>
         ) : null}
+
         {children ? <View style={styles.body}>{children}</View> : null}
       </ScrollView>
     </View>
@@ -50,18 +50,15 @@ function createStyles(theme: AgendaTheme) {
       backgroundColor: theme.section,
     },
     topBar: {
-      paddingHorizontal: 18,
+      paddingHorizontal: spacing.lg,
       paddingTop: spacing.sm,
     },
-    scroll: {
-      paddingHorizontal: 18,
-    },
-    title: {
-      marginTop: spacing.md,
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
     },
     description: {
       marginTop: spacing.sm,
-      fontWeight: '400',
     },
     body: {
       marginTop: spacing.xl,

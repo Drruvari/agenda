@@ -1,6 +1,13 @@
 import type { DatabaseClient } from '@/data/database/types';
 import { createId, nowIso } from '@/data/schema/ids';
-import type { AgendaItem, EventItem, NoteItem, Priority, RecurrenceRule, TaskItem } from '@/data/schema/types';
+import type {
+  AgendaItem,
+  EventItem,
+  NoteItem,
+  Priority,
+  RecurrenceRule,
+  TaskItem,
+} from '@/data/schema/types';
 import { matchesSpaceFilter } from '@/data/spaces/spaceFilter';
 
 export type CreateTaskInput = {
@@ -20,9 +27,7 @@ export type CreateEventInput = CreateTaskInput & {
   deviceEventId?: string;
 };
 
-export type CreateNoteInput = Omit<CreateTaskInput, 'priority'> & {
-  priority?: Priority;
-};
+export type CreateNoteInput = CreateTaskInput;
 
 export function createAgendaRepository(db: DatabaseClient) {
   return {

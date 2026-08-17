@@ -6,7 +6,7 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import type { TodayRoutine } from '@/features/today/hooks/useTodayAgenda';
-import { type AgendaTheme, continuousCorner, fonts, motion, useAppTheme } from '@/theme';
+import { type AgendaTheme, continuousCorner, fonts, motion, spacing, useAppTheme } from '@/theme';
 
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const checkEnter = ZoomIn.springify()
@@ -20,13 +20,20 @@ const checkExit = ZoomOut.duration(motion.duration.instant)
 
 type Props = {
   activeSpaceLabel: string | null;
+  compact?: boolean;
   onManage: () => void;
   onToggle: (id: string) => void;
   routines: TodayRoutine[];
 };
 
-export function RoutinesSection({ activeSpaceLabel, onManage, onToggle, routines }: Props) {
-  const { C, styles } = useRoutineTheme();
+export function RoutinesSection({
+  activeSpaceLabel,
+  compact = false,
+  onManage,
+  onToggle,
+  routines,
+}: Props) {
+  const { C, styles } = useRoutineTheme(compact);
   const completed = routines.filter((routine) => routine.completed).length;
 
   return (
@@ -45,7 +52,7 @@ export function RoutinesSection({ activeSpaceLabel, onManage, onToggle, routines
             pressedStyle={styles.pressed}
             style={styles.squareButton}
           >
-            <Icon name="add" size={24} color={C.muted} />
+            <Icon name="add" size={18} color={C.muted} stroke={1.5} />
           </AnimatedPressable>
         </View>
       </View>
@@ -53,7 +60,12 @@ export function RoutinesSection({ activeSpaceLabel, onManage, onToggle, routines
       {routines.length > 0 ? (
         <View style={styles.routineRow}>
           {routines.map((routine) => (
-            <RoutineCard key={routine.id} routine={routine} onPress={() => onToggle(routine.id)} />
+            <RoutineCard
+              compact={compact}
+              key={routine.id}
+              routine={routine}
+              onPress={() => onToggle(routine.id)}
+            />
           ))}
         </View>
       ) : (
@@ -70,8 +82,16 @@ export function RoutinesSection({ activeSpaceLabel, onManage, onToggle, routines
   );
 }
 
-function RoutineCard({ routine, onPress }: { routine: TodayRoutine; onPress: () => void }) {
-  const { styles } = useRoutineTheme();
+function RoutineCard({
+  compact,
+  routine,
+  onPress,
+}: {
+  compact: boolean;
+  routine: TodayRoutine;
+  onPress: () => void;
+}) {
+  const { C, styles } = useRoutineTheme(compact);
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -82,12 +102,20 @@ function RoutineCard({ routine, onPress }: { routine: TodayRoutine; onPress: () 
       pressedStyle={styles.pressed}
       style={[styles.routineCard, routine.completed && styles.routineCardCompleted]}
     >
-      <View style={[styles.routineCheck, routine.completed && styles.routineCheckDone]}>
+      <View
+        style={[
+          styles.routineCheck,
+          {
+            borderColor: routine.completed ? C.checkboxDone : C.checkbox,
+          },
+          routine.completed && styles.routineCheckDone,
+        ]}
+      >
         {routine.completed ? (
           <Animated.View
             entering={checkEnter}
             exiting={checkExit}
-            style={styles.routineCheckFill}
+            style={[styles.routineCheckFill, { backgroundColor: C.checkboxDone }]}
           />
         ) : null}
       </View>
@@ -101,89 +129,109 @@ function RoutineCard({ routine, onPress }: { routine: TodayRoutine; onPress: () 
   );
 }
 
-function useRoutineTheme() {
+function useRoutineTheme(compact = false) {
   const theme = useAppTheme();
   return useMemo(
-    () => ({ C: { muted: theme.textSecondary }, styles: createStyles(theme) }),
-    [theme],
+    () => ({
+      C: {
+        checkbox: theme.border,
+        checkboxDone: theme.text,
+        muted: theme.textSecondary,
+      },
+      styles: createStyles(theme, compact),
+    }),
+    [compact, theme],
   );
 }
 
-function createStyles(theme: AgendaTheme) {
+function createStyles(theme: AgendaTheme, compact: boolean) {
+  const completedTitle = theme.isDark ? theme.textSecondary : 'rgba(60, 60, 67, 0.6)';
+  const padX = spacing.lg;
+  const padY = compact ? spacing.xs : spacing.sm;
+  const sectionGap = compact ? spacing.xs : spacing.sm;
+
   return StyleSheet.create({
     groupCard: {
-      padding: 12,
-      ...continuousCorner(24),
+      paddingTop: padY,
+      paddingBottom: compact ? spacing.md : spacing.lg,
+      ...continuousCorner(26),
       backgroundColor: theme.card,
-      gap: 8,
+      gap: sectionGap,
       overflow: 'hidden',
     },
     pressed: { opacity: 0.72 },
     routineCard: {
       flex: 1,
       minWidth: 0,
-      height: 84,
-      padding: 16,
+      height: compact ? 72 : 80,
+      paddingHorizontal: spacing.md,
+      paddingVertical: compact ? spacing.sm : spacing.md,
       ...continuousCorner(16),
-      backgroundColor: theme.section,
+      backgroundColor: theme.isDark ? theme.section : theme.background,
       alignItems: 'center',
-      gap: 8,
+      justifyContent: 'center',
+      gap: spacing.sm,
     },
-    routineCardCompleted: { backgroundColor: theme.primarySoft },
+    routineCardCompleted: {
+      backgroundColor: theme.isDark ? theme.section : theme.background,
+    },
     routineCheck: {
       width: 24,
       height: 24,
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
+      borderWidth: 2,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.card,
     },
-    routineCheckDone: { borderColor: theme.primary, backgroundColor: theme.card, padding: 2 },
-    routineCheckFill: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.primary },
+    routineCheckDone: { padding: 2 },
+    routineCheckFill: { width: 16, height: 16, borderRadius: 8 },
     routineHeader: {
-      minHeight: 36,
-      paddingLeft: 4,
+      paddingTop: padY,
+      paddingBottom: padY,
+      paddingHorizontal: padX,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
-    routineHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-    routineRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+    routineHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    routineRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      paddingHorizontal: padX,
+    },
     routineTitle: {
       fontFamily: fonts.sansMedium,
       fontWeight: '500',
       fontSize: 16,
-      lineHeight: 20,
+      lineHeight: 19,
       color: theme.text,
       textAlign: 'center',
     },
     routineTitleCompleted: {
-      fontFamily: fonts.sansSemi,
-      fontWeight: '600',
-      color: theme.primary,
+      textDecorationLine: 'line-through',
+      color: completedTitle,
     },
     sectionCount: {
-      fontFamily: fonts.sansMedium,
-      fontWeight: '500',
+      fontFamily: fonts.sansSemi,
+      fontWeight: '600',
       fontSize: 14,
       lineHeight: 18,
+      textTransform: 'uppercase',
       color: theme.textSecondary,
     },
     sectionLabel: {
       fontFamily: fonts.sansSemi,
       fontWeight: '600',
       fontSize: 15,
-      lineHeight: 20,
-      letterSpacing: 0.35,
+      lineHeight: 18,
       textTransform: 'uppercase',
       color: theme.textSecondary,
     },
     squareButton: {
-      width: 44,
-      height: 44,
-      ...continuousCorner(12),
+      width: 28,
+      height: 28,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: 'transparent',

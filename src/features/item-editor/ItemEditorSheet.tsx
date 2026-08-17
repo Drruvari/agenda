@@ -3,7 +3,7 @@ import { Alert, Dimensions } from 'react-native';
 
 import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { useToast } from '@/components/ui/ToastProvider';
-import { localDateTime, parseLocalDate, useData } from '@/data';
+import { localDateTime, useData } from '@/data';
 import type { AgendaItem, Routine } from '@/data/schema/types';
 import { resolveCreateSpaceId } from '@/data/spaces/spaceFilter';
 import {
@@ -161,7 +161,11 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
     if (mode.type === 'edit' || mode.type === 'edit-routine' || draft.kind === 'note') return;
     if (!settings.editor.smartParsingEnabled) return;
 
-    const parsed = parseSmartInput(text, ui.selectedDate);
+    const parsed = parseSmartInput(
+      text,
+      ui.selectedDate,
+      spaces.map((space) => space.name),
+    );
     const updates: Partial<ItemEditorDraft> = {};
     if (parsed.date) updates.date = parsed.date;
     if (parsed.time) {
@@ -171,7 +175,7 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
     if (parsed.durationMinutes && (parsed.type === 'event' || draft.kind === 'event')) {
       updates.durationMinutes = parsed.durationMinutes;
     }
-    if (parsed.type && parsed.type !== 'note') updates.kind = parsed.type;
+    if (parsed.type) updates.kind = parsed.type;
     if (parsed.priority) updates.priority = parsed.priority;
     if (parsed.spaceName) {
       const match = spaces.find(
@@ -214,7 +218,11 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
       settings.editor.smartParsingEnabled &&
       (draft.kind === 'task' || draft.kind === 'event') &&
       mode.type !== 'edit'
-        ? parseSmartInput(rawTitle, ui.selectedDate)
+        ? parseSmartInput(
+            rawTitle,
+            ui.selectedDate,
+            spaces.map((space) => space.name),
+          )
         : { title: rawTitle.trim() };
 
     let finalTitle = parsed.title.trim();
@@ -295,15 +303,10 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
           spaceId,
         });
       } else if (draft.kind === 'event') {
-        const start = finalTime ? localDateTime(finalDate, finalTime) : parseLocalDate(finalDate);
-        if (!start) throw new Error('Invalid event date');
         const duration = Math.max(
           1,
           ('durationMinutes' in parsed && parsed.durationMinutes) || draft.durationMinutes,
         );
-        const end = finalTime
-          ? new Date(start.getTime() + duration * 60_000)
-          : new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
         const remind = Boolean(draft.remindAtTime);
         await createAgendaEvent(repos, {
           title: finalTitle,
@@ -315,13 +318,6 @@ function ItemEditorSheet({ mode, onDismiss }: { mode: ItemEditorMode; onDismiss:
           durationMinutes: duration,
           recurrence,
           remind,
-          device: {
-            title: finalTitle,
-            details,
-            startDate: start,
-            endDate: end,
-            allDay: !finalTime,
-          },
         });
       } else if (draft.kind === 'note') {
         await repos.agenda.createNote({

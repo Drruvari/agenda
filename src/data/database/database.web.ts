@@ -99,17 +99,26 @@ function matchesWhere(
 }
 
 function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
+  let activeTransaction: IDBTransaction | null = null;
+
+  const getTransaction = (table: TableName, mode: IDBTransactionMode) => {
+    if (activeTransaction) {
+      return { owned: false, tx: activeTransaction };
+    }
+    return { owned: true, tx: db.transaction(table, mode) };
+  };
+
   return {
     async getAll<T>(table: TableName): Promise<T[]> {
-      const tx = db.transaction(table, 'readonly');
+      const { owned, tx } = getTransaction(table, 'readonly');
       const store = tx.objectStore(table);
       const rows = await requestToPromise(store.getAll());
-      await transactionDone(tx);
+      if (owned) await transactionDone(tx);
       return rows as T[];
     },
 
     async getById<T>(table: TableName, id: string): Promise<T | null> {
-      const tx = db.transaction(table, 'readonly');
+      const { owned, tx } = getTransaction(table, 'readonly');
       const store = tx.objectStore(table);
 
       let key: IDBValidKey = id;
@@ -119,19 +128,19 @@ function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
       }
 
       const row = await requestToPromise(store.get(key));
-      await transactionDone(tx);
+      if (owned) await transactionDone(tx);
       return (row as T) ?? null;
     },
 
     async put(table: TableName, record: object): Promise<void> {
-      const tx = db.transaction(table, 'readwrite');
+      const { owned, tx } = getTransaction(table, 'readwrite');
       const store = tx.objectStore(table);
       await requestToPromise(store.put(record));
-      await transactionDone(tx);
+      if (owned) await transactionDone(tx);
     },
 
     async delete(table: TableName, id: string): Promise<void> {
-      const tx = db.transaction(table, 'readwrite');
+      const { owned, tx } = getTransaction(table, 'readwrite');
       const store = tx.objectStore(table);
 
       let key: IDBValidKey = id;
@@ -141,7 +150,7 @@ function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
       }
 
       await requestToPromise(store.delete(key));
-      await transactionDone(tx);
+      if (owned) await transactionDone(tx);
     },
 
     async findWhere<T>(
@@ -154,7 +163,7 @@ function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
 
     async deleteWhere(table: TableName, where: Record<string, SqlValue>): Promise<number> {
       const matches = await this.findWhere<Record<string, unknown>>(table, where);
-      const tx = db.transaction(table, 'readwrite');
+      const { owned, tx } = getTransaction(table, 'readwrite');
       const store = tx.objectStore(table);
 
       for (const record of matches) {
@@ -169,13 +178,47 @@ function createIndexedDbClient(db: IDBDatabase): DatabaseClient {
         }
       }
 
-      await transactionDone(tx);
+      if (owned) await transactionDone(tx);
       return matches.length;
     },
 
+    async putDailyNoteIfUpdatedAtMatches(note, expectedUpdatedAt): Promise<boolean> {
+      const { owned, tx } = getTransaction('daily_notes', 'readwrite');
+      const store = tx.objectStore('daily_notes');
+      const current = (await requestToPromise(store.get(note.id))) as
+        { updatedAt?: string } | undefined;
+
+      if (current?.updatedAt !== expectedUpdatedAt) {
+        if (owned) await transactionDone(tx);
+        return false;
+      }
+
+      await requestToPromise(store.put(note));
+      if (owned) await transactionDone(tx);
+      return true;
+    },
+
     async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
-      // IndexedDB transactions are store-scoped; repositories use sequential ops for now.
-      return fn();
+      if (activeTransaction) {
+        throw new Error('Nested database transactions are not supported');
+      }
+
+      const tx = db.transaction(STORE_NAMES, 'readwrite');
+      activeTransaction = tx;
+      try {
+        const result = await fn();
+        await transactionDone(tx);
+        return result;
+      } catch (error) {
+        try {
+          tx.abort();
+        } catch {
+          // Ignore
+        }
+        throw error;
+      } finally {
+        activeTransaction = null;
+      }
     },
 
     async getMeta(key: string): Promise<string | null> {

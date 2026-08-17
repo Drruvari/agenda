@@ -11,7 +11,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon } from '@/components/ui/Icon';
 import { triggerHaptic } from '@/lib/haptics';
-import { continuousCorner, fonts, motion, useAppTheme } from '@/theme';
+import { fonts, motion, useAppTheme } from '@/theme';
 
 const ACTION_WIDTH = 88;
 const COMPLETE_THRESHOLD = 58;
@@ -58,13 +58,19 @@ export function SwipeableRow({ children, enabled = true, onComplete }: Props) {
   }));
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.primarySoft }]}>
-      <Animated.View style={[styles.action, actionStyle]}>
-        <Icon name="check" color={theme.primary} size={20} stroke={2.2} />
-        <Text style={[styles.actionLabel, { color: theme.primary }]}>Done</Text>
-      </Animated.View>
+    <View style={styles.container}>
+      <View style={[styles.actionTrack, { backgroundColor: theme.primarySoft }]}>
+        <Animated.View style={[styles.action, actionStyle]}>
+          <Icon name="check" color={theme.primary} size={20} stroke={2.2} />
+          <Text style={[styles.actionLabel, { color: theme.primary }]}>Done</Text>
+        </Animated.View>
+      </View>
       <GestureDetector gesture={pan}>
-        <Animated.View style={foregroundStyle}>{children}</Animated.View>
+        <Animated.View
+          style={[styles.foreground, { backgroundColor: theme.card }, foregroundStyle]}
+        >
+          {children}
+        </Animated.View>
       </GestureDetector>
     </View>
   );
@@ -74,7 +80,9 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     overflow: 'hidden',
-    ...continuousCorner(18),
+  },
+  actionTrack: {
+    ...StyleSheet.absoluteFill,
   },
   action: {
     position: 'absolute',
@@ -89,5 +97,8 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
+  },
+  foreground: {
+    backgroundColor: '#FFFFFF',
   },
 });

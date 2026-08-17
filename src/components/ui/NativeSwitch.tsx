@@ -1,17 +1,17 @@
 import { Host, Switch } from '@expo/ui';
 
+import { useAppAppearance } from '@/theme';
+
 type Props = {
-  accent?: string;
-  colorScheme?: 'light' | 'dark';
   disabled?: boolean;
   onValueChange: (value: boolean) => void;
   value: boolean;
 };
 
-/** Latest platform switch — SwiftUI on iOS, Material 3 on Android. */
-export function NativeSwitch({ accent, colorScheme, disabled, onValueChange, value }: Props) {
+export function NativeSwitch({ disabled, onValueChange, value }: Props) {
+  const { accent, colorScheme } = useAppAppearance();
   const seedColor =
-    colorScheme === 'dark' && accent?.toUpperCase() === '#FFFFFF' ? '#34C759' : accent;
+    colorScheme === 'dark' && accent.toUpperCase() === '#FFFFFF' ? '#34C759' : accent;
 
   return (
     <Host colorScheme={colorScheme} ignoreSafeArea="all" matchContents seedColor={seedColor}>

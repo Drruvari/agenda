@@ -78,37 +78,5 @@ export function WidgetSync() {
     };
   }, [applyPendingAndroidToggles, refresh, sync]);
 
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-
-    let remove: (() => void) | undefined;
-    let cancelled = false;
-
-    void import('expo-widgets')
-      .then(({ addUserInteractionListener }) => {
-        if (cancelled) return;
-        const subscription = addUserInteractionListener((event) => {
-          const match = /^toggle:(.+)$/.exec(event.target);
-          if (!match) return;
-          const id = match[1];
-          void (async () => {
-            const item = await repos.agenda.getById(id);
-            if (!item || item.type !== 'task') return;
-            const task = item as TaskItem;
-            if (task.completed) await uncompleteAgendaTask(repos, task);
-            else await completeAgendaTask(repos, task);
-            refresh();
-          })().catch((error) => console.error('[widget-sync] toggle', error));
-        });
-        remove = () => subscription.remove();
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-      remove?.();
-    };
-  }, [repos, refresh]);
-
   return null;
 }

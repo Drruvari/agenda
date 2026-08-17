@@ -44,15 +44,14 @@ import {
 } from '@/features/today/hooks/useTodayAgenda';
 import { useTodayView } from '@/features/today/hooks/useTodayView';
 import { TodaysPage } from '@/features/todays-page/TodaysPage';
-import { usePlannerGestures } from '@/hooks/usePlannerGestures';
+import { type PlannerGestures, usePlannerGestures } from '@/hooks/usePlannerGestures';
 import { triggerHaptic } from '@/lib/haptics';
 import {
   completeSystemReminder,
   systemRemindersSupported,
 } from '@/native/reminders/systemReminders';
-import { type AgendaTheme, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { type AgendaTheme, fonts, spacing, useAppAppearance, useAppTheme } from '@/theme';
 
-type PlannerGestures = ReturnType<typeof usePlannerGestures>;
 type AnimatedScrollProps = ComponentProps<typeof Animated.ScrollView>;
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style'];
 
@@ -663,6 +662,7 @@ export function TodayScreen() {
 
               <RoutinesSection
                 activeSpaceLabel={activeSpaceLabel}
+                compact={settings.general.compactStream}
                 onManage={openRoutines}
                 onToggle={(id) => void toggleRoutine(id)}
                 routines={routines}
@@ -721,10 +721,8 @@ export function TodayScreen() {
         <CalendarPickerModal
           onChange={chooseDate}
           onClose={() => setCalendarPickerOpen(false)}
-          onToday={() => chooseDate(new Date())}
           value={parseLocalDate(ui.selectedDate)}
           visible
-          weekStartsOn={settings.general.weekStartsOn}
         />
       ) : null}
     </View>
@@ -1018,7 +1016,7 @@ function createStyles(theme: AgendaTheme) {
     },
 
     contentStack: {
-      gap: 18,
+      gap: spacing.md,
     },
   });
 }

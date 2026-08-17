@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMemoryDatabase } from '@/data/database/memory';
 import {
@@ -54,6 +54,16 @@ describe('shouldRecoverDraft', () => {
     };
     expect(shouldRecoverDraft(note, draft)).toBe(false);
   });
+
+  it('returns false when the canonical note changed after the draft was based', () => {
+    const draft: NoteDraft = {
+      date: note.date,
+      bodyText: 'based on an older note',
+      baseUpdatedAt: '2026-08-07T09:00:00.000Z',
+      updatedAt: '2026-08-07T10:01:00.000Z',
+    };
+    expect(shouldRecoverDraft(note, draft)).toBe(false);
+  });
 });
 
 describe('notes.repository CAS + drafts', () => {
@@ -76,6 +86,20 @@ describe('notes.repository CAS + drafts', () => {
 
     const current = await notes.getByDate('2026-08-07');
     expect(current?.bodyText).toBe('first');
+  });
+
+  it('allows only one concurrent save for the same canonical version', async () => {
+    const notes = createNotes();
+    const created = await notes.getOrCreateForDate('2026-08-07');
+
+    const results = await Promise.allSettled([
+      notes.saveBody('2026-08-07', 'first', created.updatedAt),
+      notes.saveBody('2026-08-07', 'second', created.updatedAt),
+    ]);
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    expect(rejected).toMatchObject({ reason: expect.any(NoteConflictError) });
   });
 
   it('loadForDate recovers a newer differing draft', async () => {

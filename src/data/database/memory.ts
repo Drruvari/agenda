@@ -1,7 +1,6 @@
-import type { DatabaseClient, SqlValue, TableName } from '@/data/database/types';
 import { compoundKey } from '@/data/database/mappers';
+import type { DatabaseClient, SqlValue, TableName } from '@/data/database/types';
 
-/** In-memory DatabaseClient for unit tests (no SQLite / IndexedDB). */
 export function createMemoryDatabase(): DatabaseClient {
   const stores = new Map<TableName, Map<string, Record<string, unknown>>>();
 
@@ -55,8 +54,32 @@ export function createMemoryDatabase(): DatabaseClient {
       return matches.length;
     },
 
+    async putDailyNoteIfUpdatedAtMatches(note, expectedUpdatedAt): Promise<boolean> {
+      const store = ensure('daily_notes');
+      const current = store.get(note.id);
+      if (current?.updatedAt !== expectedUpdatedAt) {
+        return false;
+      }
+      store.set(note.id, { ...note });
+      return true;
+    },
+
     async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
-      return fn();
+      const snapshot = new Map(
+        [...stores].map(([table, store]) => [
+          table,
+          new Map([...store].map(([key, record]) => [key, { ...record }])),
+        ]),
+      );
+      try {
+        return await fn();
+      } catch (error) {
+        stores.clear();
+        for (const [table, store] of snapshot) {
+          stores.set(table, store);
+        }
+        throw error;
+      }
     },
 
     async getMeta(key: string): Promise<string | null> {

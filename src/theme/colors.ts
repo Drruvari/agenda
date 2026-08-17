@@ -185,6 +185,17 @@ function getCategoryColor(name: CategoryColorName, mode: AppearanceMode): ColorV
   return getCategoryReference(name, mode);
 }
 
+function foregroundForAccent(accentHex: string): '#000000' | '#FFFFFF' {
+  const hex = accentHex.replace('#', '');
+  if (!/^[\da-f]{6}$/i.test(hex)) return '#FFFFFF';
+  const channels = [0, 2, 4].map((offset) => {
+    const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  return luminance > 0.179 ? '#000000' : '#FFFFFF';
+}
+
 /** Primary Soft opacity per Apple guidance. */
 export function softAlpha(mode: AppearanceMode): number {
   if (mode === 'darkHighContrast') return 0.28;
@@ -206,7 +217,7 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
   const useNeutralIOSPalette = Platform.OS === 'ios';
   const useMaterialAndroidPalette = Platform.OS === 'android';
   const primaryReference = getCategoryReference('indigo', mode);
-  const onPrimary = isDark ? '#000000' : '#FFFFFF';
+  const onPrimary = foregroundForAccent(primaryReference);
   const primarySoft = rgba(primaryReference, softAlpha(mode));
 
   const category = Object.fromEntries(
@@ -361,9 +372,8 @@ export function withBrandAccent(
   accentHex: string,
   mode: AppearanceMode = theme.mode,
 ): AgendaTheme {
-  const isDark = mode === 'dark' || mode === 'darkHighContrast';
   const primarySoft = rgba(accentHex, softAlpha(mode));
-  const onPrimary = isDark ? '#000000' : '#FFFFFF';
+  const onPrimary = foregroundForAccent(accentHex);
 
   return {
     ...theme,

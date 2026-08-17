@@ -1,3 +1,5 @@
+import type { DailyNote } from '@/data/schema/types';
+
 export type TableName =
   | 'spaces'
   | 'agenda_items'
@@ -17,6 +19,7 @@ export interface DatabaseClient {
   delete(table: TableName, id: string): Promise<void>;
   findWhere<T>(table: TableName, where: Record<string, SqlValue | undefined>): Promise<T[]>;
   deleteWhere(table: TableName, where: Record<string, SqlValue>): Promise<number>;
+  putDailyNoteIfUpdatedAtMatches(note: DailyNote, expectedUpdatedAt: string): Promise<boolean>;
   withTransaction<T>(fn: () => Promise<T>): Promise<T>;
   getMeta(key: string): Promise<string | null>;
   setMeta(key: string, value: string): Promise<void>;

@@ -1,4 +1,4 @@
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { Easing, ReduceMotion, ZoomIn, ZoomOut } from 'react-native-reanimated';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -19,7 +19,7 @@ type Props = {
   checked?: boolean;
   onPress?: () => void;
   clock?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function Checkbox({ checked, onPress, clock, style }: Props) {

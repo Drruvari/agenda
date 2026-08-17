@@ -16,7 +16,6 @@ type Props = {
   bottom?: number;
 };
 
-/** Floating action dock with a centered primary action. */
 export function BottomBar({
   onAdd,
   onSearch,
