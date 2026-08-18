@@ -1,10 +1,10 @@
 import { Tabs } from 'expo-router';
+import { StyleSheet } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { useAppAppearance, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme';
 
 export default function AndroidTabsLayout() {
-  const { accent } = useAppAppearance();
   const theme = useAppTheme();
 
   return (
@@ -12,18 +12,17 @@ export default function AndroidTabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: theme.background },
-        tabBarActiveTintColor: accent,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarLabelStyle: styles.label,
         tabBarStyle: {
-          height: 76,
-          paddingTop: 8,
-          paddingBottom: 10,
           backgroundColor: theme.section,
           borderTopColor: theme.separator,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 8,
         },
-        tabBarItemStyle: { borderRadius: 20, marginHorizontal: 6 },
+        tabBarItemStyle: styles.item,
       }}
     >
       <Tabs.Screen
@@ -65,3 +64,8 @@ export default function AndroidTabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  label: { fontSize: 12, fontWeight: '600' },
+  item: { paddingTop: 4 },
+});

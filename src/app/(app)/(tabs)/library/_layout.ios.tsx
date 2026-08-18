@@ -14,6 +14,7 @@ export default function LibraryLayout() {
     >
       <Stack.Screen name="index" options={{ title: '' }} />
       <Stack.Screen name="items" options={{ headerShown: true, title: 'All Items' }} />
+      <Stack.Screen name="inbox" options={{ headerShown: true, title: 'Inbox' }} />
       <Stack.Screen name="completed" options={{ headerShown: true, title: 'Completed' }} />
       <Stack.Screen name="notes" options={{ headerShown: true, title: 'Daily Notes' }} />
       <Stack.Screen name="space/[id]" options={{ headerShown: true, title: 'Space' }} />

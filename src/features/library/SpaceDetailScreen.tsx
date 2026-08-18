@@ -68,7 +68,7 @@ export function SpaceDetailScreen() {
           onPress={() => {
             if (!id) return;
             setUI({ activeSpaceId: id });
-            router.back();
+            router.navigate('/' as never);
           }}
           style={styles.filterChip}
         >

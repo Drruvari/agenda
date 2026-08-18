@@ -1,18 +1,21 @@
-import { FieldGroup, Host, ListItem, Picker, Switch, Text } from '@expo/ui';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import type { AccentColor, AppSettings } from '@/data';
-import { useAppAppearance } from '@/theme';
+import { SettingPicker } from '@/features/settings/SettingPicker';
+import { SettingsSection } from '@/features/settings/SettingsChrome';
+import { type AgendaTheme, fonts, useAppTheme } from '@/theme';
 
-const ACCENTS: AccentColor[] = [
-  'black',
-  'blue',
-  'red',
-  'purple',
-  'green',
-  'brown',
-  'orange',
-  'magenta',
-  'yellow',
+const ACCENTS: { label: string; value: AccentColor }[] = [
+  { label: 'Black', value: 'black' },
+  { label: 'Blue', value: 'blue' },
+  { label: 'Red', value: 'red' },
+  { label: 'Purple', value: 'purple' },
+  { label: 'Green', value: 'green' },
+  { label: 'Brown', value: 'brown' },
+  { label: 'Orange', value: 'orange' },
+  { label: 'Magenta', value: 'magenta' },
+  { label: 'Yellow', value: 'yellow' },
 ];
 
 export function AndroidGeneralSettingsForm({
@@ -22,134 +25,152 @@ export function AndroidGeneralSettingsForm({
   general: AppSettings['general'];
   onChange: (patch: Partial<AppSettings['general']>) => void;
 }) {
-  const { accent, colorScheme } = useAppAppearance();
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
+
   return (
-    <Host
-      colorScheme={colorScheme}
-      seedColor={accent}
-      style={{ flex: 1 }}
-      useViewportSizeMeasurement
-    >
-      <FieldGroup>
-        <FieldGroup.Section title="Date & calendar">
-          <PickerRow
-            label="Date format"
-            value={general.dateFormat}
-            options={[
-              ['Long', 'long'],
-              ['Short', 'short'],
-            ]}
-            onChange={(dateFormat) => onChange({ dateFormat })}
-          />
-          <PickerRow
-            label="Week starts on"
-            value={general.weekStartsOn}
-            options={[
-              ['Monday', 'monday'],
-              ['Sunday', 'sunday'],
-            ]}
-            onChange={(weekStartsOn) => onChange({ weekStartsOn })}
-          />
-        </FieldGroup.Section>
-        <FieldGroup.Section title="Appearance">
-          <PickerRow
-            label="Theme"
-            value={general.mode}
-            options={[
-              ['System', 'system'],
-              ['Light', 'light'],
-              ['Dark', 'dark'],
-            ]}
-            onChange={(mode) => onChange({ mode })}
-          />
-          <PickerRow
-            label="Accent color"
-            value={general.accent}
-            options={ACCENTS.map((value) => [titleCase(value), value])}
-            onChange={(accent) => onChange({ accent })}
-          />
-        </FieldGroup.Section>
-        <FieldGroup.Section title="Today">
-          <Switch
-            label="Show completed section"
-            value={general.showCompleted}
-            onValueChange={(showCompleted) => onChange({ showCompleted })}
-          />
-          <Switch
-            label="Compact day list"
-            value={general.compactStream}
-            onValueChange={(compactStream) => onChange({ compactStream })}
-          />
-          <Switch
-            label="Keep Space filter"
-            value={general.keepFilterWhileChangingDays}
-            onValueChange={(keepFilterWhileChangingDays) =>
-              onChange({ keepFilterWhileChangingDays })
-            }
-          />
-          <Switch
-            label="Swipe to change day"
-            value={general.swipeToChangeDay}
-            onValueChange={(swipeToChangeDay) => onChange({ swipeToChangeDay })}
-          />
-          <Switch
-            label="Calendar indicators"
-            value={general.calendarIndicators}
-            onValueChange={(calendarIndicators) => onChange({ calendarIndicators })}
-          />
-          <Switch
-            label="Tap to edit"
-            value={general.clickToEdit}
-            onValueChange={(clickToEdit) => onChange({ clickToEdit })}
-          />
-        </FieldGroup.Section>
-        <FieldGroup.Section title="Pull down on Today">
-          <Switch
-            label="Quick Add"
-            value={general.pullDownToAdd}
-            onValueChange={(pullDownToAdd) =>
-              onChange({ pullDownToAdd, ...(pullDownToAdd ? { pullDownToSearch: false } : {}) })
-            }
-          />
-          <Switch
-            label="Search"
-            value={general.pullDownToSearch}
-            onValueChange={(pullDownToSearch) =>
-              onChange({ pullDownToSearch, ...(pullDownToSearch ? { pullDownToAdd: false } : {}) })
-            }
-          />
-        </FieldGroup.Section>
-      </FieldGroup>
-    </Host>
+    <View style={styles.sections}>
+      <SettingsSection title="Date & calendar">
+        <SettingPicker
+          title="Date format"
+          value={general.dateFormat}
+          options={[
+            { label: 'Long', value: 'long' },
+            { label: 'Short', value: 'short' },
+          ]}
+          onValueChange={(dateFormat) => onChange({ dateFormat })}
+        />
+        <SettingPicker
+          last
+          title="Week starts on"
+          value={general.weekStartsOn}
+          options={[
+            { label: 'Monday', value: 'monday' },
+            { label: 'Sunday', value: 'sunday' },
+          ]}
+          onValueChange={(weekStartsOn) => onChange({ weekStartsOn })}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Appearance">
+        <SettingPicker
+          title="Theme"
+          value={general.mode}
+          options={[
+            { label: 'System', value: 'system' },
+            { label: 'Light', value: 'light' },
+            { label: 'Dark', value: 'dark' },
+          ]}
+          onValueChange={(mode) => onChange({ mode })}
+        />
+        <SettingPicker
+          last
+          title="Accent color"
+          value={general.accent}
+          options={ACCENTS}
+          onValueChange={(accent) => onChange({ accent })}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Today">
+        <Toggle
+          last={false}
+          label="Show completed section"
+          onValueChange={(showCompleted) => onChange({ showCompleted })}
+          value={general.showCompleted}
+        />
+        <Toggle
+          last={false}
+          label="Compact day list"
+          onValueChange={(compactStream) => onChange({ compactStream })}
+          value={general.compactStream}
+        />
+        <Toggle
+          last={false}
+          label="Keep Space filter"
+          onValueChange={(keepFilterWhileChangingDays) => onChange({ keepFilterWhileChangingDays })}
+          value={general.keepFilterWhileChangingDays}
+        />
+        <Toggle
+          last={false}
+          label="Swipe to change day"
+          onValueChange={(swipeToChangeDay) => onChange({ swipeToChangeDay })}
+          value={general.swipeToChangeDay}
+        />
+        <Toggle
+          last={false}
+          label="Calendar indicators"
+          onValueChange={(calendarIndicators) => onChange({ calendarIndicators })}
+          value={general.calendarIndicators}
+        />
+        <Toggle
+          last
+          label="Tap to edit"
+          onValueChange={(clickToEdit) => onChange({ clickToEdit })}
+          value={general.clickToEdit}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Pull down on Today">
+        <Toggle
+          last={false}
+          label="Quick Add"
+          onValueChange={(pullDownToAdd) =>
+            onChange({ pullDownToAdd, ...(pullDownToAdd ? { pullDownToSearch: false } : {}) })
+          }
+          value={general.pullDownToAdd}
+        />
+        <Toggle
+          last
+          label="Search"
+          onValueChange={(pullDownToSearch) =>
+            onChange({ pullDownToSearch, ...(pullDownToSearch ? { pullDownToAdd: false } : {}) })
+          }
+          value={general.pullDownToSearch}
+        />
+      </SettingsSection>
+    </View>
   );
 }
 
-function PickerRow<T extends string>({
+function Toggle({
+  last,
   label,
-  onChange,
-  options,
+  onValueChange,
   value,
 }: {
+  last: boolean;
   label: string;
-  onChange: (value: T) => void;
-  options: [string, T][];
-  value: T;
+  onValueChange: (value: boolean) => void;
+  value: boolean;
 }) {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
   return (
-    <ListItem
-      trailing={
-        <Picker selectedValue={value} onValueChange={onChange}>
-          {options.map(([optionLabel, optionValue]) => (
-            <Picker.Item key={optionValue} label={optionLabel} value={optionValue} />
-          ))}
-        </Picker>
-      }
-    >
-      <Text>{label}</Text>
-    </ListItem>
+    <View style={[styles.toggleRow, last && styles.lastRow]}>
+      <Text style={styles.toggleLabel}>{label}</Text>
+      <NativeSwitch onValueChange={onValueChange} value={value} />
+    </View>
   );
 }
 
-function titleCase(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function createStyles(theme: AgendaTheme) {
+  return StyleSheet.create({
+    sections: { gap: 16 },
+    toggleRow: {
+      minHeight: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.separator,
+    },
+    lastRow: { borderBottomWidth: 0 },
+    toggleLabel: {
+      flex: 1,
+      color: theme.text,
+      fontFamily: fonts.sansMedium,
+      fontSize: 16,
+    },
+  });
 }

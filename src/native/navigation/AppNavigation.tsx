@@ -13,7 +13,7 @@ export default function AppNavigation() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: theme.section },
+          contentStyle: { backgroundColor: theme.background },
         }}
       >
         <Stack.Screen name="(tabs)" />

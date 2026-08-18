@@ -202,8 +202,10 @@ export function AgendaSheetHeader({
             />
           </SwiftUIHost>
         ) : (
-          <Pressable onPress={onCancel} style={styles.side}>
-            <Text style={[styles.cancel, { color: theme.primary }]}>{cancelLabel}</Text>
+          <Pressable onPress={onCancel} style={[styles.side, styles.sideStart]}>
+            <Text numberOfLines={1} style={[styles.cancel, { color: theme.primary }]}>
+              {cancelLabel}
+            </Text>
           </Pressable>
         )}
         <View style={styles.sideSpacer} />
@@ -240,7 +242,9 @@ export function AgendaSheetHeader({
           >
             {action?.icon === 'add' ? <Icon name="add" size={24} color={theme.primary} /> : null}
             {action && !action.icon ? (
-              <Text style={[styles.action, { color: theme.primary }]}>{action.label}</Text>
+              <Text numberOfLines={1} style={[styles.action, { color: theme.primary }]}>
+                {action.label}
+              </Text>
             ) : null}
           </Pressable>
         )}
@@ -263,11 +267,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   side: {
-    width: 44,
+    minWidth: Platform.OS === 'android' ? 72 : 44,
     height: 44,
-    alignItems: 'center',
+    paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
     justifyContent: 'center',
+    ...(Platform.OS === 'ios' ? { width: 44, alignItems: 'center' as const } : null),
   },
+  sideStart: { alignItems: 'flex-start' },
   sideSpacer: { flex: 1 },
   end: { alignItems: 'flex-end' },
   cancel: { fontFamily: fonts.sansMedium, fontSize: 16 },

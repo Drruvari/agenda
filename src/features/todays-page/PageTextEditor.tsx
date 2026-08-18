@@ -81,7 +81,9 @@ export function PageTextEditor({
           {
             minHeight,
             color: highlight && value ? 'transparent' : theme.text,
-            ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+            ...(Platform.OS === 'android'
+              ? { includeFontPadding: false, paddingVertical: 0, textAlignVertical: 'top' }
+              : null),
           },
         ]}
         textAlignVertical="top"

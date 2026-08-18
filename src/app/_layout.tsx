@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
@@ -45,6 +46,11 @@ export default function RootLayout() {
 
 function ThemedNavigation() {
   const { colorScheme, theme } = useAppAppearance();
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(theme.background);
+  }, [theme.background]);
+
   const navigationTheme = {
     ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
     colors: {

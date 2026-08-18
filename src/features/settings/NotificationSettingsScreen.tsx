@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SettingRadioGroup } from '@/components/ui/settings/SettingRadioGroup';
 import { useAppLock } from '@/features/privacy';
@@ -31,7 +31,11 @@ export function NotificationSettingsScreen() {
           : 'Turn on “Remind me” when creating a timed task, and Agenda will ask for permission then — only when you need it.';
 
   return (
-    <SettingsScaffold title="Notifications" description={description}>
+    <SettingsScaffold
+      header={Platform.OS === 'android' ? null : undefined}
+      title="Notifications"
+      description={description}
+    >
       <SettingsSection title="Permission">
         <View style={styles.block}>
           <Text style={styles.status}>

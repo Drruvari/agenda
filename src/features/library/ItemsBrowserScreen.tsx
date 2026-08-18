@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -20,14 +20,20 @@ type BrowseMode = 'all' | 'inbox' | 'completed' | 'space';
 
 type BrowseScope = { mode: BrowseMode; spaceId?: string };
 
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 function resolveMode(
   pathnameHint: string | undefined,
-  spaceIdParam: string | undefined,
-  filterParam: string | undefined,
+  spaceIdParam: string | string[] | undefined,
+  filterParam: string | string[] | undefined,
 ): BrowseScope {
-  if (spaceIdParam) return { mode: 'space', spaceId: spaceIdParam };
-  if (pathnameHint === 'completed' || filterParam === 'completed') return { mode: 'completed' };
-  if (filterParam === 'inbox') return { mode: 'inbox' };
+  const spaceId = firstParam(spaceIdParam);
+  const filter = firstParam(filterParam);
+  if (spaceId) return { mode: 'space', spaceId };
+  if (pathnameHint === 'completed' || filter === 'completed') return { mode: 'completed' };
+  if (pathnameHint === 'inbox' || filter === 'inbox') return { mode: 'inbox' };
   return { mode: 'all' };
 }
 
@@ -91,6 +97,7 @@ export function ItemsBrowserScreen({
 
   return (
     <SettingsScaffold title={title} scroll={false}>
+      <Stack.Screen options={{ title }} />
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}

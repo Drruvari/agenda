@@ -55,7 +55,7 @@ export default function LibraryScreen() {
               count={items.filter((item) => !item.spaceId).length}
               icon="tray"
               label="Inbox"
-              onPress={() => router.push('/library/items?filter=inbox' as never)}
+              onPress={() => router.push('/library/inbox')}
             />
             <LibraryRow
               count={items.filter((item) => item.type === 'task' && item.completed).length}

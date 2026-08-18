@@ -35,7 +35,7 @@ export function DailyNotesBrowserScreen() {
           <Pressable
             onPress={() => {
               setUI({ selectedDate: item.date });
-              router.replace('/' as never);
+              router.navigate('/page' as never);
             }}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >

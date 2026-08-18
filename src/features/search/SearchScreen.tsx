@@ -4,7 +4,6 @@ import {
   Dimensions,
   FlatList,
   Platform,
-  PlatformColor,
   Pressable,
   StyleSheet,
   Text,
@@ -119,7 +118,7 @@ export function SearchSheet({
       else if (result.kind === 'routine') openEditRoutine(result.routine.id);
       else {
         setUI({ selectedDate: result.note.date });
-        router.replace('/');
+        router.navigate('/page' as never);
       }
       return;
     }
@@ -153,11 +152,27 @@ export function SearchSheet({
               Search
             </Text>
           </SafeAreaView>
-          <Stack.SearchBar
-            autoFocus
-            onChangeText={(event) => setQuery(event.nativeEvent.text)}
-            placeholder="Tasks, routines, and notes"
-          />
+          {Platform.OS === 'ios' ? (
+            <Stack.SearchBar
+              autoFocus
+              onChangeText={(event) => setQuery(event.nativeEvent.text)}
+              placeholder="Tasks, routines, and notes"
+            />
+          ) : (
+            <View style={styles.searchBox}>
+              <Icon name="search" size={22} color={theme.textSecondary} />
+              <TextInput
+                autoFocus
+                onChangeText={setQuery}
+                placeholder="Tasks, routines, and notes"
+                placeholderTextColor={theme.placeholder}
+                returnKeyType="search"
+                style={styles.input}
+                value={query}
+                underlineColorAndroid="transparent"
+              />
+            </View>
+          )}
         </>
       ) : (
         <AgendaSheetHeader title="Search" onCancel={close} />
@@ -245,15 +260,15 @@ export function SearchTabScreen() {
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    root: { flex: 1, paddingHorizontal: Platform.OS === 'ios' ? 0 : 18 },
+    root: { flex: 1, paddingHorizontal: Platform.OS === 'ios' ? 0 : 16, backgroundColor: theme.background },
     embeddedHeader: {
       paddingTop: 8,
-      paddingHorizontal: 20,
+      paddingHorizontal: Platform.OS === 'ios' ? 20 : 4,
       paddingBottom: 8,
-      backgroundColor: PlatformColor('systemBackground'),
+      backgroundColor: theme.background,
     },
     pageTitle: {
-      color: PlatformColor('label'),
+      color: theme.text,
       fontFamily: fonts.sans,
       fontSize: 34,
       lineHeight: 41,

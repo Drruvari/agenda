@@ -129,7 +129,7 @@ function plannerPalette(theme: AgendaTheme) {
     note: String(theme.category.purple),
     birthday: String(theme.category.pink),
     reminder: String(theme.category.green),
-    itemFill: theme.isDark ? '#2C2C2E' : '#F2F2F7',
+    itemFill: theme.card,
   };
 }
 
@@ -529,7 +529,11 @@ export function TodayScreen() {
               styles.scrollContent,
               {
                 paddingTop: usesNativeChrome ? 20 : headerTop + headerHeight + 12,
-                paddingBottom: usesNativeChrome ? 32 : Math.max(128, insets.bottom + 108),
+                paddingBottom: usesNativeChrome
+                  ? 32
+                  : usesNativeBottomTabs
+                    ? 24
+                    : Math.max(128, insets.bottom + 108),
               },
             ]}
           >
@@ -679,6 +683,7 @@ export function TodayScreen() {
                 void chooseDate(next);
               }
             }}
+            onAdd={() => openCreate('task')}
             onCalendar={() => setCalendarPickerOpen(true)}
             onSettings={() => router.push('/settings')}
           />
@@ -711,12 +716,14 @@ function TopBar({
   calendarIndicator,
   mode,
   setMode,
+  onAdd,
   onCalendar,
   onSettings,
 }: {
   calendarIndicator: boolean;
   mode: Mode;
   setMode: (mode: Mode) => void;
+  onAdd: () => void;
   onCalendar: () => void;
   onSettings: () => void;
 }) {
@@ -738,6 +745,7 @@ function TopBar({
           onPress={onCalendar}
           accessibilityLabel="Open calendar"
         />
+        <CircleIconButton name="add" onPress={onAdd} accessibilityLabel="Add a task" />
         <CircleIconButton name="settings" onPress={onSettings} accessibilityLabel="Open settings" />
       </View>
     </View>

@@ -28,6 +28,7 @@ import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import type { Priority } from '@/data/schema/types';
 import { useLibrary } from '@/features/library/LibraryContext';
+import { IosChooseSpaceControl } from '@/features/library/IosChooseSpaceControl';
 import { type SmartTokenKind, tokenizeSmartInput } from '@/lib/smart-parse/parseSmartInput';
 import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
 import {
@@ -154,9 +155,11 @@ export function ItemEditorForm({
               accessibilityLabel="Cancel"
               hitSlop={10}
               onPress={onDismiss}
-              style={({ pressed }) => [styles.headerSide, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.headerSide, styles.headerSideStart, pressed && styles.pressed]}
             >
-              <Text style={styles.cancel}>Cancel</Text>
+              <Text numberOfLines={1} style={styles.cancel}>
+                Cancel
+              </Text>
             </Pressable>
           )}
 
@@ -196,7 +199,7 @@ export function ItemEditorForm({
                 pressed && canSave && styles.pressed,
               ]}
             >
-              <Text style={[styles.saveLabel, !canSave && styles.saveDisabled]}>
+              <Text numberOfLines={1} style={[styles.saveLabel, !canSave && styles.saveDisabled]}>
                 {saving ? '…' : 'Save'}
               </Text>
             </Pressable>
@@ -744,8 +747,22 @@ function SpacePickerRow({
   const { openSpacePicker } = useLibrary();
   const selected = spaces.find((option) => option.value === value)?.label ?? 'Inbox';
 
+  if (Platform.OS === 'ios') {
+    return (
+      <View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>{label}</Text>
+          <IosChooseSpaceControl onChange={onChange} spaces={spaces} value={value} />
+        </View>
+        {!last ? <View style={styles.insetSeparator} /> : null}
+      </View>
+    );
+  }
+
   return (
     <Pressable
+      accessibilityLabel={`${label}, ${selected}`}
+      accessibilityRole="button"
       onPress={() =>
         openSpacePicker(value === NONE_SPACE ? null : value, (spaceId) =>
           onChange(spaceId ?? NONE_SPACE),
@@ -894,10 +911,14 @@ function createStyles(theme: AgendaTheme, accent: string) {
       justifyContent: 'space-between',
     },
     headerSide: {
-      width: 44,
+      minWidth: Platform.OS === 'android' ? 72 : 44,
       height: 44,
-      alignItems: 'center',
+      paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
       justifyContent: 'center',
+      ...(Platform.OS === 'ios' ? { width: 44, alignItems: 'center' as const } : null),
+    },
+    headerSideStart: {
+      alignItems: 'flex-start',
     },
     headerSideSpacer: {
       flex: 1,
