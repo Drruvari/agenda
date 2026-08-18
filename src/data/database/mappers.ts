@@ -216,6 +216,41 @@ const drawingsMapper: Mapper = {
   }),
 };
 
+const dailyPageBlocksMapper: Mapper = {
+  keyColumns: ['id'],
+  columns: ['id', 'note_id', 'position', 'type', 'text', 'drawing_id', 'created_at', 'updated_at'],
+  toRow: (record) => ({
+    id: record.id,
+    note_id: record.noteId,
+    position: record.position,
+    type: record.type,
+    text: record.type === 'text' ? record.text : null,
+    drawing_id: record.type === 'ink' ? record.drawingId : null,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }),
+  fromRow: (row) =>
+    row.type === 'text'
+      ? {
+          id: row.id,
+          noteId: row.note_id,
+          position: row.position,
+          type: 'text',
+          text: row.text ?? '',
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }
+      : {
+          id: row.id,
+          noteId: row.note_id,
+          position: row.position,
+          type: 'ink',
+          drawingId: row.drawing_id,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        },
+};
+
 const metaMapper: Mapper = {
   keyColumns: ['key'],
   columns: ['key', 'value'],
@@ -235,6 +270,7 @@ export const TABLE_MAPPERS: Record<TableName, Mapper> = {
   routines: routinesMapper,
   routine_completions: routineCompletionsMapper,
   daily_notes: dailyNotesMapper,
+  daily_page_blocks: dailyPageBlocksMapper,
   note_drafts: noteDraftsMapper,
   drawings: drawingsMapper,
   meta: metaMapper,

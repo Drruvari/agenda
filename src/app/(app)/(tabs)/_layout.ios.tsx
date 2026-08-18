@@ -16,6 +16,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: 'calendar', selected: 'calendar' }} />
         <NativeTabs.Trigger.Label>Agenda</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="page">
+        <NativeTabs.Trigger.Icon sf={{ default: 'doc.text', selected: 'doc.text.fill' }} />
+        <NativeTabs.Trigger.Label>Page</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="library">
         <NativeTabs.Trigger.Icon sf={{ default: 'books.vertical', selected: 'books.vertical' }} />
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>

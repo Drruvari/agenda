@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 
 import { formatLongDate } from '@/data/schema/ids';
 import type { InkDocument, InkPoint } from '@/features/todays-page/inkFormat';
+import { markdownToHtml } from '@/features/todays-page/richMarkdown';
 
 type SharePageOptions = {
   body: string;
@@ -69,14 +70,20 @@ function pageHtml({ body, date, ink, mode }: SharePageOptions): string {
       header { margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid #d1d1d6; }
       h1 { margin: 0 0 5px; font-family: Georgia, serif; font-size: 28px; font-style: italic; font-weight: 400; }
       .date { color: #636366; font-size: 13px; }
-      .text { margin-bottom: 28px; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .text { margin-bottom: 28px; font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; }
+      .text h1, .text h2, .text h3 { margin: 0 0 8px; font-weight: 650; }
+      .text h1 { font-size: 26px; } .text h2 { font-size: 22px; } .text h3 { font-size: 18px; }
+      .text div, .text blockquote, .text ul, .text ol { margin: 0 0 8px; }
+      .text ul, .text ol { padding-left: 22px; }
+      .text blockquote { border-left: 3px solid #d1d1d6; padding-left: 12px; color: #636366; }
+      .text code { font-family: ui-monospace, monospace; background: #f2f2f7; padding: 1px 4px; border-radius: 4px; }
       .sketch { overflow: hidden; border: 1px solid #e5e5ea; border-radius: 12px; }
       .empty { color: #8e8e93; font-size: 15px; }
     </style>
   </head>
   <body>
     <header><h1>${mode === 'sketch' ? 'Sketch' : 'Today’s page'}</h1><div class="date">${escapeHtml(formatLongDate(date))}</div></header>
-    ${includeText ? `<div class="text">${escapeHtml(body.trim())}</div>` : ''}
+    ${includeText ? `<div class="text">${markdownToHtml(body.trim())}</div>` : ''}
     ${includeSketch ? `<div class="sketch">${sketchSvg(ink)}</div>` : mode === 'sketch' ? '<div class="empty">No sketch</div>' : ''}
   </body>
 </html>`;

@@ -36,6 +36,15 @@ export default function AndroidTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="page"
+        options={{
+          title: 'Page',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Icon name="writing" color={color as string} size={focused ? size + 2 : size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="library"
         options={{
           title: 'Library',

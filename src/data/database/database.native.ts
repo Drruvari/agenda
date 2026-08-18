@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 import { MIGRATION_001_STATEMENTS } from '@/data/migrations/001_initial';
 import { MIGRATION_002_STATEMENTS } from '@/data/migrations/002_note_drafts';
+import { MIGRATION_003_STATEMENTS } from '@/data/migrations/003_daily_page_blocks';
 
 import { buildUpsertSql, TABLE_MAPPERS } from './mappers';
 import type { DatabaseClient, SqlValue, TableName } from './types';
@@ -62,6 +63,7 @@ function camelToSnake(key: string): string {
     noteId: 'note_id',
     routineId: 'routine_id',
     baseUpdatedAt: 'base_updated_at',
+    position: 'position',
   };
 
   return special[key] ?? key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -210,6 +212,9 @@ async function applyInitialSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   for (const statement of MIGRATION_002_STATEMENTS) {
     await db.execAsync(`${statement};`);
   }
+  for (const statement of MIGRATION_003_STATEMENTS) {
+    await db.execAsync(`${statement};`);
+  }
 }
 
 async function hasApplicationTables(db: SQLite.SQLiteDatabase): Promise<boolean> {
@@ -226,6 +231,7 @@ async function hasUserData(db: SQLite.SQLiteDatabase): Promise<boolean> {
     'routines',
     'routine_completions',
     'daily_notes',
+    'daily_page_blocks',
     'note_drafts',
     'drawings',
   ] as const) {
@@ -286,6 +292,12 @@ async function migrateIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
         await db.execAsync(`${statement};`);
       }
     }
+
+    if (current < 4 || !(await tableExists(db, 'daily_page_blocks'))) {
+      for (const statement of MIGRATION_003_STATEMENTS) {
+        await db.execAsync(`${statement};`);
+      }
+    }
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
@@ -299,6 +311,7 @@ const TABLE_COPY_ORDER: readonly TableName[] = [
   'daily_notes',
   'note_drafts',
   'drawings',
+  'daily_page_blocks',
   'meta',
 ];
 

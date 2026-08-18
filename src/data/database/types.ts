@@ -6,6 +6,7 @@ export type TableName =
   | 'routines'
   | 'routine_completions'
   | 'daily_notes'
+  | 'daily_page_blocks'
   | 'note_drafts'
   | 'drawings'
   | 'meta';
@@ -25,4 +26,4 @@ export interface DatabaseClient {
   setMeta(key: string, value: string): Promise<void>;
 }
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;

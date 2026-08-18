@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { type ReactNode } from 'react';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { BlurSurface } from '@/components/ui/BlurSurface';
@@ -38,7 +38,13 @@ export function DrawToolbar({
   const brushes = tool === 'highlighter' ? HIGHLIGHT_BRUSHES : PEN_BRUSHES;
 
   const content = (
-    <>
+    <ScrollView
+      bounces={false}
+      contentContainerStyle={styles.bar}
+      horizontal
+      keyboardShouldPersistTaps="handled"
+      showsHorizontalScrollIndicator={false}
+    >
       <View style={styles.group}>
         <ToolChip
           active={tool === 'pen'}
@@ -133,7 +139,7 @@ export function DrawToolbar({
           <Icon name="redo" size={17} color={canRedo ? theme.text : theme.textTertiary} />
         </ToolChip>
       </View>
-    </>
+    </ScrollView>
   );
 
   return (
@@ -145,13 +151,13 @@ export function DrawToolbar({
           tint={theme.isDark ? 'dark' : 'light'}
           borderRadius={22}
           overlayColor={theme.isDark ? 'rgba(40,40,42,0.42)' : 'rgba(255,255,255,0.45)'}
-          contentStyle={styles.bar}
+          contentStyle={styles.barWrap}
           style={styles.shell}
         >
           {content}
         </BlurSurface>
       ) : (
-        <View style={[styles.shell, styles.androidShell, styles.bar]}>{content}</View>
+        <View style={[styles.shell, styles.androidShell, styles.barWrap]}>{content}</View>
       )}
     </View>
   );
@@ -197,6 +203,10 @@ function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
     wrap: {
       alignItems: 'center',
+      width: '100%',
+      maxWidth: '100%',
+    },
+    barWrap: {
       maxWidth: '100%',
     },
     shell: {

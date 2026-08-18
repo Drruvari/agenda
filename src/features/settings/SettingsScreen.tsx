@@ -855,7 +855,7 @@ function EditorSettings({
         <SettingToggle
           last
           title="Render markdown"
-          subtitle="Format supported Markdown in the daily note."
+          subtitle="Headings, lists, bold, italic, checklists, and links as you type."
           value={editor.renderMarkdown}
           onValueChange={(renderMarkdown) => onEditor({ renderMarkdown })}
         />

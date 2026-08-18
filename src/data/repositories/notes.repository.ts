@@ -1,6 +1,6 @@
 import type { DatabaseClient } from '@/data/database/types';
 import { createId, nowIso } from '@/data/schema/ids';
-import type { DailyNote, Drawing, NoteDraft } from '@/data/schema/types';
+import type { DailyNote, DailyPageBlock, Drawing, NoteDraft } from '@/data/schema/types';
 
 export class NoteConflictError extends Error {
   readonly current: DailyNote;
@@ -34,8 +34,25 @@ export function createNotesRepository(db: DatabaseClient) {
 
     async list(): Promise<DailyNote[]> {
       const notes = await db.getAll<DailyNote>('daily_notes');
+      const blocks = await db.getAll<DailyPageBlock>('daily_page_blocks');
+      const drawings = await db.getAll<Drawing>('drawings');
+      const drawingsWithContent = new Set(
+        drawings.filter((drawing) => drawing.data.trim().length > 0).map((drawing) => drawing.id),
+      );
+      const noteIdsWithContent = new Set(
+        blocks
+          .filter(
+            (block) =>
+              (block.type === 'text' && block.text.trim().length > 0) ||
+              (block.type === 'ink' && drawingsWithContent.has(block.drawingId)),
+          )
+          .map((block) => block.noteId),
+      );
       return notes
-        .filter((note) => note.bodyText.trim().length > 0 || note.drawingId)
+        .filter(
+          (note) =>
+            note.bodyText.trim().length > 0 || note.drawingId || noteIdsWithContent.has(note.id),
+        )
         .sort((a, b) => b.date.localeCompare(a.date));
     },
 
@@ -187,6 +204,127 @@ export function createNotesRepository(db: DatabaseClient) {
           updatedAt: nextUpdatedAt(note.updatedAt),
         });
       }
+    },
+
+    async listPageBlocks(date: string): Promise<DailyPageBlock[]> {
+      const note = await this.getOrCreateForDate(date);
+      let blocks = await db.findWhere<DailyPageBlock>('daily_page_blocks', { noteId: note.id });
+      if (blocks.length === 0) {
+        const createdAt = nowIso();
+        const textBlock: DailyPageBlock = {
+          id: createId(),
+          noteId: note.id,
+          position: 0,
+          type: 'text',
+          text: note.bodyText,
+          createdAt,
+          updatedAt: createdAt,
+        };
+        await db.put('daily_page_blocks', textBlock);
+        blocks = [textBlock];
+        if (note.drawingId) {
+          const inkBlock: DailyPageBlock = {
+            id: createId(),
+            noteId: note.id,
+            position: 1,
+            type: 'ink',
+            drawingId: note.drawingId,
+            createdAt,
+            updatedAt: createdAt,
+          };
+          await db.put('daily_page_blocks', inkBlock);
+          blocks.push(inkBlock);
+        }
+      }
+      return blocks.sort((left, right) => left.position - right.position);
+    },
+
+    async insertPageBlock(
+      date: string,
+      type: DailyPageBlock['type'],
+      afterBlockId?: string,
+    ): Promise<DailyPageBlock> {
+      const note = await this.getOrCreateForDate(date);
+      const blocks = await this.listPageBlocks(date);
+      const afterIndex = afterBlockId
+        ? blocks.findIndex((block) => block.id === afterBlockId)
+        : blocks.length - 1;
+      const insertionIndex = afterIndex < 0 ? blocks.length : afterIndex + 1;
+      const now = nowIso();
+      for (let index = insertionIndex; index < blocks.length; index += 1) {
+        await db.put('daily_page_blocks', { ...blocks[index], position: index + 1 });
+      }
+
+      if (type === 'text') {
+        const block: DailyPageBlock = {
+          id: createId(),
+          noteId: note.id,
+          position: insertionIndex,
+          type: 'text',
+          text: '',
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.put('daily_page_blocks', block);
+        return block;
+      }
+
+      const drawing: Drawing = {
+        id: createId(),
+        noteId: note.id,
+        format: 'ink-v1',
+        data: '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      const block: DailyPageBlock = {
+        id: createId(),
+        noteId: note.id,
+        position: insertionIndex,
+        type: 'ink',
+        drawingId: drawing.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await db.put('drawings', drawing);
+      await db.put('daily_page_blocks', block);
+      return block;
+    },
+
+    async savePageTextBlock(blockId: string, text: string): Promise<DailyPageBlock> {
+      const block = await db.getById<DailyPageBlock>('daily_page_blocks', blockId);
+      if (!block || block.type !== 'text') throw new Error('Text block not found');
+      const next: DailyPageBlock = { ...block, text, updatedAt: nextUpdatedAt(block.updatedAt) };
+      await db.put('daily_page_blocks', next);
+      return next;
+    },
+
+    async savePageInkBlock(blockId: string, data: string): Promise<Drawing> {
+      const block = await db.getById<DailyPageBlock>('daily_page_blocks', blockId);
+      if (!block || block.type !== 'ink') throw new Error('Ink block not found');
+      const existing = await db.getById<Drawing>('drawings', block.drawingId);
+      const now = nowIso();
+      const drawing: Drawing = {
+        id: block.drawingId,
+        noteId: block.noteId,
+        format: 'ink-v1',
+        data,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      await db.put('drawings', drawing);
+      await db.put('daily_page_blocks', { ...block, updatedAt: now });
+      return drawing;
+    },
+
+    async clearPageBlocks(date: string): Promise<void> {
+      const note = await this.getOrCreateForDate(date);
+      const blocks = await db.findWhere<DailyPageBlock>('daily_page_blocks', { noteId: note.id });
+      for (const block of blocks) {
+        if (block.type === 'ink') await db.delete('drawings', block.drawingId);
+        await db.delete('daily_page_blocks', block.id);
+      }
+      await db.put('daily_notes', { ...note, drawingId: undefined });
     },
   };
 }

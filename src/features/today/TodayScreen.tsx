@@ -22,7 +22,6 @@ import { PermissionCard } from '@/components/ui/PermissionCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/ToastProvider';
 import {
-  addDays,
   formatLongDate,
   INBOX_FILTER_ID,
   isInboxSpaceFilter,
@@ -43,7 +42,6 @@ import {
   useTodayAgenda,
 } from '@/features/today/hooks/useTodayAgenda';
 import { useTodayView } from '@/features/today/hooks/useTodayView';
-import { TodaysPage } from '@/features/todays-page/TodaysPage';
 import { type PlannerGestures, usePlannerGestures } from '@/hooks/usePlannerGestures';
 import { triggerHaptic } from '@/lib/haptics';
 import {
@@ -175,16 +173,9 @@ export function TodayScreen() {
   } = useTodayView();
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(100);
-  const [drawingActive, setDrawingActive] = useState(false);
   const today = toLocalDateString();
   const derivedMode: Mode =
     ui.selectedDate < today ? 'Recent' : ui.selectedDate > today ? 'Upcoming' : 'Today';
-  const [pendingSelection, setPendingSelection] = useState<{
-    mode: Mode;
-    sourceDate: string;
-  } | null>(null);
-  const mode =
-    pendingSelection?.sourceDate === ui.selectedDate ? pendingSelection.mode : derivedMode;
   const selectedDateRef = useRef(ui.selectedDate);
 
   useEffect(() => {
@@ -366,7 +357,6 @@ export function TodayScreen() {
       if (selectedDate === selectedDateRef.current) return;
 
       selectedDateRef.current = selectedDate;
-      setPendingSelection({ mode: nextMode, sourceDate: ui.selectedDate });
       const activeSpaceId = settings.general.keepFilterWhileChangingDays ? ui.activeSpaceId : null;
 
       try {
@@ -382,10 +372,8 @@ export function TodayScreen() {
           mode: nextMode.toLowerCase() as 'recent' | 'today' | 'upcoming',
           ...(settings.general.keepFilterWhileChangingDays ? {} : { activeSpaceId: null }),
         });
-        setPendingSelection(null);
       } catch (error) {
         selectedDateRef.current = ui.selectedDate;
-        setPendingSelection(null);
         showToast(error instanceof Error ? error.message : 'Could not load that day', {
           tone: 'error',
         });
@@ -438,20 +426,10 @@ export function TodayScreen() {
   } = usePlannerGestures({
     onShiftDay: shiftDay,
     onPullAdd: runPullAction,
-    gesturesEnabled: !drawingActive,
+    gesturesEnabled: true,
     pullDownToAdd: pullDownEnabled,
     swipeToChangeDay: settings.general.swipeToChangeDay,
   });
-
-  const setMode = useCallback(
-    (next: Mode) => {
-      const today = toLocalDateString();
-      const selectedDate =
-        next === 'Recent' ? addDays(today, -1) : next === 'Upcoming' ? addDays(today, 1) : today;
-      void chooseDate(parseLocalDate(selectedDate));
-    },
-    [chooseDate],
-  );
 
   const dateHeading =
     settings.general.dateFormat === 'short'
@@ -493,6 +471,9 @@ export function TodayScreen() {
               onPress={() => openCreate('task')}
             />
             <Stack.Toolbar.Menu accessibilityLabel="More" icon="ellipsis">
+              <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={openSearch}>
+                Search
+              </Stack.Toolbar.MenuAction>
               <Stack.Toolbar.MenuAction
                 icon="tray.full"
                 onPress={() => setUI({ activeSpaceId: null })}
@@ -539,7 +520,7 @@ export function TodayScreen() {
           <PlannerGestureScroll
             scrollGesture={scrollGesture}
             scrollRef={scrollRef}
-            scrollEnabled={!drawingActive}
+            scrollEnabled
             onScroll={onScroll}
             onScrollEndDrag={onScrollEndDrag}
             pullContentStyle={pullContentStyle}
@@ -667,16 +648,6 @@ export function TodayScreen() {
                 onToggle={(id) => void toggleRoutine(id)}
                 routines={routines}
               />
-
-              <TodaysPage
-                key={ui.selectedDate}
-                date={ui.selectedDate}
-                repos={repos}
-                settings={settings}
-                onDrawingActiveChange={setDrawingActive}
-                onError={(message) => showToast(message, { tone: 'error' })}
-                onPersisted={refresh}
-              />
             </View>
           </PlannerGestureScroll>
         </Animated.View>
@@ -699,8 +670,15 @@ export function TodayScreen() {
                   view.dailyNote?.bodyText.trim()),
               )
             }
-            mode={mode}
-            setMode={setMode}
+            mode={derivedMode}
+            setMode={(mode) => {
+              const next = parseLocalDate(ui.selectedDate);
+              if (mode === 'Today') void chooseDate(new Date());
+              else {
+                next.setDate(next.getDate() + (mode === 'Recent' ? -1 : 1));
+                void chooseDate(next);
+              }
+            }}
             onCalendar={() => setCalendarPickerOpen(true)}
             onSettings={() => router.push('/settings')}
           />
@@ -841,7 +819,6 @@ function createStyles(theme: AgendaTheme) {
       alignSelf: 'center',
       paddingHorizontal: 16,
     },
-
     stickyHeader: {
       position: 'absolute',
       left: 12,

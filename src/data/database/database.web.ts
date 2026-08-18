@@ -9,6 +9,7 @@ const STORE_NAMES: TableName[] = [
   'routines',
   'routine_completions',
   'daily_notes',
+  'daily_page_blocks',
   'note_drafts',
   'drawings',
   'meta',

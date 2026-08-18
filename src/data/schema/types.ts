@@ -104,6 +104,26 @@ export interface Drawing {
   updatedAt: string;
 }
 
+export type DailyPageBlock =
+  | {
+      id: string;
+      noteId: string;
+      position: number;
+      type: 'text';
+      text: string;
+      createdAt: string;
+      updatedAt: string;
+    }
+  | {
+      id: string;
+      noteId: string;
+      position: number;
+      type: 'ink';
+      drawingId: string;
+      createdAt: string;
+      updatedAt: string;
+    };
+
 export interface AppSettings {
   general: {
     dateFormat: 'short' | 'long';
@@ -163,7 +183,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     defaultSpaceId: null,
     smartParsingEnabled: true,
     continueNumberedLists: true,
-    renderMarkdown: false,
+    renderMarkdown: true,
   },
 };
 

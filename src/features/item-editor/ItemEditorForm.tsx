@@ -40,7 +40,6 @@ import {
   useAppTheme,
 } from '@/theme';
 
-import { SmartSyntaxInfo } from './SmartSyntaxInfo';
 import {
   DURATION_OPTIONS,
   type ItemEditorDraft,
@@ -363,44 +362,34 @@ function SmartTitleInput({
   const segments = useMemo(() => tokenizeSmartInput(value), [value]);
 
   return (
-    <View style={styles.smartInputRow}>
-      <View collapsable={false} style={styles.smartInputWrap}>
-        {/* Colored prefixes sit under the real field; caret stays on the TextInput. */}
-        {value ? (
-          <Text pointerEvents="none" style={styles.smartInputHighlight}>
-            {segments.map((segment, index) => (
-              <Text
-                key={`${index}-${segment.text}`}
-                style={{
-                  color: segment.kind ? smartTokenColor(segment.kind, theme.mode) : theme.text,
-                }}
-              >
-                {segment.text}
-              </Text>
-            ))}
+    <TextInput
+      key={`${inputKey}-title`}
+      autoFocus={autoFocus}
+      blurOnSubmit
+      cursorColor={accent}
+      multiline
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={theme.placeholder}
+      returnKeyType="done"
+      scrollEnabled={false}
+      selectionColor={accent}
+      style={styles.smartInputField}
+      textAlignVertical="center"
+    >
+      <Text>
+        {segments.map((segment, index) => (
+          <Text
+            key={`${index}-${segment.text}`}
+            style={{
+              color: segment.kind ? smartTokenColor(segment.kind, theme.mode) : theme.text,
+            }}
+          >
+            {segment.text}
           </Text>
-        ) : null}
-        <TextInput
-          key={`${inputKey}-title`}
-          autoFocus={autoFocus}
-          blurOnSubmit
-          cursorColor={accent}
-          multiline
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.placeholder}
-          returnKeyType="done"
-          scrollEnabled={false}
-          selectionColor={accent}
-          style={[styles.smartInputField, value ? styles.smartInputEditor : null]}
-          textAlignVertical="center"
-          value={value}
-        />
-      </View>
-      <View style={styles.smartInputAccessory}>
-        <SmartSyntaxInfo />
-      </View>
-    </View>
+        ))}
+      </Text>
+    </TextInput>
   );
 }
 
@@ -972,48 +961,14 @@ function createStyles(theme: AgendaTheme, accent: string) {
       ...titleTypography,
       backgroundColor: 'transparent',
     },
-    smartInputRow: {
-      width: '100%',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingLeft: spacing.lg,
-      paddingRight: spacing.md,
-      paddingVertical: 12,
-      minHeight: 44,
-    },
-    smartInputWrap: {
-      flex: 1,
-      position: 'relative',
-      justifyContent: 'center',
-    },
     smartInputField: {
       width: '100%',
-      margin: 0,
-      padding: 0,
+      minHeight: 44,
+      paddingVertical: 12,
+      paddingHorizontal: spacing.lg,
       color: theme.text,
       ...titleTypography,
       backgroundColor: 'transparent',
-    },
-    smartInputHighlight: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: 0,
-      margin: 0,
-      padding: 0,
-      ...titleTypography,
-      color: theme.text,
-    },
-    smartInputEditor: {
-      // Keep caret visible while the colored overlay shows the real glyphs.
-      color: 'transparent',
-    },
-    smartInputAccessory: {
-      width: 28,
-      height: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     section: {
       gap: spacing.xs,
