@@ -3,7 +3,8 @@ import { Alert, Dimensions } from 'react-native';
 
 import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { useToast } from '@/components/ui/ToastProvider';
-import { localDateTime, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { localDateTime } from '@/data/schema/ids';
 import type { AgendaItem, Routine } from '@/data/schema/types';
 import { resolveCreateSpaceId } from '@/data/spaces/spaceFilter';
 import {

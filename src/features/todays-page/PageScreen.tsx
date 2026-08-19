@@ -1,7 +1,8 @@
 import { useState } from 'react';
 
 import { useToast } from '@/components/ui/ToastProvider';
-import { parseLocalDate, toLocalDateString, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
 import { DailyPage } from '@/features/todays-page/DailyPage';
 

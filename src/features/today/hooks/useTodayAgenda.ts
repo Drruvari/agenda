@@ -1,17 +1,13 @@
 import { useCallback, useMemo } from 'react';
 
-import {
-  type AgendaItem,
-  isInboxSpaceFilter,
-  isSpaceUuidFilter,
-  priorityLabel,
-  type TodayViewModel,
-} from '@/data';
+import { priorityLabel } from '@/data/schema/ids';
+import type { AgendaItem, TodayViewModel } from '@/data/schema/types';
+import { isInboxSpaceFilter, isSpaceUuidFilter } from '@/data/spaces/spaceFilter';
 import { isTimePast } from '@/domain/day/isTimePast';
-import type { DeviceCalendarEvent } from '@/native/calendar/deviceCalendar';
+import type { DeviceCalendarEvent } from '@/native/calendar/deviceCalendar.types';
 import { mergeNativeBirthdays } from '@/native/calendar/mergeNativeBirthdays';
-import type { DeviceBirthday } from '@/native/contacts/deviceBirthdays';
-import type { DeviceSystemReminder } from '@/native/reminders/systemReminders';
+import type { DeviceBirthday } from '@/native/contacts/deviceBirthdays.types';
+import type { DeviceSystemReminder } from '@/native/reminders/systemReminders.types';
 
 export type TodayMode = 'Recent' | 'Today' | 'Upcoming';
 export type AgendaPriority = '' | '!' | '!!' | '!!!';

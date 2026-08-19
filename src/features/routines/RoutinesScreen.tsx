@@ -8,7 +8,8 @@ import {
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { type Routine, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { Routine } from '@/data/schema/types';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { useThemeStyles } from '@/theme/AppThemeProvider';

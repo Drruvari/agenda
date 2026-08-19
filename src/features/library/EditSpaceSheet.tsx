@@ -18,7 +18,8 @@ import {
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { Space } from '@/data/schema/types';
 import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';

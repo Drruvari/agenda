@@ -20,7 +20,8 @@ import {
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { AgendaItem, DailyNote, Space } from '@/data/schema/types';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { useAppAppearance, useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';

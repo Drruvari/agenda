@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
-import type { AccentColor, AppSettings } from '@/data';
+import type { AccentColor, AppSettings } from '@/data/schema/types';
 import { SettingPicker } from '@/features/settings/SettingPicker';
 import { SettingsSection } from '@/features/settings/SettingsChrome';
 import { useAppTheme } from '@/theme/AppThemeProvider';

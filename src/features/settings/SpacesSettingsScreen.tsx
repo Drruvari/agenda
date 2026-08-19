@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { Space } from '@/data/schema/types';
 import { useLibrary } from '@/features/library';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
 import { useThemeStyles } from '@/theme/AppThemeProvider';

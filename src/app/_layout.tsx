@@ -6,7 +6,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AgendaToaster } from '@/components/ui/ToastProvider';
-import { DataProvider } from '@/data';
+import { DataProvider } from '@/data/provider/DataProvider';
 import { AppSheetsProvider } from '@/features/app-sheets/AppSheetsContext';
 import { AppSheetsHost } from '@/features/app-sheets/AppSheetsHost';
 import { ItemEditorHost, ItemEditorProvider } from '@/features/item-editor';

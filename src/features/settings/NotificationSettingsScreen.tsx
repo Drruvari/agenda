@@ -5,11 +5,8 @@ import { SettingRadioGroup } from '@/components/ui/settings/SettingRadioGroup';
 import { useAppLock } from '@/features/privacy';
 import { NOTIFICATION_PREVIEW_OPTIONS } from '@/features/privacy/types';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
-import {
-  getReminderAccessState,
-  type ReminderAccessState,
-  requestReminderAccess,
-} from '@/native/notifications/reminders';
+import { getReminderAccessState, requestReminderAccess } from '@/native/notifications/reminders';
+import type { ReminderAccessState } from '@/native/notifications/reminders.types';
 import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';

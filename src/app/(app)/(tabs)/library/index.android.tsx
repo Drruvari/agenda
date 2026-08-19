@@ -4,7 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { AgendaItem, DailyNote, Space } from '@/data/schema/types';
 import { useLibrary } from '@/features/library';
 import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';

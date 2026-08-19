@@ -10,7 +10,7 @@ import type {
 } from '@/data/schema/types';
 import { matchesSpaceFilter } from '@/data/spaces/spaceFilter';
 
-export type CreateTaskInput = {
+type CreateAgendaItemInput = {
   title: string;
   details?: string;
   spaceId?: string;
@@ -19,154 +19,198 @@ export type CreateTaskInput = {
   time?: string;
   reminderAt?: string;
   notificationId?: string;
+};
+
+export type CreateTaskInput = CreateAgendaItemInput & {
   recurrence?: RecurrenceRule;
 };
 
-export type CreateEventInput = CreateTaskInput & {
+export type CreateEventInput = CreateAgendaItemInput & {
   durationMinutes: number;
   deviceEventId?: string;
+  recurrence?: RecurrenceRule;
 };
 
-export type CreateNoteInput = CreateTaskInput;
+export type CreateNoteInput = CreateAgendaItemInput;
+
+function compareAgendaItems(left: AgendaItem, right: AgendaItem): number {
+  const date = left.date.localeCompare(right.date);
+
+  if (date !== 0) {
+    return date;
+  }
+
+  if (left.time && right.time) {
+    return left.time.localeCompare(right.time);
+  }
+
+  if (left.time) {
+    return 1;
+  }
+
+  if (right.time) {
+    return -1;
+  }
+
+  return left.title.localeCompare(right.title);
+}
+
+function createBaseItem(input: CreateAgendaItemInput) {
+  const now = nowIso();
+
+  return {
+    id: createId(),
+    title: input.title.trim(),
+    details: input.details?.trim() || undefined,
+    spaceId: input.spaceId,
+    priority: input.priority ?? 'none',
+    date: input.date,
+    time: input.time,
+    reminderAt: input.reminderAt,
+    notificationId: input.notificationId,
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+}
 
 export function createAgendaRepository(db: DatabaseClient) {
+  async function list(): Promise<AgendaItem[]> {
+    const items = await db.getAll<AgendaItem>('agenda_items');
+
+    return items.sort(compareAgendaItems);
+  }
+
+  async function getById(id: string): Promise<AgendaItem | null> {
+    return db.getById<AgendaItem>('agenda_items', id);
+  }
+
+  async function forDate(date: string, spaceId?: string | null): Promise<AgendaItem[]> {
+    const items = await db.findWhere<AgendaItem>('agenda_items', { date });
+
+    return items
+      .filter((item) => matchesSpaceFilter(item.spaceId, spaceId))
+      .sort(compareAgendaItems);
+  }
+
+  async function forSpace(filterId: string | null): Promise<AgendaItem[]> {
+    const items = await list();
+
+    return items.filter((item) => matchesSpaceFilter(item.spaceId, filterId));
+  }
+
+  async function createTask(input: CreateTaskInput): Promise<TaskItem> {
+    const item: TaskItem = {
+      ...createBaseItem(input),
+      type: 'task',
+      recurrence: input.recurrence,
+      completed: false,
+    };
+
+    await db.put('agenda_items', item);
+
+    return item;
+  }
+
+  async function createEvent(input: CreateEventInput): Promise<EventItem> {
+    const item: EventItem = {
+      ...createBaseItem(input),
+      type: 'event',
+      deviceEventId: input.deviceEventId,
+      durationMinutes: input.durationMinutes,
+      recurrence: input.recurrence,
+    };
+
+    await db.put('agenda_items', item);
+
+    return item;
+  }
+
+  async function createNote(input: CreateNoteInput): Promise<NoteItem> {
+    const item: NoteItem = {
+      ...createBaseItem(input),
+      type: 'note',
+    };
+
+    await db.put('agenda_items', item);
+
+    return item;
+  }
+
+  async function update(item: AgendaItem): Promise<AgendaItem> {
+    const next: AgendaItem = {
+      ...item,
+      updatedAt: nowIso(),
+    };
+
+    await db.put('agenda_items', next);
+
+    return next;
+  }
+
+  async function complete(id: string): Promise<TaskItem | null> {
+    const item = await getById(id);
+
+    if (!item || item.type !== 'task') {
+      return null;
+    }
+
+    if (item.completed) {
+      return item;
+    }
+
+    const now = nowIso();
+
+    const next: TaskItem = {
+      ...item,
+      completed: true,
+      completedAt: now,
+      updatedAt: now,
+    };
+
+    await db.put('agenda_items', next);
+
+    return next;
+  }
+
+  async function uncomplete(id: string): Promise<TaskItem | null> {
+    const item = await getById(id);
+
+    if (!item || item.type !== 'task') {
+      return null;
+    }
+
+    if (!item.completed) {
+      return item;
+    }
+
+    const next: TaskItem = {
+      ...item,
+      completed: false,
+      completedAt: undefined,
+      updatedAt: nowIso(),
+    };
+
+    await db.put('agenda_items', next);
+
+    return next;
+  }
+
+  async function deleteItem(id: string): Promise<void> {
+    await db.delete('agenda_items', id);
+  }
+
   return {
-    async list(): Promise<AgendaItem[]> {
-      const items = await db.getAll<AgendaItem>('agenda_items');
-      return items.sort((a, b) =>
-        `${a.date} ${a.time ?? ''}`.localeCompare(`${b.date} ${b.time ?? ''}`),
-      );
-    },
-
-    async getById(id: string): Promise<AgendaItem | null> {
-      return db.getById<AgendaItem>('agenda_items', id);
-    },
-
-    async forDate(date: string, spaceId?: string | null): Promise<AgendaItem[]> {
-      const items = await db.findWhere<AgendaItem>('agenda_items', { date });
-      const filtered = items.filter((item) => matchesSpaceFilter(item.spaceId, spaceId));
-
-      return filtered.sort((a, b) => {
-        if (a.time && b.time) {
-          return a.time.localeCompare(b.time);
-        }
-        if (a.time) return 1;
-        if (b.time) return -1;
-        return a.title.localeCompare(b.title);
-      });
-    },
-
-    async forSpace(filterId: string | null): Promise<AgendaItem[]> {
-      const items = await this.list();
-      return items.filter((item) => matchesSpaceFilter(item.spaceId, filterId));
-    },
-
-    async createTask(input: CreateTaskInput): Promise<TaskItem> {
-      const now = nowIso();
-      const item: TaskItem = {
-        id: createId(),
-        type: 'task',
-        title: input.title.trim(),
-        details: input.details?.trim() || undefined,
-        spaceId: input.spaceId,
-        priority: input.priority ?? 'none',
-        date: input.date,
-        time: input.time,
-        reminderAt: input.reminderAt,
-        notificationId: input.notificationId,
-        recurrence: input.recurrence,
-        completed: false,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.put('agenda_items', item);
-      return item;
-    },
-
-    async createEvent(input: CreateEventInput): Promise<EventItem> {
-      const now = nowIso();
-      const item: EventItem = {
-        id: createId(),
-        type: 'event',
-        title: input.title.trim(),
-        details: input.details?.trim() || undefined,
-        spaceId: input.spaceId,
-        priority: input.priority ?? 'none',
-        date: input.date,
-        time: input.time,
-        reminderAt: input.reminderAt,
-        notificationId: input.notificationId,
-        deviceEventId: input.deviceEventId,
-        durationMinutes: input.durationMinutes,
-        recurrence: input.recurrence,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.put('agenda_items', item);
-      return item;
-    },
-
-    async createNote(input: CreateNoteInput): Promise<NoteItem> {
-      const now = nowIso();
-      const item: NoteItem = {
-        id: createId(),
-        type: 'note',
-        title: input.title.trim(),
-        details: input.details?.trim() || undefined,
-        spaceId: input.spaceId,
-        priority: input.priority ?? 'none',
-        date: input.date,
-        time: input.time,
-        reminderAt: input.reminderAt,
-        notificationId: input.notificationId,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.put('agenda_items', item);
-      return item;
-    },
-
-    async update(item: AgendaItem): Promise<AgendaItem> {
-      const next = { ...item, updatedAt: nowIso() };
-      await db.put('agenda_items', next);
-      return next;
-    },
-
-    async complete(id: string): Promise<TaskItem | null> {
-      const item = await db.getById<AgendaItem>('agenda_items', id);
-      if (!item || item.type !== 'task' || item.completed) {
-        return item?.type === 'task' ? item : null;
-      }
-
-      const next: TaskItem = {
-        ...item,
-        completed: true,
-        completedAt: nowIso(),
-        updatedAt: nowIso(),
-      };
-      await db.put('agenda_items', next);
-      return next;
-    },
-
-    async uncomplete(id: string): Promise<TaskItem | null> {
-      const item = await db.getById<AgendaItem>('agenda_items', id);
-      if (!item || item.type !== 'task' || !item.completed) {
-        return item?.type === 'task' ? item : null;
-      }
-
-      const next: TaskItem = {
-        ...item,
-        completed: false,
-        completedAt: undefined,
-        updatedAt: nowIso(),
-      };
-      await db.put('agenda_items', next);
-      return next;
-    },
-
-    async delete(id: string): Promise<void> {
-      await db.delete('agenda_items', id);
-    },
+    list,
+    getById,
+    forDate,
+    forSpace,
+    createTask,
+    createEvent,
+    createNote,
+    update,
+    complete,
+    uncomplete,
+    delete: deleteItem,
   };
 }
 

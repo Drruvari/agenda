@@ -21,14 +21,9 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { PermissionCard } from '@/components/ui/PermissionCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/ToastProvider';
-import {
-  formatLongDate,
-  INBOX_FILTER_ID,
-  isInboxSpaceFilter,
-  parseLocalDate,
-  toLocalDateString,
-  useData,
-} from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { formatLongDate, parseLocalDate, toLocalDateString } from '@/data/schema/ids';
+import { INBOX_FILTER_ID, isInboxSpaceFilter } from '@/data/spaces/spaceFilter';
 import { completeAgendaTask, uncompleteAgendaTask } from '@/domain/agendaLifecycle';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';

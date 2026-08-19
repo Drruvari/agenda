@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Platform } from 'react-native';
+import { type NativeScrollEvent, type NativeSyntheticEvent, Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -18,7 +18,19 @@ import { motion } from '@/theme/motion';
 export const PULL_ADD_THRESHOLD = 64;
 export const PULL_ADD_MAX = 112;
 
-type Options = {
+const IS_IOS = Platform.OS === 'ios';
+const IS_ANDROID = Platform.OS === 'android';
+
+const TOP_TOLERANCE = 4;
+const SWIPE_DISTANCE = 44;
+const SWIPE_VELOCITY = 520;
+const SWIPE_ACTIVE_OFFSET = 20;
+const SWIPE_FAIL_OFFSET = 16;
+const PULL_HORIZONTAL_TOLERANCE = 14;
+const PULL_UP_CANCEL_DISTANCE = 8;
+const PULL_ACTIVATION_DISTANCE = 10;
+
+type PlannerGestureOptions = {
   onShiftDay: (delta: number) => void;
   onPullAdd: () => void;
   gesturesEnabled?: boolean;
@@ -32,39 +44,54 @@ export function usePlannerGestures({
   gesturesEnabled = true,
   swipeToChangeDay = true,
   pullDownToAdd = true,
-}: Options) {
+}: PlannerGestureOptions) {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+
   const pullY = useSharedValue(0);
   const pullArmed = useSharedValue(false);
-  const wasRubberBanding = useSharedValue(false);
-  const isAtTopSV = useSharedValue(true);
+  const isRubberBanding = useSharedValue(false);
+  const isAtTop = useSharedValue(true);
   const restingOffsetY = useSharedValue<number | null>(null);
+
   const touchStartX = useSharedValue(0);
   const touchStartY = useSharedValue(0);
 
-  const hapticJS = useCallback((type: 'selection' | 'medium') => {
-    triggerHaptic(type);
+  const triggerSelectionHaptic = useCallback(() => {
+    triggerHaptic('selection');
   }, []);
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
-      if (Platform.OS === 'ios' && restingOffsetY.get() == null) {
+      if (IS_IOS && restingOffsetY.get() === null) {
         restingOffsetY.set(event.contentOffset.y);
       }
-      const y = event.contentOffset.y - (restingOffsetY.get() ?? 0);
-      isAtTopSV.set(y <= 4);
 
-      if (Platform.OS === 'ios' && pullDownToAdd && y < 0) {
-        wasRubberBanding.set(true);
-        const next = Math.min(-y, PULL_ADD_MAX);
-        pullY.set(next);
-        const armed = next >= PULL_ADD_THRESHOLD;
+      const offsetY = event.contentOffset.y - (restingOffsetY.get() ?? 0);
+
+      isAtTop.set(offsetY <= TOP_TOLERANCE);
+
+      if (IS_IOS && pullDownToAdd && offsetY < 0) {
+        isRubberBanding.set(true);
+
+        const distance = Math.min(-offsetY, PULL_ADD_MAX);
+
+        pullY.set(distance);
+
+        const armed = distance >= PULL_ADD_THRESHOLD;
+
         if (armed !== pullArmed.get()) {
           pullArmed.set(armed);
-          if (armed) scheduleOnRN(hapticJS, 'selection');
+
+          if (armed) {
+            scheduleOnRN(triggerSelectionHaptic);
+          }
         }
-      } else if (wasRubberBanding.get() && y >= 0) {
-        wasRubberBanding.set(false);
+
+        return;
+      }
+
+      if (isRubberBanding.get() && offsetY >= 0) {
+        isRubberBanding.set(false);
         pullY.set(withSpring(0, motion.settle));
         pullArmed.set(false);
       }
@@ -72,46 +99,52 @@ export function usePlannerGestures({
   });
 
   const onScrollEndDrag = useCallback(
-    (event: {
-      nativeEvent: {
-        adjustedContentInset?: { top: number };
-        contentInset?: { top: number };
-        contentOffset: { y: number };
-      };
-    }) => {
-      if (!pullDownToAdd || Platform.OS !== 'ios') return;
-      const y = event.nativeEvent.contentOffset.y - (restingOffsetY.get() ?? 0);
-      if (y <= -PULL_ADD_THRESHOLD) {
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!IS_IOS || !pullDownToAdd) {
+        return;
+      }
+
+      const offsetY = event.nativeEvent.contentOffset.y - (restingOffsetY.get() ?? 0);
+
+      if (offsetY <= -PULL_ADD_THRESHOLD) {
         onPullAdd();
       }
 
-      wasRubberBanding.set(false);
+      isRubberBanding.set(false);
       pullY.set(withSpring(0, motion.settle));
       pullArmed.set(false);
     },
-    [onPullAdd, pullArmed, pullDownToAdd, pullY, restingOffsetY, wasRubberBanding],
+    [isRubberBanding, onPullAdd, pullArmed, pullDownToAdd, pullY, restingOffsetY],
   );
 
-  const makeDaySwipe = useCallback(() => {
-    return Gesture.Pan()
-      .enabled(gesturesEnabled && swipeToChangeDay)
-      .maxPointers(1)
-      .averageTouches(true)
-      .activeOffsetX([-20, 20])
-      .failOffsetY([-16, 16])
-      .onEnd((event) => {
-        const wentLeft = event.translationX <= -44 || event.velocityX < -520;
-        const wentRight = event.translationX >= 44 || event.velocityX > 520;
-        if (wentLeft) scheduleOnRN(onShiftDay, 1);
-        else if (wentRight) scheduleOnRN(onShiftDay, -1);
-      });
-  }, [gesturesEnabled, onShiftDay, swipeToChangeDay]);
+  const daySwipe = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(gesturesEnabled && swipeToChangeDay)
+        .maxPointers(1)
+        .averageTouches(true)
+        .activeOffsetX([-SWIPE_ACTIVE_OFFSET, SWIPE_ACTIVE_OFFSET])
+        .failOffsetY([-SWIPE_FAIL_OFFSET, SWIPE_FAIL_OFFSET])
+        .onEnd((event) => {
+          const wentLeft =
+            event.translationX <= -SWIPE_DISTANCE || event.velocityX < -SWIPE_VELOCITY;
 
-  /** Android pull uses manual activation so vertical scrolling remains native. */
+          const wentRight =
+            event.translationX >= SWIPE_DISTANCE || event.velocityX > SWIPE_VELOCITY;
+
+          if (wentLeft) {
+            scheduleOnRN(onShiftDay, 1);
+          } else if (wentRight) {
+            scheduleOnRN(onShiftDay, -1);
+          }
+        }),
+    [gesturesEnabled, onShiftDay, swipeToChangeDay],
+  );
+
   const scrollGesture = useMemo(() => {
     const nativeScroll = Gesture.Native();
-    const daySwipe = makeDaySwipe();
-    if (Platform.OS !== 'android') {
+
+    if (!IS_ANDROID) {
       return Gesture.Simultaneous(nativeScroll, daySwipe);
     }
 
@@ -121,33 +154,43 @@ export function usePlannerGestures({
       .averageTouches(true)
       .manualActivation(true)
       .onTouchesDown((event) => {
-        const t = event.allTouches[0];
-        if (!t) return;
-        touchStartX.set(t.absoluteX);
-        touchStartY.set(t.absoluteY);
+        const touch = event.allTouches[0];
+
+        if (!touch) {
+          return;
+        }
+
+        touchStartX.set(touch.absoluteX);
+        touchStartY.set(touch.absoluteY);
       })
       .onTouchesMove((event, state) => {
-        if (!isAtTopSV.get()) {
+        if (!isAtTop.get()) {
           state.fail();
           return;
         }
-        const t = event.allTouches[0];
-        if (!t) {
+
+        const touch = event.allTouches[0];
+
+        if (!touch) {
           state.fail();
           return;
         }
-        const dx = t.absoluteX - touchStartX.get();
-        const dy = t.absoluteY - touchStartY.get();
-        if (Math.abs(dx) > 14) {
+
+        const deltaX = touch.absoluteX - touchStartX.get();
+
+        const deltaY = touch.absoluteY - touchStartY.get();
+
+        if (Math.abs(deltaX) > PULL_HORIZONTAL_TOLERANCE) {
           state.fail();
           return;
         }
-        // Finger up → let the ScrollView scroll the list.
-        if (dy < -8) {
+
+        if (deltaY < -PULL_UP_CANCEL_DISTANCE) {
           state.fail();
           return;
         }
-        if (dy > 10) {
+
+        if (deltaY > PULL_ACTIVATION_DISTANCE) {
           state.activate();
         }
       })
@@ -157,17 +200,29 @@ export function usePlannerGestures({
           pullArmed.set(false);
           return;
         }
+
         const raw = event.translationY;
-        const next = Math.min(raw * 0.72 - raw * raw * 0.00035, PULL_ADD_MAX);
-        pullY.set(Math.max(0, next));
-        const armed = pullY.get() >= PULL_ADD_THRESHOLD;
+
+        const distance = Math.min(raw * 0.72 - raw * raw * 0.00035, PULL_ADD_MAX);
+
+        const next = Math.max(0, distance);
+
+        pullY.set(next);
+
+        const armed = next >= PULL_ADD_THRESHOLD;
+
         if (armed !== pullArmed.get()) {
           pullArmed.set(armed);
-          if (armed) scheduleOnRN(hapticJS, 'selection');
+
+          if (armed) {
+            scheduleOnRN(triggerSelectionHaptic);
+          }
         }
       })
       .onEnd(() => {
-        if (pullArmed.get()) scheduleOnRN(onPullAdd);
+        if (pullArmed.get()) {
+          scheduleOnRN(onPullAdd);
+        }
       })
       .onFinalize(() => {
         pullY.set(withSpring(0, motion.settle));
@@ -176,66 +231,77 @@ export function usePlannerGestures({
 
     return Gesture.Simultaneous(nativeScroll, pullAdd, daySwipe);
   }, [
+    daySwipe,
     gesturesEnabled,
-    hapticJS,
-    isAtTopSV,
-    makeDaySwipe,
+    isAtTop,
     onPullAdd,
-    pullDownToAdd,
     pullArmed,
+    pullDownToAdd,
     pullY,
     touchStartX,
     touchStartY,
+    triggerSelectionHaptic,
   ]);
 
   const pullContentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: Platform.OS === 'android' ? pullY.get() : 0 }],
-  }));
-
-  const pullHintStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(pullY.get(), [8, 26], [0, 1], Extrapolation.CLAMP),
     transform: [
       {
-        translateY: interpolate(
-          pullY.get(),
-          [0, PULL_ADD_THRESHOLD],
-          [-8, 12],
-          Extrapolation.CLAMP,
-        ),
-      },
-      {
-        scale: interpolate(pullY.get(), [0, PULL_ADD_THRESHOLD], [0.92, 1], Extrapolation.CLAMP),
+        translateY: IS_ANDROID ? pullY.get() : 0,
       },
     ],
   }));
 
-  const pullLabelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      pullY.get(),
-      [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-  }));
+  const pullHintStyle = useAnimatedStyle(() => {
+    const distance = pullY.get();
 
-  const releaseLabelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      pullY.get(),
-      [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          pullY.get(),
-          [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
-          [0.96, 1],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
+    return {
+      opacity: interpolate(distance, [8, 26], [0, 1], Extrapolation.CLAMP),
+      transform: [
+        {
+          translateY: interpolate(distance, [0, PULL_ADD_THRESHOLD], [-8, 12], Extrapolation.CLAMP),
+        },
+        {
+          scale: interpolate(distance, [0, PULL_ADD_THRESHOLD], [0.92, 1], Extrapolation.CLAMP),
+        },
+      ],
+    };
+  });
+
+  const pullLabelStyle = useAnimatedStyle(() => {
+    const distance = pullY.get();
+
+    return {
+      opacity: interpolate(
+        distance,
+        [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  const releaseLabelStyle = useAnimatedStyle(() => {
+    const distance = pullY.get();
+
+    return {
+      opacity: interpolate(
+        distance,
+        [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
+        [0, 1],
+        Extrapolation.CLAMP,
+      ),
+      transform: [
+        {
+          scale: interpolate(
+            distance,
+            [PULL_ADD_THRESHOLD - 14, PULL_ADD_THRESHOLD],
+            [0.96, 1],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+    };
+  });
 
   return {
     scrollRef,

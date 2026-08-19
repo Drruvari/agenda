@@ -18,7 +18,8 @@ import {
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { type AgendaItem, type DailyNote, type Routine, type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { AgendaItem, DailyNote, Routine, Space } from '@/data/schema/types';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { useThemeStyles } from '@/theme/AppThemeProvider';

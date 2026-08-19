@@ -7,8 +7,18 @@ describe('isTimePast', () => {
 
   it('compares valid 12-hour and 24-hour times', () => {
     expect(isTimePast('2:29 PM', now)).toBe(true);
+
     expect(isTimePast('14:30', now)).toBe(false);
+
     expect(isTimePast('23:00', now)).toBe(false);
+  });
+
+  it('handles noon and midnight', () => {
+    expect(isTimePast('12:00 AM', now)).toBe(true);
+
+    expect(isTimePast('12:00 PM', now)).toBe(true);
+
+    expect(isTimePast('2:31 PM', now)).toBe(false);
   });
 
   it.each(['99:99', '25:00', '13:30 PM', '0:45 AM', '12:87 PM'])('rejects %s', (time) => {

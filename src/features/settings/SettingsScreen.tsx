@@ -22,14 +22,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useData } from '@/data/provider/DataContext';
 import {
   type AccentColor,
+  type AgendaItem,
   type AppSettings,
+  type DailyNote,
   DEFAULT_SETTINGS,
+  type Drawing,
   type ItemType,
-  useData,
-} from '@/data';
-import type { AgendaItem, DailyNote, Drawing, Space } from '@/data/schema/types';
+  type Space,
+} from '@/data/schema/types';
 import { PrivacySettings } from '@/features/privacy';
 import { getAccentColor } from '@/theme/accent';
 import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';

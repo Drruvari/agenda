@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { lexSmartInput, parseSmartInput, tokenizeSmartInput } from './parseSmartInput';
 
 describe('parseSmartInput', () => {
-  it('parses the quick-add shorthand from the product brief', () => {
+  it('parses quick-add shorthand', () => {
     expect(parseSmartInput('dentist friday 14:30 1h #personal !!', '2026-08-11')).toEqual({
       title: 'dentist',
       date: '2026-08-14',
@@ -14,7 +14,7 @@ describe('parseSmartInput', () => {
     });
   });
 
-  it('uses the next occurrence when the named weekday is today', () => {
+  it('uses the next occurrence when the weekday is today', () => {
     expect(parseSmartInput('Review tuesday', '2026-08-11')).toMatchObject({
       title: 'Review',
       date: '2026-08-18',
@@ -44,18 +44,50 @@ describe('parseSmartInput', () => {
     });
   });
 
-  it('marks recognized syntax without changing the entered text', () => {
+  it('normalizes 12-hour times', () => {
+    expect(parseSmartInput('Meeting 12am')).toMatchObject({
+      title: 'Meeting',
+      time: '00:00',
+    });
+
+    expect(parseSmartInput('Meeting 12pm')).toMatchObject({
+      title: 'Meeting',
+      time: '12:00',
+    });
+  });
+
+  it('marks syntax without changing the entered text', () => {
     const input = '/event dentist friday 14:30 1h #personal !!';
+
     const segments = tokenizeSmartInput(input);
 
     expect(segments.map((segment) => segment.text).join('')).toBe(input);
+
     expect(segments.filter((segment) => segment.kind)).toEqual([
-      { text: '/event', kind: 'type' },
-      { text: 'friday', kind: 'date' },
-      { text: '14:30', kind: 'time' },
-      { text: '1h', kind: 'time' },
-      { text: '#personal', kind: 'space' },
-      { text: '!!', kind: 'priority' },
+      {
+        text: '/event',
+        kind: 'type',
+      },
+      {
+        text: 'friday',
+        kind: 'date',
+      },
+      {
+        text: '14:30',
+        kind: 'time',
+      },
+      {
+        text: '1h',
+        kind: 'time',
+      },
+      {
+        text: '#personal',
+        kind: 'space',
+      },
+      {
+        text: '!!',
+        kind: 'priority',
+      },
     ]);
   });
 
@@ -63,13 +95,44 @@ describe('parseSmartInput', () => {
     const input = '#personal Plan /event friday 14:30 1h !!';
 
     expect(lexSmartInput(input)).toEqual([
-      { kind: 'space', raw: '#personal', start: 0, end: 9 },
-      { kind: 'type', raw: '/event', start: 15, end: 21 },
-      { kind: 'date', raw: 'friday', start: 22, end: 28 },
-      { kind: 'time', raw: '14:30', start: 29, end: 34 },
-      { kind: 'time', raw: '1h', start: 35, end: 37 },
-      { kind: 'priority', raw: '!!', start: 38, end: 40 },
+      {
+        kind: 'space',
+        raw: '#personal',
+        start: 0,
+        end: 9,
+      },
+      {
+        kind: 'type',
+        raw: '/event',
+        start: 15,
+        end: 21,
+      },
+      {
+        kind: 'date',
+        raw: 'friday',
+        start: 22,
+        end: 28,
+      },
+      {
+        kind: 'time',
+        raw: '14:30',
+        start: 29,
+        end: 34,
+      },
+      {
+        kind: 'time',
+        raw: '1h',
+        start: 35,
+        end: 37,
+      },
+      {
+        kind: 'priority',
+        raw: '!!',
+        start: 38,
+        end: 40,
+      },
     ]);
+
     expect(parseSmartInput(input, '2026-08-11')).toMatchObject({
       title: 'Plan',
       type: 'event',
@@ -77,10 +140,18 @@ describe('parseSmartInput', () => {
     });
   });
 
-  it('does not parse syntax embedded inside normal words', () => {
+  it('does not parse syntax inside normal words', () => {
     const input = '#personal asdasd/event hello!!world';
 
-    expect(lexSmartInput(input)).toEqual([{ kind: 'space', raw: '#personal', start: 0, end: 9 }]);
+    expect(lexSmartInput(input)).toEqual([
+      {
+        kind: 'space',
+        raw: '#personal',
+        start: 0,
+        end: 9,
+      },
+    ]);
+
     expect(parseSmartInput(input)).toMatchObject({
       title: 'asdasd/event hello!!world',
       spaceName: 'personal',
@@ -89,6 +160,7 @@ describe('parseSmartInput', () => {
 
   it('supports unicode space names without offset drift', () => {
     const input = 'Plan #familja_ime nesër';
+
     expect(lexSmartInput(input)).toContainEqual({
       kind: 'space',
       raw: '#familja_ime',
@@ -97,14 +169,17 @@ describe('parseSmartInput', () => {
     });
   });
 
-  it('keeps note commands as literal title text', () => {
-    expect(parseSmartInput('/note Call Alice')).toEqual({ title: '/note Call Alice' });
+  it('keeps note commands as title text', () => {
+    expect(parseSmartInput('/note Call Alice')).toEqual({
+      title: '/note Call Alice',
+    });
   });
 
   it('keeps unknown spaces in the title when known spaces are supplied', () => {
     expect(parseSmartInput('Plan #unknown', '2026-08-11', ['Personal'])).toEqual({
       title: 'Plan #unknown',
     });
+
     expect(parseSmartInput('Plan #personal', '2026-08-11', ['Personal'])).toEqual({
       title: 'Plan',
       spaceName: 'personal',

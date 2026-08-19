@@ -1,5 +1,5 @@
 import { loadTodayView } from '@/data/queries/today';
-import type { Repositories } from '@/data/repositories';
+import type { Repositories } from '@/data/repositories/repositories';
 import { localDateTime, parseLocalDate, toLocalDateString } from '@/data/schema/ids';
 import { isTimePast } from '@/domain/day/isTimePast';
 import { getCalendarAccessState, listDeviceEvents } from '@/native/calendar/deviceCalendar';

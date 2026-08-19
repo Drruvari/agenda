@@ -1,7 +1,7 @@
 import { useRouter, useSegments } from 'expo-router';
 import { type PropsWithChildren, useEffect } from 'react';
 
-import { useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
 import { isOnboardingCompleted } from '@/features/onboarding/onboardingStorage';
 
 /**

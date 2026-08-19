@@ -4,71 +4,85 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { openDatabase } from '@/data/database/database';
 import type { DatabaseClient } from '@/data/database/types';
-import { SCHEMA_VERSION } from '@/data/database/types';
-import { createRepositories, type Repositories } from '@/data/repositories';
+import { createRepositories, type Repositories } from '@/data/repositories/repositories';
 import { toLocalDateString } from '@/data/schema/ids';
-import type { AppSettings } from '@/data/schema/types';
-import { DEFAULT_SETTINGS } from '@/data/schema/types';
+import { type AppSettings, DEFAULT_SETTINGS } from '@/data/schema/types';
 import { seedIfNeeded } from '@/data/seed/seed';
 import { createSettingsStore, type SettingsStore } from '@/data/settings/settings';
 import { AppThemeProvider } from '@/theme/AppThemeProvider';
 
-import { DataContext, type DataContextValue, type PlannerUIState, useData } from './DataContext';
+import { DataContext, type DataContextValue, type PlannerUIState } from './DataContext';
 
-export type { DataContextValue, PlannerUIState };
-export { useData };
+type DataResources = {
+  db: DatabaseClient;
+  repos: Repositories;
+  settingsStore: SettingsStore;
+};
 
-export function DataProvider({ children }: PropsWithChildren) {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [db, setDb] = useState<DatabaseClient | null>(null);
-  const [repos, setRepos] = useState<Repositories | null>(null);
-  const [settingsStore, setSettingsStore] = useState<SettingsStore | null>(null);
-  const [settings, setSettingsState] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [revision, setRevision] = useState(0);
-  const [ui, setUIState] = useState<PlannerUIState>({
+function createInitialUIState(): PlannerUIState {
+  return {
     selectedDate: toLocalDateString(),
     mode: 'today',
     activeSpaceId: null,
     completedExpanded: false,
     allDayExpanded: true,
     editingItemId: null,
-  });
+  };
+}
+
+export function DataProvider({ children }: PropsWithChildren) {
+  const [resources, setResources] = useState<DataResources | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [settings, setSettingsState] = useState<AppSettings>(DEFAULT_SETTINGS);
+
+  const [revision, setRevision] = useState(0);
+
+  const [ui, setUIState] = useState<PlannerUIState>(createInitialUIState);
 
   useEffect(() => {
     let cancelled = false;
-    setReady(false);
-    setError(null);
 
     async function boot() {
       try {
-        const database = await openDatabase();
-        await seedIfNeeded(database);
-        const repositories = createRepositories(database);
-        const store = createSettingsStore();
-        const loadedSettings = await store.getSettings();
+        const db = await openDatabase();
 
-        const savedDate = await store.getItem('planner.lastSelectedDate');
-        const savedSpace = await store.getItem('planner.activeSpace');
+        await seedIfNeeded(db);
+
+        const repos = createRepositories(db);
+
+        const settingsStore = createSettingsStore();
+
+        const [loadedSettings, selectedDate, activeSpace] = await Promise.all([
+          settingsStore.getSettings(),
+          settingsStore.getItem('planner.lastSelectedDate'),
+          settingsStore.getItem('planner.activeSpace'),
+        ]);
 
         if (cancelled) {
           return;
         }
 
-        setDb(database);
-        setRepos(repositories);
-        setSettingsStore(store);
         setSettingsState(loadedSettings);
+
         setUIState((current) => ({
           ...current,
-          selectedDate: savedDate || current.selectedDate,
-          activeSpaceId: savedSpace && savedSpace !== 'all' ? savedSpace : null,
+          selectedDate: selectedDate || current.selectedDate,
+          activeSpaceId: activeSpace && activeSpace !== 'all' ? activeSpace : null,
         }));
-        setReady(true);
+
+        setResources({
+          db,
+          repos,
+          settingsStore,
+        });
       } catch (bootError) {
-        if (!cancelled) {
-          setError(bootError instanceof Error ? bootError.message : 'Failed to open database');
+        if (cancelled) {
+          return;
         }
+
+        setError(bootError instanceof Error ? bootError.message : 'Failed to open database');
       }
     }
 
@@ -77,35 +91,45 @@ export function DataProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [SCHEMA_VERSION]);
+  }, []);
 
   const setUI = useCallback(
     (patch: Partial<PlannerUIState>) => {
-      setUIState((current) => {
-        const next = { ...current, ...patch };
-        if (settingsStore) {
-          if (patch.selectedDate !== undefined) {
-            void settingsStore.setItem('planner.lastSelectedDate', next.selectedDate);
-          }
-          if (patch.activeSpaceId !== undefined) {
-            void settingsStore.setItem('planner.activeSpace', next.activeSpaceId ?? 'all');
-          }
-        }
-        return next;
-      });
+      setUIState((current) => ({
+        ...current,
+        ...patch,
+      }));
+
+      const store = resources?.settingsStore;
+
+      if (!store) {
+        return;
+      }
+
+      if (patch.selectedDate !== undefined) {
+        void store.setItem('planner.lastSelectedDate', patch.selectedDate);
+      }
+
+      if (patch.activeSpaceId !== undefined) {
+        void store.setItem('planner.activeSpace', patch.activeSpaceId ?? 'all');
+      }
     },
-    [settingsStore],
+    [resources],
   );
 
   const setSettings = useCallback(
-    async (next: AppSettings) => {
-      if (!settingsStore) {
+    async (next: AppSettings): Promise<void> => {
+      const store = resources?.settingsStore;
+
+      if (!store) {
         return;
       }
+
+      await store.setSettings(next);
+
       setSettingsState(next);
-      await settingsStore.setSettings(next);
     },
-    [settingsStore],
+    [resources],
   );
 
   const refresh = useCallback(() => {
@@ -113,14 +137,12 @@ export function DataProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<DataContextValue | null>(() => {
-    if (!db || !repos || !settingsStore) {
+    if (!resources) {
       return null;
     }
 
     return {
-      db,
-      repos,
-      settingsStore,
+      ...resources,
       settings,
       setSettings,
       ui,
@@ -128,18 +150,19 @@ export function DataProvider({ children }: PropsWithChildren) {
       revision,
       refresh,
     };
-  }, [db, repos, settingsStore, settings, setSettings, ui, setUI, revision, refresh]);
+  }, [resources, settings, setSettings, ui, setUI, revision, refresh]);
 
   if (error) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorTitle}>Could not start Agenda</Text>
+
         <Text style={styles.errorBody}>{error}</Text>
       </View>
     );
   }
 
-  if (!ready || !value) {
+  if (!value) {
     return (
       <View style={styles.centered}>
         <AgendaLogo size={28} color="#5856D6" spin />
@@ -162,12 +185,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F7F5',
     padding: 24,
   },
+
   errorTitle: {
     color: '#191917',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
   },
+
   errorBody: {
     color: '#5E5E59',
     fontSize: 15,

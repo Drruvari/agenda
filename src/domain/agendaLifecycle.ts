@@ -1,38 +1,98 @@
-import type { Repositories } from '@/data/repositories';
+import type { Repositories } from '@/data/repositories/repositories';
 import type { CreateEventInput, CreateTaskInput } from '@/data/repositories/agenda.repository';
 import { localDateTime } from '@/data/schema/ids';
 import type { AgendaItem, EventItem, TaskItem } from '@/data/schema/types';
-import {
-  createDeviceEvent,
-  type CreateDeviceEventInput,
-  deleteDeviceEvent,
-} from '@/native/calendar/deviceCalendar';
+import { createDeviceEvent, deleteDeviceEvent } from '@/native/calendar/deviceCalendar';
+import type { CreateDeviceEventInput } from '@/native/calendar/deviceCalendar.types';
 import { cancelReminder, scheduleReminder } from '@/native/notifications/reminders';
 
-function reminderWhen(item: Pick<AgendaItem, 'date' | 'time'>): Date | null {
-  return item.time ? localDateTime(item.date, item.time) : null;
+type ScheduledReminder = {
+  notificationId?: string;
+  reminderAt?: string;
+};
+
+type CreateAgendaEventInput = CreateEventInput & {
+  device?: CreateDeviceEventInput;
+  remind?: boolean;
+};
+
+type CreateAgendaTaskInput = CreateTaskInput & {
+  remind?: boolean;
+};
+
+function getReminderDate(item: Pick<AgendaItem, 'date' | 'time'>): Date | null {
+  if (!item.time) {
+    return null;
+  }
+
+  return localDateTime(item.date, item.time);
 }
 
-async function scheduleForItem(
+async function scheduleItemReminder(
   item: Pick<AgendaItem, 'title' | 'details' | 'date' | 'time'>,
-): Promise<{ notificationId?: string; reminderAt?: string }> {
-  const when = reminderWhen(item);
-  if (!when || when.getTime() <= Date.now()) return {};
+): Promise<ScheduledReminder> {
+  const when = getReminderDate(item);
+
+  if (!when || when.getTime() <= Date.now()) {
+    return {};
+  }
+
   const notificationId = await scheduleReminder(item.title, item.details, when);
-  if (!notificationId) return {};
-  return { notificationId, reminderAt: when.toISOString() };
+
+  if (!notificationId) {
+    return {};
+  }
+
+  return {
+    notificationId,
+    reminderAt: when.toISOString(),
+  };
 }
 
-/** Persist completion first, then cancel the OS reminder so a failed save cannot orphan cancel. */
+async function cancelReminderSafely(notificationId?: string): Promise<void> {
+  if (!notificationId) {
+    return;
+  }
+
+  await cancelReminder(notificationId).catch(() => undefined);
+}
+
+async function deleteDeviceEventSafely(deviceEventId?: string): Promise<void> {
+  if (!deviceEventId) {
+    return;
+  }
+
+  await deleteDeviceEvent(deviceEventId).catch(() => undefined);
+}
+
+function cleanAgendaItem(item: AgendaItem): AgendaItem {
+  return {
+    ...item,
+    title: item.title.trim(),
+    details: item.details?.trim() || undefined,
+    time: item.time?.trim() || undefined,
+  };
+}
+
+function shouldScheduleReminder(item: AgendaItem): boolean {
+  return Boolean(item.time && item.reminderAt && (item.type === 'task' || item.type === 'event'));
+}
+
 export async function completeAgendaTask(
   repos: Repositories,
   task: TaskItem,
 ): Promise<TaskItem | null> {
   const completed = await repos.agenda.complete(task.id);
-  if (!completed) return null;
+
+  if (!completed) {
+    return null;
+  }
 
   const notificationId = completed.notificationId ?? task.notificationId;
-  if (!notificationId) return completed;
+
+  if (!notificationId) {
+    return completed;
+  }
 
   try {
     await cancelReminder(notificationId);
@@ -40,31 +100,37 @@ export async function completeAgendaTask(
     return completed;
   }
 
-  return (await repos.agenda.update({
+  return repos.agenda.update({
     ...completed,
     notificationId: undefined,
-  })) as TaskItem;
+  }) as Promise<TaskItem>;
 }
 
-/** Restore the task, then recreate a future local notification when possible. */
 export async function uncompleteAgendaTask(
   repos: Repositories,
   task: TaskItem,
 ): Promise<TaskItem | null> {
   const restored = await repos.agenda.uncomplete(task.id);
-  if (!restored) return null;
 
-  const scheduled = await scheduleForItem(restored);
-  if (!scheduled.notificationId) return restored;
+  if (!restored) {
+    return null;
+  }
+
+  const scheduled = await scheduleItemReminder(restored);
+
+  if (!scheduled.notificationId) {
+    return restored;
+  }
 
   try {
-    return (await repos.agenda.update({
+    return repos.agenda.update({
       ...restored,
       notificationId: scheduled.notificationId,
       reminderAt: scheduled.reminderAt ?? restored.reminderAt,
-    })) as TaskItem;
+    }) as Promise<TaskItem>;
   } catch (error) {
-    await cancelReminder(scheduled.notificationId).catch(() => undefined);
+    await cancelReminderSafely(scheduled.notificationId);
+
     throw error;
   }
 }
@@ -74,66 +140,58 @@ export async function updateAgendaItem(
   previous: AgendaItem,
   next: AgendaItem,
 ): Promise<AgendaItem> {
-  const cleaned: AgendaItem = {
-    ...next,
-    title: next.title.trim(),
-    details: next.details?.trim() || undefined,
-    time: next.time?.trim() || undefined,
-  };
+  const cleaned = cleanAgendaItem(next);
 
-  const shouldRemind =
-    (cleaned.type === 'task' || cleaned.type === 'event') &&
-    Boolean(cleaned.time && cleaned.reminderAt);
-
-  let notificationId: string | undefined;
-  let reminderAt: string | undefined;
-  if (shouldRemind) {
-    const scheduled = await scheduleForItem(cleaned);
-    notificationId = scheduled.notificationId;
-    reminderAt = scheduled.reminderAt;
-  }
+  const scheduled = shouldScheduleReminder(cleaned) ? await scheduleItemReminder(cleaned) : {};
 
   try {
     const saved = await repos.agenda.update({
       ...cleaned,
-      notificationId,
-      reminderAt: reminderAt ?? (notificationId ? cleaned.reminderAt : undefined),
+      notificationId: scheduled.notificationId,
+      reminderAt:
+        scheduled.reminderAt ?? (scheduled.notificationId ? cleaned.reminderAt : undefined),
     });
 
-    if (previous.notificationId && previous.notificationId !== notificationId) {
-      await cancelReminder(previous.notificationId).catch(() => undefined);
+    if (previous.notificationId && previous.notificationId !== scheduled.notificationId) {
+      await cancelReminderSafely(previous.notificationId);
     }
 
     return saved;
   } catch (error) {
-    if (notificationId) await cancelReminder(notificationId).catch(() => undefined);
+    await cancelReminderSafely(scheduled.notificationId);
+
     throw error;
   }
 }
 
 export async function deleteAgendaItem(repos: Repositories, item: AgendaItem): Promise<void> {
   await repos.agenda.delete(item.id);
-  if (item.notificationId) {
-    await cancelReminder(item.notificationId).catch(() => undefined);
-  }
-  if (item.type === 'event' && item.deviceEventId) {
-    await deleteDeviceEvent(item.deviceEventId).catch(() => undefined);
+
+  await cancelReminderSafely(item.notificationId);
+
+  if (item.type === 'event') {
+    await deleteDeviceEventSafely(item.deviceEventId);
   }
 }
 
 export async function createAgendaTask(
   repos: Repositories,
-  input: CreateTaskInput & { remind?: boolean },
+  input: CreateAgendaTaskInput,
 ): Promise<TaskItem> {
   let notificationId = input.notificationId;
+
   let reminderAt = input.reminderAt;
+
   let createdNotificationId: string | undefined;
 
   try {
     if (input.remind && input.time) {
-      const scheduled = await scheduleForItem(input);
+      const scheduled = await scheduleItemReminder(input);
+
       createdNotificationId = scheduled.notificationId;
+
       notificationId = createdNotificationId;
+
       reminderAt = scheduled.reminderAt;
     }
 
@@ -143,36 +201,40 @@ export async function createAgendaTask(
       reminderAt,
     });
   } catch (error) {
-    if (createdNotificationId) {
-      await cancelReminder(createdNotificationId).catch(() => undefined);
-    }
+    await cancelReminderSafely(createdNotificationId);
+
     throw error;
   }
 }
 
 export async function createAgendaEvent(
   repos: Repositories,
-  input: CreateEventInput & {
-    device?: CreateDeviceEventInput;
-    remind?: boolean;
-  },
+  input: CreateAgendaEventInput,
 ): Promise<EventItem> {
   let deviceEventId = input.deviceEventId;
+
   let notificationId = input.notificationId;
+
   let reminderAt = input.reminderAt;
+
   let createdDeviceEventId: string | undefined;
+
   let createdNotificationId: string | undefined;
 
   try {
     if (input.device && !deviceEventId) {
       createdDeviceEventId = (await createDeviceEvent(input.device).catch(() => null)) ?? undefined;
+
       deviceEventId = createdDeviceEventId;
     }
 
     if (input.remind) {
-      const scheduled = await scheduleForItem(input);
+      const scheduled = await scheduleItemReminder(input);
+
       createdNotificationId = scheduled.notificationId;
+
       notificationId = createdNotificationId;
+
       reminderAt = scheduled.reminderAt;
     }
 
@@ -183,12 +245,10 @@ export async function createAgendaEvent(
       reminderAt,
     });
   } catch (error) {
-    if (createdNotificationId) {
-      await cancelReminder(createdNotificationId).catch(() => undefined);
-    }
-    if (createdDeviceEventId) {
-      await deleteDeviceEvent(createdDeviceEventId).catch(() => undefined);
-    }
+    await cancelReminderSafely(createdNotificationId);
+
+    await deleteDeviceEventSafely(createdDeviceEventId);
+
     throw error;
   }
 }

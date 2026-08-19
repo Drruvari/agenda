@@ -1,5 +1,5 @@
 import type { DatabaseClient } from '@/data/database/types';
-import type { Repositories } from '@/data/repositories';
+import type { Repositories } from '@/data/repositories/repositories';
 import { formatLongDate } from '@/data/schema/ids';
 import type {
   AgendaItem,

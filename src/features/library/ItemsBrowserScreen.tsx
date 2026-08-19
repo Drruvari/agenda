@@ -3,15 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/ui/EmptyState';
-import {
-  type AgendaItem,
-  formatLongDate,
-  INBOX_FILTER_ID,
-  matchesSpaceFilter,
-  type Space,
-  toLocalDateString,
-  useData,
-} from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { formatLongDate, toLocalDateString } from '@/data/schema/ids';
+import type { AgendaItem, Space } from '@/data/schema/types';
+import { INBOX_FILTER_ID, matchesSpaceFilter } from '@/data/spaces/spaceFilter';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { SettingsScaffold } from '@/features/settings/SettingsChrome';
 import { useThemeStyles } from '@/theme/AppThemeProvider';

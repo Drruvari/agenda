@@ -1,4 +1,4 @@
-import type { AppSettings } from '@/data';
+import type { AppSettings } from '@/data/schema/types';
 
 export function AndroidGeneralSettingsForm(_props: {
   general: AppSettings['general'];

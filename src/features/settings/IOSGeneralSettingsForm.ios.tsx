@@ -1,7 +1,7 @@
 import { Form, Host, Picker, Section, Text, Toggle } from '@expo/ui/swift-ui';
 import { tag, tint } from '@expo/ui/swift-ui/modifiers';
 
-import type { AccentColor, AppSettings } from '@/data';
+import type { AccentColor, AppSettings } from '@/data/schema/types';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 const ACCENTS: AccentColor[] = [

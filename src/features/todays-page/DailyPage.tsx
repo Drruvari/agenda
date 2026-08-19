@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import type { Repositories } from '@/data/repositories';
+import type { Repositories } from '@/data/repositories/repositories';
 import type { AppSettings } from '@/data/schema/types';
 import { DrawToolbar } from '@/features/todays-page/DrawToolbar';
 import { InkCanvas, undoInkDocument } from '@/features/todays-page/InkCanvas';

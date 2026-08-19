@@ -3,7 +3,7 @@ import { buttonStyle, padding, presentationDragIndicator, tint } from '@expo/ui/
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
-import { useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
 import { defaultSpaceColor } from '@/features/library/spaceAppearance';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 

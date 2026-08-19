@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { PlatformColor, StyleSheet, Text as RNText } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { AgendaItem, DailyNote, Space } from '@/data/schema/types';
 import { useLibrary } from '@/features/library';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 

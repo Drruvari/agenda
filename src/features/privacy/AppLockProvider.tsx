@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { AppState, type AppStateStatus, Platform, StyleSheet, View } from 'react-native';
 
-import { useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
 import {
   disableAppSwitcherPrivacy,
   enableAppSwitcherPrivacy,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
-import type { Repositories } from '@/data/repositories';
+import type { Repositories } from '@/data/repositories/repositories';
 import type { DailyPageBlock } from '@/data/schema/types';
 import { DailyNoteSession } from '@/features/todays-page/dailyNoteSession';
 import {

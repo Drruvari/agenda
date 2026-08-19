@@ -1,26 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { loadTodayView, parseLocalDate, type TodayViewModel, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { loadTodayView } from '@/data/queries/today';
+import { parseLocalDate } from '@/data/schema/ids';
+import type { TodayViewModel } from '@/data/schema/types';
 import {
-  type CalendarAccessState,
-  type DeviceCalendarEvent,
   getCalendarAccessState,
   listDeviceEvents,
   requestCalendarAccess,
 } from '@/native/calendar/deviceCalendar';
+import type {
+  CalendarAccessState,
+  DeviceCalendarEvent,
+} from '@/native/calendar/deviceCalendar.types';
+import { getBirthdayAccessState, listDeviceBirthdays } from '@/native/contacts/deviceBirthdays';
+import type { DeviceBirthday } from '@/native/contacts/deviceBirthdays.types';
 import {
-  type DeviceBirthday,
-  getBirthdayAccessState,
-  listDeviceBirthdays,
-} from '@/native/contacts/deviceBirthdays';
-import {
-  type DeviceSystemReminder,
   getSystemReminderAccessState,
   listSystemReminders,
   requestSystemReminderAccess,
-  type SystemReminderAccessState,
   systemRemindersSupported,
 } from '@/native/reminders/systemReminders';
+import type {
+  DeviceSystemReminder,
+  SystemReminderAccessState,
+} from '@/native/reminders/systemReminders.types';
 
 type ReloadOptions = {
   activeSpaceId?: string | null;

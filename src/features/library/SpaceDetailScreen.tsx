@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/ui/EmptyState';
-import { type AgendaItem, formatLongDate, toLocalDateString, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { formatLongDate, toLocalDateString } from '@/data/schema/ids';
+import type { AgendaItem } from '@/data/schema/types';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { useLibrary } from '@/features/library/LibraryContext';
 import { SettingsScaffold } from '@/features/settings/SettingsChrome';

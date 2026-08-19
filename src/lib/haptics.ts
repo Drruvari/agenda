@@ -2,29 +2,28 @@ import * as Haptics from 'expo-haptics';
 
 export type HapticFeedback = 'selection' | 'light' | 'medium' | 'success' | 'warning' | 'error';
 
-export function triggerHaptic(feedback: HapticFeedback) {
-  let effect: Promise<void>;
-
+function getHapticEffect(feedback: HapticFeedback): Promise<void> {
   switch (feedback) {
     case 'selection':
-      effect = Haptics.selectionAsync();
-      break;
-    case 'light':
-      effect = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      break;
-    case 'medium':
-      effect = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      break;
-    case 'success':
-      effect = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      break;
-    case 'warning':
-      effect = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      break;
-    case 'error':
-      effect = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      break;
-  }
+      return Haptics.selectionAsync();
 
-  void effect.catch(() => undefined);
+    case 'light':
+      return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    case 'medium':
+      return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    case 'success':
+      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    case 'warning':
+      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+    case 'error':
+      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  }
+}
+
+export function triggerHaptic(feedback: HapticFeedback): void {
+  void getHapticEffect(feedback).catch(() => undefined);
 }

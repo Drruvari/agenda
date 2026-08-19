@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
 
 import { EmptyState } from '@/components/ui/EmptyState';
-import { type DailyNote, formatLongDate, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import { formatLongDate } from '@/data/schema/ids';
+import type { DailyNote } from '@/data/schema/types';
 import { SettingsScaffold } from '@/features/settings/SettingsChrome';
 import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';

@@ -3,11 +3,8 @@ import { useEffect, useState } from 'react';
 
 import { useAppLock } from '@/features/privacy';
 import { NOTIFICATION_PREVIEW_OPTIONS } from '@/features/privacy/types';
-import {
-  getReminderAccessState,
-  type ReminderAccessState,
-  requestReminderAccess,
-} from '@/native/notifications/reminders';
+import { getReminderAccessState, requestReminderAccess } from '@/native/notifications/reminders';
+import type { ReminderAccessState } from '@/native/notifications/reminders.types';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 export function NotificationSettingsScreen() {

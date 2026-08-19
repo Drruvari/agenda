@@ -3,7 +3,8 @@ import { Dimensions, Pressable, StyleSheet, Text, TextInput, View } from 'react-
 
 import { Icon } from '@/components/ui/Icon';
 import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
-import { type Space, useData } from '@/data';
+import { useData } from '@/data/provider/DataContext';
+import type { Space } from '@/data/schema/types';
 import { useAppAppearance, useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';

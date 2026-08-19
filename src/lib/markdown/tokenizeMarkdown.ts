@@ -1,13 +1,51 @@
-export type MarkdownTokenKind =
-  'marker' | 'heading1' | 'heading2' | 'heading3' | 'bold' | 'italic' | 'code' | 'strike';
-
-export type MarkdownToken = {
-  text: string;
-  kind?: MarkdownTokenKind;
-};
+import type { MarkdownToken, MarkdownTokenKind } from './tokenizeMarkdown.types';
 
 const INLINE_PATTERN =
   /(~~)([^~\n]+)(~~)|(`)([^`\n]+)(`)|(\*\*|__)([^\n]+?)(\7)|(\*|_)([^\n]+?)(\10)/g;
+
+const HEADING_PATTERN = /^(#{1,3})(?!#)\s*/;
+
+const BLOCK_MARKER_PATTERN = /^(\s*(?:[-*]\s+\[[ xX]\]|[-*]|\d+\.|>)\s*)/;
+
+function getInlineMatch(match: RegExpMatchArray): {
+  marker: string;
+  content: string;
+  kind: MarkdownTokenKind;
+} | null {
+  if (match[1] && match[2]) {
+    return {
+      marker: match[1],
+      content: match[2],
+      kind: 'strike',
+    };
+  }
+
+  if (match[4] && match[5]) {
+    return {
+      marker: match[4],
+      content: match[5],
+      kind: 'code',
+    };
+  }
+
+  if (match[7] && match[8]) {
+    return {
+      marker: match[7],
+      content: match[8],
+      kind: 'bold',
+    };
+  }
+
+  if (match[10] && match[11]) {
+    return {
+      marker: match[10],
+      content: match[11],
+      kind: 'italic',
+    };
+  }
+
+  return null;
+}
 
 function tokenizeInline(input: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
@@ -15,28 +53,97 @@ function tokenizeInline(input: string): MarkdownToken[] {
 
   for (const match of input.matchAll(INLINE_PATTERN)) {
     const start = match.index ?? 0;
-    if (start > cursor) tokens.push({ text: input.slice(cursor, start) });
 
-    const marker = match[1] ?? match[4] ?? match[7] ?? match[10];
-    const content = match[2] ?? match[5] ?? match[8] ?? match[11];
-    const kind: MarkdownTokenKind = match[1]
-      ? 'strike'
-      : match[4]
-        ? 'code'
-        : match[7]
-          ? 'bold'
-          : 'italic';
-    tokens.push({ text: marker!, kind: 'marker' });
-    tokens.push({ text: content!, kind });
-    tokens.push({ text: marker!, kind: 'marker' });
+    if (start > cursor) {
+      tokens.push({
+        text: input.slice(cursor, start),
+      });
+    }
+
+    const inline = getInlineMatch(match);
+
+    if (!inline) {
+      continue;
+    }
+
+    tokens.push(
+      {
+        text: inline.marker,
+        kind: 'marker',
+      },
+      {
+        text: inline.content,
+        kind: inline.kind,
+      },
+      {
+        text: inline.marker,
+        kind: 'marker',
+      },
+    );
+
     cursor = start + match[0].length;
   }
 
-  if (cursor < input.length) tokens.push({ text: input.slice(cursor) });
+  if (cursor < input.length) {
+    tokens.push({
+      text: input.slice(cursor),
+    });
+  }
+
   return tokens;
 }
 
-/** Produces styled spans without adding, removing, or replacing source characters. */
+function getHeadingKind(level: number): MarkdownTokenKind {
+  switch (level) {
+    case 1:
+      return 'heading1';
+
+    case 2:
+      return 'heading2';
+
+    default:
+      return 'heading3';
+  }
+}
+
+function tokenizeLine(line: string): MarkdownToken[] {
+  const heading = HEADING_PATTERN.exec(line);
+
+  if (heading) {
+    const marker = heading[0];
+    const hashes = heading[1];
+
+    if (hashes) {
+      return [
+        {
+          text: marker,
+          kind: 'marker',
+        },
+        {
+          text: line.slice(marker.length),
+          kind: getHeadingKind(hashes.length),
+        },
+      ];
+    }
+  }
+
+  const blockMarker = BLOCK_MARKER_PATTERN.exec(line);
+
+  if (blockMarker?.[1]) {
+    const marker = blockMarker[1];
+
+    return [
+      {
+        text: marker,
+        kind: 'marker',
+      },
+      ...tokenizeInline(line.slice(marker.length)),
+    ];
+  }
+
+  return tokenizeInline(line);
+}
+
 export function tokenizeMarkdown(input: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
 
@@ -46,22 +153,7 @@ export function tokenizeMarkdown(input: string): MarkdownToken[] {
       continue;
     }
 
-    const heading = /^(#{1,3})(?!#)\s*/.exec(part);
-    if (heading) {
-      const level = heading[1]!.length as 1 | 2 | 3;
-      tokens.push({ text: heading[0], kind: 'marker' });
-      tokens.push({ text: part.slice(heading[0].length), kind: `heading${level}` });
-      continue;
-    }
-
-    const blockMarker = /^(\s*(?:[-*]\s+\[[ xX]\]|[-*]|\d+\.|>)\s*)/.exec(part);
-    if (blockMarker) {
-      tokens.push({ text: blockMarker[1]!, kind: 'marker' });
-      tokens.push(...tokenizeInline(part.slice(blockMarker[1]!.length)));
-      continue;
-    }
-
-    tokens.push(...tokenizeInline(part));
+    tokens.push(...tokenizeLine(part));
   }
 
   return tokens;
