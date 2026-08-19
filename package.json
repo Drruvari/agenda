@@ -3,6 +3,7 @@
   "main": "index.js",
   "version": "1.0.0",
   "dependencies": {
+    "@expo/material-symbols": "^0.1.1",
     "@expo/ui": "~57.0.10",
     "@tabler/icons-react-native": "^3.46.0",
     "agenda-widget": "file:modules/agenda-widget",

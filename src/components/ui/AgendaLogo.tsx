@@ -21,9 +21,7 @@ type Props = {
 
 export function AgendaLogo({ size = 24, color = '#000000', spin = false }: Props) {
   const rotation = useSharedValue(0);
-  const density = PixelRatio.get();
   const frame = PixelRatio.roundToNearestPixel(size);
-  const drawSize = Math.ceil(frame * density);
 
   useEffect(() => {
     if (!spin) {
@@ -46,21 +44,9 @@ export function AgendaLogo({ size = 24, color = '#000000', spin = false }: Props
   }));
 
   const mark = (
-    <View collapsable={false} style={{ width: frame, height: frame }}>
-      <View
-        collapsable={false}
-        style={{
-          width: drawSize,
-          height: drawSize,
-          transform: [{ scale: 1 / density }],
-          transformOrigin: 'top left',
-        }}
-      >
-        <Svg width={drawSize} height={drawSize} viewBox="0 0 64 66">
-          <Path d={MARK_PATH} fill={color} fillRule="evenodd" />
-        </Svg>
-      </View>
-    </View>
+    <Svg width={frame} height={frame} viewBox="0 0 64 66">
+      <Path d={MARK_PATH} fill={color} fillRule="evenodd" />
+    </Svg>
   );
 
   if (!spin) return mark;

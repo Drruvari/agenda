@@ -1,76 +1,25 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
 
-import { Icon } from '@/components/ui/Icon';
+import { AgendaTabBar } from '@/components/ui/AgendaTabBar';
 import { useAppTheme } from '@/theme/AppThemeProvider';
-import { type } from '@/theme/type';
 
 export default function AndroidTabsLayout() {
   const theme = useAppTheme();
 
   return (
     <Tabs
+      tabBar={(props) => (
+        <AgendaTabBar navigation={props.navigation as never} state={props.state} />
+      )}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: theme.background },
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.textSecondary,
-        tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: styles.label,
-        tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.separator,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          elevation: 0,
-        },
-        tabBarItemStyle: styles.item,
+        sceneStyle: { backgroundColor: theme.background, flex: 1 },
       }}
     >
-      <Tabs.Screen
-        name="(today)"
-        options={{
-          title: 'Agenda',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="calendar" color={color as string} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="page"
-        options={{
-          title: 'Page',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="writing" color={color as string} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: 'Library',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="notebook" color={color as string} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: 'Search',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="search" color={color as string} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="(today)" options={{ title: 'Agenda' }} />
+      <Tabs.Screen name="page" options={{ title: 'Page' }} />
+      <Tabs.Screen name="library" options={{ title: 'Library' }} />
+      <Tabs.Screen name="search" options={{ title: 'Search' }} />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontFamily: type.caption.fontFamily,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  item: { paddingTop: 4 },
-});

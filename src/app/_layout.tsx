@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as SystemUI from 'expo-system-ui';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -52,6 +52,8 @@ function ThemedNavigation() {
   const { colorScheme, theme } = useAppAppearance();
 
   useEffect(() => {
+    if (!requireOptionalNativeModule('ExpoSystemUI')) return;
+    const SystemUI = require('expo-system-ui') as typeof import('expo-system-ui');
     void SystemUI.setBackgroundColorAsync(theme.background);
   }, [theme.background]);
 

@@ -37,6 +37,7 @@ import {
   useTodayAgenda,
 } from '@/features/today/hooks/useTodayAgenda';
 import { useTodayView } from '@/features/today/hooks/useTodayView';
+import { TodayAndroidHeader } from '@/features/today/TodayAndroidHeader';
 import { type PlannerGestures, usePlannerGestures } from '@/hooks/usePlannerGestures';
 import { triggerHaptic } from '@/lib/haptics';
 import {
@@ -441,14 +442,15 @@ export function TodayScreen() {
   const isToday = ui.selectedDate === toLocalDateString();
   const itemCountLabel = `${visibleItemCount} ${visibleItemCount === 1 ? 'item' : 'items'}`;
   const isDark = colorScheme === 'dark';
-  const usesNativeChrome = Platform.OS === 'ios';
-  const usesNativeBottomTabs = Platform.OS === 'android';
-  const headerTop = usesNativeChrome ? 0 : insets.top + 6;
+  const usesIosToolbar = Platform.OS === 'ios';
+  const usesAndroidHeader = Platform.OS === 'android';
+  const usesNativeBottomTabs = Platform.OS === 'ios' || Platform.OS === 'android';
+  const headerTop = usesIosToolbar ? 0 : 0;
 
   return (
     <View style={styles.safeArea}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      {usesNativeChrome ? (
+      {usesIosToolbar ? (
         <>
           {!isToday ? (
             <Stack.Toolbar placement="left">
@@ -498,7 +500,7 @@ export function TodayScreen() {
               pointerEvents="none"
               style={[
                 styles.pullHintWrap,
-                { top: usesNativeChrome ? insets.top + 56 : headerTop + headerHeight },
+                { top: usesIosToolbar ? insets.top + 56 : headerTop + headerHeight },
                 pullHintStyle,
               ]}
             >
@@ -526,8 +528,8 @@ export function TodayScreen() {
             contentContainerStyle={[
               styles.scrollContent,
               {
-                paddingTop: usesNativeChrome ? 20 : headerTop + headerHeight + 12,
-                paddingBottom: usesNativeChrome
+                paddingTop: usesIosToolbar ? 20 : headerTop + headerHeight + 12,
+                paddingBottom: usesIosToolbar
                   ? 32
                   : usesNativeBottomTabs
                     ? 24
@@ -550,7 +552,7 @@ export function TodayScreen() {
               </View>
             </View>
 
-            {!usesNativeChrome ? (
+            {!usesIosToolbar && !usesAndroidHeader ? (
               <Animated.ScrollView
                 horizontal
                 directionalLockEnabled
@@ -655,40 +657,70 @@ export function TodayScreen() {
         </Animated.View>
       </BlurTargetView>
 
-      {!usesNativeChrome ? (
+      {!usesIosToolbar ? (
         <View
           onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
           pointerEvents={editorOpen ? 'none' : 'box-none'}
-          style={[styles.stickyHeader, { top: headerTop }]}
+          style={[
+            styles.stickyHeader,
+            {
+              top: headerTop,
+              paddingTop: usesIosToolbar ? 0 : insets.top,
+              backgroundColor: C.bg,
+            },
+          ]}
         >
-          <TopBar
-            calendarIndicator={
-              settings.general.calendarIndicators &&
-              Boolean(
-                view &&
-                (view.allDay.length ||
-                  view.scheduled.length ||
-                  view.completed.length ||
-                  view.dailyNote?.bodyText.trim()),
-              )
-            }
-            mode={derivedMode}
-            setMode={(mode) => {
-              const next = parseLocalDate(ui.selectedDate);
-              if (mode === 'Today') void chooseDate(new Date());
-              else {
-                next.setDate(next.getDate() + (mode === 'Recent' ? -1 : 1));
-                void chooseDate(next);
+          {usesAndroidHeader ? (
+            <TodayAndroidHeader
+              calendarIndicator={
+                settings.general.calendarIndicators &&
+                Boolean(
+                  view &&
+                  (view.allDay.length ||
+                    view.scheduled.length ||
+                    view.completed.length ||
+                    view.dailyNote?.bodyText.trim()),
+                )
               }
-            }}
-            onAdd={() => openCreate('task')}
-            onCalendar={() => setCalendarPickerOpen(true)}
-            onSettings={() => router.push('/settings')}
-          />
+              isToday={isToday}
+              onAdd={() => openCreate('task')}
+              onCalendar={() => setCalendarPickerOpen(true)}
+              onInbox={() => setUI({ activeSpaceId: INBOX_FILTER_ID })}
+              onSearch={openSearch}
+              onSettings={() => router.push('/settings')}
+              onShowAll={() => setUI({ activeSpaceId: null })}
+              onToday={() => void chooseDate(new Date())}
+            />
+          ) : (
+            <TopBar
+              calendarIndicator={
+                settings.general.calendarIndicators &&
+                Boolean(
+                  view &&
+                  (view.allDay.length ||
+                    view.scheduled.length ||
+                    view.completed.length ||
+                    view.dailyNote?.bodyText.trim()),
+                )
+              }
+              mode={derivedMode}
+              setMode={(mode) => {
+                const next = parseLocalDate(ui.selectedDate);
+                if (mode === 'Today') void chooseDate(new Date());
+                else {
+                  next.setDate(next.getDate() + (mode === 'Recent' ? -1 : 1));
+                  void chooseDate(next);
+                }
+              }}
+              onAdd={() => openCreate('task')}
+              onCalendar={() => setCalendarPickerOpen(true)}
+              onSettings={() => router.push('/settings')}
+            />
+          )}
         </View>
       ) : null}
 
-      {!editorOpen && !usesNativeChrome && !usesNativeBottomTabs ? (
+      {!editorOpen && !usesIosToolbar && !usesNativeBottomTabs ? (
         <BottomBar
           blurTarget={blurTarget}
           bottom={Math.max(16, insets.bottom + 10)}
@@ -827,10 +859,9 @@ function createStyles(theme: AgendaTheme) {
     },
     stickyHeader: {
       position: 'absolute',
-      left: 12,
-      right: 12,
+      left: 0,
+      right: 0,
       zIndex: 20,
-      alignItems: 'center',
     },
     topBar: {
       width: '100%',
