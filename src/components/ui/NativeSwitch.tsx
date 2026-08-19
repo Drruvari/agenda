@@ -1,6 +1,6 @@
 import { Host, Switch } from '@expo/ui';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 type Props = {
   disabled?: boolean;

@@ -1,7 +1,7 @@
 import { Host, TextInput, type TextInputProps } from '@expo/ui';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 
 export type InputProps = TextInputProps & { style?: StyleProp<ViewStyle> };
 

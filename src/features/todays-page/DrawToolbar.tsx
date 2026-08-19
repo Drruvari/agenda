@@ -10,7 +10,8 @@ import {
   type InkTool,
   PEN_BRUSHES,
 } from '@/features/todays-page/inkTools';
-import { type AgendaTheme, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
 
 type Props = {
   tool: InkTool;

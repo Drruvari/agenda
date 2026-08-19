@@ -12,7 +12,10 @@ import { formatLongDate, toLocalDateString, useData } from '@/data';
 import { createAgendaTask } from '@/domain/agendaLifecycle';
 import { markOnboardingCompleted } from '@/features/onboarding/onboardingStorage';
 import { triggerHaptic } from '@/lib/haptics';
-import { type AgendaTheme, continuousCorner, fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type Step = 'outcome' | 'firstTask' | 'ready';
 

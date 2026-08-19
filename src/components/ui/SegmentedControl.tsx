@@ -8,7 +8,11 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { type AgendaTheme, continuousCorner, fonts, motion, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { motion } from '@/theme/motion';
+import { continuousCorner } from '@/theme/tokens';
 
 type Option<T extends string> = {
   value: T;

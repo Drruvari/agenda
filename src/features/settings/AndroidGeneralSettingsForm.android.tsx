@@ -4,7 +4,9 @@ import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import type { AccentColor, AppSettings } from '@/data';
 import { SettingPicker } from '@/features/settings/SettingPicker';
 import { SettingsSection } from '@/features/settings/SettingsChrome';
-import { type AgendaTheme, fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
 
 const ACCENTS: { label: string; value: AccentColor }[] = [
   { label: 'Black', value: 'black' },

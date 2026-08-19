@@ -1,6 +1,7 @@
 import { Pressable, type StyleProp, StyleSheet, Text, type ViewStyle } from 'react-native';
 
-import { fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 export type ButtonProps = {
   label: string;

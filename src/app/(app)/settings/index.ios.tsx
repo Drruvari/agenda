@@ -1,7 +1,7 @@
 import { FieldGroup, Host, Icon, ListItem, Text } from '@expo/ui';
 import { Stack, useRouter } from 'expo-router';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 export default function SettingsScreen() {
   const router = useRouter();

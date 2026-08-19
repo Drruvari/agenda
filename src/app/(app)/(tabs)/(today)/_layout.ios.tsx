@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { PlatformColor, View } from 'react-native';
 
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
-import { useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
 
 export default function TodayLayout() {
   const theme = useAppTheme();

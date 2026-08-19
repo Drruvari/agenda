@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs -- handlers read latest stroke refs by design */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, PointerType } from 'react-native-gesture-handler';
@@ -14,27 +13,23 @@ import {
   type InkStroke,
 } from '@/features/todays-page/inkFormat';
 import type { InkTool } from '@/features/todays-page/inkTools';
-import { useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
 
 type Props = {
   document: InkDocument;
   strokeColor: string;
-  /** Color or semantic color role written into persisted strokes. */
   strokeStorageColor?: string;
   strokeWidth: number;
   strokeOpacity: number;
   penOnly: boolean;
   tool: InkTool;
-  /** When false, ink still renders but does not capture touches. */
   enabled?: boolean;
   onChange: (next: InkDocument) => void;
-  /** Live ink bottom Y while stroking (0 when idle) — used to grow the page. */
   onLiveBottomChange?: (bottom: number) => void;
 };
 
 const ERASE_HIT = 18;
 
-/** Smooth quadratic path through stroke points (midpoint technique). */
 function pointsToSvgPath(points: InkPoint[]): string {
   if (points.length === 0) return '';
   if (points.length === 1) {
@@ -164,7 +159,6 @@ export function InkCanvas({
       if (last && Math.hypot(last.x - x, last.y - y) < 0.45) return;
       const next = [...livePointsRef.current, { x, y, p: pressure }];
       livePointsRef.current = next;
-      // Keep width reactive to pressure for a more natural pen feel.
       const width = strokeWidthForPressure(strokeWidthRef.current, pressure);
       liveWidthRef.current = width;
       setLiveWidth(width);
@@ -221,7 +215,6 @@ export function InkCanvas({
     [allowPointer, emit],
   );
 
-  // Stable bridges so gestures are not rebuilt every stroke.
   const beginStrokeJS = useCallback(
     (x: number, y: number, pointerType: number, pressure?: number) => {
       beginStroke(x, y, pointerType, pressure);
@@ -262,7 +255,6 @@ export function InkCanvas({
           state.fail();
           return;
         }
-        // Pen-only: let finger pass through to scroll / type.
         if (penOnly && event.pointerType !== PointerType.STYLUS) {
           state.fail();
           return;
@@ -324,7 +316,9 @@ export function InkCanvas({
       pointerEvents={enabled ? 'auto' : 'none'}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
-        if (width > 0 && height > 0) setLayout({ width, height });
+        if (width > 0 && height > 0) {
+          setLayout({ width, height });
+        }
       }}
     >
       <GestureDetector gesture={inkGesture}>
@@ -363,7 +357,9 @@ export function InkCanvas({
 }
 
 export function undoInkDocument(doc: InkDocument): InkDocument {
-  if (doc.strokes.length === 0) return doc;
+  if (doc.strokes.length === 0) {
+    return doc;
+  }
   return { ...doc, strokes: doc.strokes.slice(0, -1) };
 }
 

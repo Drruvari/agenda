@@ -5,75 +5,79 @@ type LocalAuthenticationModule = typeof import('expo-local-authentication');
 
 let cached: LocalAuthenticationModule | null | undefined;
 
-/**
- * Probe the native binary before importing the JS package.
- * `require('expo-local-authentication')` calls `requireNativeModule`, which throws
- * (and redboxes) when the module isn't linked — e.g. Expo Go or a stale dev client.
- */
-function getLocalAuthentication(): LocalAuthenticationModule | null {
-  if (cached !== undefined) return cached;
-  if (Platform.OS === 'web') {
-    cached = null;
+async function getLocalAuthentication(): Promise<LocalAuthenticationModule | null> {
+  if (cached !== undefined) {
     return cached;
   }
 
-  if (!requireOptionalNativeModule('ExpoLocalAuthentication')) {
+  if (Platform.OS === 'web' || !requireOptionalNativeModule('ExpoLocalAuthentication')) {
     cached = null;
     return cached;
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cached = require('expo-local-authentication') as LocalAuthenticationModule;
+    cached = await import('expo-local-authentication');
   } catch {
     cached = null;
   }
+
   return cached;
 }
 
-/** True when the device can authenticate (biometrics and/or device PIN). */
 export async function canAuthenticate(): Promise<boolean> {
-  const LocalAuthentication = getLocalAuthentication();
-  if (!LocalAuthentication) return false;
+  const localAuthentication = await getLocalAuthentication();
+
+  if (!localAuthentication) {
+    return false;
+  }
 
   try {
-    const level = await LocalAuthentication.getEnrolledLevelAsync();
-    return level !== LocalAuthentication.SecurityLevel.NONE;
+    const level = await localAuthentication.getEnrolledLevelAsync();
+
+    return level !== localAuthentication.SecurityLevel.NONE;
   } catch {
     return false;
   }
 }
 
-/** True when strong biometrics (Face ID / fingerprint) are available and enrolled. */
 export async function biometricAvailable(): Promise<boolean> {
-  const LocalAuthentication = getLocalAuthentication();
-  if (!LocalAuthentication) return false;
+  const localAuthentication = await getLocalAuthentication();
+
+  if (!localAuthentication) {
+    return false;
+  }
 
   try {
-    const [hardware, enrolled] = await Promise.all([
-      LocalAuthentication.hasHardwareAsync(),
-      LocalAuthentication.isEnrolledAsync(),
+    const [hasHardware, isEnrolled] = await Promise.all([
+      localAuthentication.hasHardwareAsync(),
+      localAuthentication.isEnrolledAsync(),
     ]);
-    return hardware && enrolled;
+
+    return hasHardware && isEnrolled;
   } catch {
     return false;
   }
 }
 
 export async function authenticateApp(): Promise<boolean> {
-  const LocalAuthentication = getLocalAuthentication();
-  if (!LocalAuthentication) return false;
+  const localAuthentication = await getLocalAuthentication();
+
+  if (!localAuthentication) {
+    return false;
+  }
 
   try {
-    const result = await LocalAuthentication.authenticateAsync({
+    const result = await localAuthentication.authenticateAsync({
       promptMessage: 'Unlock Agenda',
       promptSubtitle: 'Authenticate to access your agenda',
       biometricsSecurityLevel: 'strong',
       disableDeviceFallback: false,
       cancelLabel: 'Cancel',
     });
+
     return result.success;
   } catch {
+    // Authentication is unavailable or was interrupted.
     return false;
   }
 }

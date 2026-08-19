@@ -3,7 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
-import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type Props = {
   authenticating: boolean;

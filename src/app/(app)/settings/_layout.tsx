@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 
-import { fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 export default function SettingsLayout() {
   const theme = useAppTheme();

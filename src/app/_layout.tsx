@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -13,7 +13,7 @@ import { ItemEditorHost, ItemEditorProvider } from '@/features/item-editor';
 import { EditSpaceHost, LibraryHost, LibraryProvider, SpacePickerHost } from '@/features/library';
 import { AppLockProvider } from '@/features/privacy';
 import { configureReminders } from '@/native/notifications/reminders';
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 import { WidgetSync } from '@/widgets/WidgetSync';
 
 export default function RootLayout() {

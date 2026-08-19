@@ -20,7 +20,11 @@ import {
   type TodayAgendaTask,
   type TodayScheduledTask,
 } from '@/features/today/hooks/useTodayAgenda';
-import { type AgendaTheme, continuousCorner, fonts, motion, spacing, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { motion } from '@/theme/motion';
+import { continuousCorner, spacing } from '@/theme/tokens';
 
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const rowEnter = FadeInDown.duration(motion.duration.normal)
@@ -193,11 +197,7 @@ export function AgendaSections({
           </View>
 
           {completedExpanded ? (
-            <Animated.View
-              entering={sectionEnter}
-              exiting={sectionExit}
-              style={styles.listBlock}
-            >
+            <Animated.View entering={sectionEnter} exiting={sectionExit} style={styles.listBlock}>
               {completed.length > 0 ? (
                 completed.map((task) => {
                   const interaction = interactionFor(task);
@@ -450,10 +450,7 @@ export function ScheduledRow({
                 {task.priority}
               </Text>
             ) : null}
-            <Text
-              style={[styles.taskTitle, isDone && styles.taskTitleCompleted]}
-              numberOfLines={1}
-            >
+            <Text style={[styles.taskTitle, isDone && styles.taskTitleCompleted]} numberOfLines={1}>
               {task.title}
             </Text>
           </View>

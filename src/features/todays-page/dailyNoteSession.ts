@@ -116,7 +116,9 @@ export class DailyNoteSession {
       }
     } catch (error) {
       if (generation !== this.loadGeneration) return;
-      this.options.onError?.(error instanceof Error ? error.message : 'Could not open today’s page');
+      this.options.onError?.(
+        error instanceof Error ? error.message : 'Could not open today’s page',
+      );
       this.ready = true;
       this.emit();
     }

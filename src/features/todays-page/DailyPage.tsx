@@ -25,7 +25,9 @@ import { PageTextEditor, type PageTextEditorHandle } from '@/features/todays-pag
 import { shareDailyPage } from '@/features/todays-page/shareDailyPage';
 import { type DailyPageBlockState, useDailyPage } from '@/features/todays-page/useDailyPage';
 import { triggerHaptic } from '@/lib/haptics';
-import { type AgendaTheme, fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
 
 type Mode = 'idle' | 'write' | 'draw';
 type TextBlock = Extract<DailyPageBlockState, { type: 'text' }>;

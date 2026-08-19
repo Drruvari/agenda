@@ -1,7 +1,9 @@
 import { type ChangeEvent, type CSSProperties, useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { type AgendaTheme, continuousCorner, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { continuousCorner } from '@/theme/tokens';
 
 type Props = {
   onChange: (date: Date) => void;

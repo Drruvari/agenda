@@ -11,7 +11,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { formatLongDate } from '@/data/schema/ids';
-import { fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 type Props = {
   date: string;

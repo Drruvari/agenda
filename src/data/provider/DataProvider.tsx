@@ -1,10 +1,4 @@
-import {
-  type PropsWithChildren,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
@@ -19,12 +13,7 @@ import { seedIfNeeded } from '@/data/seed/seed';
 import { createSettingsStore, type SettingsStore } from '@/data/settings/settings';
 import { AppThemeProvider } from '@/theme/AppThemeProvider';
 
-import {
-  DataContext,
-  type DataContextValue,
-  type PlannerUIState,
-  useData,
-} from './DataContext';
+import { DataContext, type DataContextValue, type PlannerUIState, useData } from './DataContext';
 
 export type { DataContextValue, PlannerUIState };
 export { useData };

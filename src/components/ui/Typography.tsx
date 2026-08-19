@@ -1,6 +1,9 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { type AgendaTheme, fonts, typography, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { typography } from '@/theme/tokens';
 
 type Variant = 'display' | 'title' | 'body' | 'label' | 'caption' | 'section' | 'page';
 

@@ -1,19 +1,9 @@
 import { type ColorValue, Platform } from 'react-native';
 
-/** Four appearance modes — Light / Dark / Light HC / Dark HC. */
 export type AppearanceMode = 'light' | 'dark' | 'lightHighContrast' | 'darkHighContrast';
 
 type ModeValues = Record<AppearanceMode, string>;
 
-export function rgba(hex: string, alpha: number): string {
-  const value = hex.replace('#', '');
-  const r = Number.parseInt(value.slice(0, 2), 16);
-  const g = Number.parseInt(value.slice(2, 4), 16);
-  const b = Number.parseInt(value.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/** Calendar / event / space category palette. */
 export const categoryColorValues = {
   red: {
     light: '#C4514A',
@@ -91,12 +81,10 @@ export const categoryColorValues = {
 
 export type CategoryColorName = keyof typeof categoryColorValues;
 
-/** Light-mode category hexes for storing space colors. */
+const categoryColorNames = Object.keys(categoryColorValues) as CategoryColorName[];
+
 export const spaceColors: Record<CategoryColorName, string> = Object.fromEntries(
-  (Object.keys(categoryColorValues) as CategoryColorName[]).map((name) => [
-    name,
-    categoryColorValues[name].light,
-  ]),
+  categoryColorNames.map((name) => [name, categoryColorValues[name].light]),
 ) as Record<CategoryColorName, string>;
 
 const neutralColorValues = {
@@ -149,123 +137,147 @@ export type AgendaTheme = {
     fillQuaternary: ColorValue;
     pressed: ColorValue;
   };
+
   category: Record<CategoryColorName, ColorValue>;
   overlay: ColorValue;
 
-  /**
-   * Flat aliases (string fallbacks) for Icon / Text props and StyleSheet.
-   * Background → Background, Section → Surface Secondary, Card → Surface Tertiary.
-   * Prefer nested semantic tokens for new code when ColorValue is accepted.
-   */
   background: string;
   section: string;
   card: string;
+
   text: string;
   textSecondary: string;
   textTertiary: string;
   placeholder: string;
+
   primary: string;
   primarySoft: string;
   onPrimary: string;
+
   separator: string;
   border: string;
   input: string;
+
   warning: string;
   danger: string;
+
   floating: string;
   floatingText: string;
   floatingTextMuted: string;
 };
 
-function getCategoryReference(name: CategoryColorName, mode: AppearanceMode): string {
-  return categoryColorValues[name][mode];
-}
+export function rgba(hex: string, alpha: number): string {
+  const value = hex.replace('#', '');
 
-function getCategoryColor(name: CategoryColorName, mode: AppearanceMode): ColorValue {
-  return getCategoryReference(name, mode);
+  const r = Number.parseInt(value.slice(0, 2), 16);
+  const g = Number.parseInt(value.slice(2, 4), 16);
+  const b = Number.parseInt(value.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function foregroundForAccent(accentHex: string): '#000000' | '#FFFFFF' {
   const hex = accentHex.replace('#', '');
-  if (!/^[\da-f]{6}$/i.test(hex)) return '#FFFFFF';
+
+  if (!/^[\da-f]{6}$/i.test(hex)) {
+    return '#FFFFFF';
+  }
+
   const channels = [0, 2, 4].map((offset) => {
     const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   });
+
   const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+
   return luminance > 0.179 ? '#000000' : '#FFFFFF';
 }
 
-/** Primary Soft opacity per Apple guidance. */
 export function softAlpha(mode: AppearanceMode): number {
-  if (mode === 'darkHighContrast') return 0.28;
-  if (mode === 'lightHighContrast') return 0.2;
-  return mode === 'dark' ? 0.18 : 0.12;
+  switch (mode) {
+    case 'darkHighContrast':
+      return 0.28;
+
+    case 'lightHighContrast':
+      return 0.2;
+
+    case 'dark':
+      return 0.18;
+
+    case 'light':
+      return 0.12;
+  }
 }
 
 export function resolveAppearanceMode(
   colorScheme: 'light' | 'dark',
   highContrast: boolean,
 ): AppearanceMode {
-  if (colorScheme === 'dark') return highContrast ? 'darkHighContrast' : 'dark';
+  if (colorScheme === 'dark') {
+    return highContrast ? 'darkHighContrast' : 'dark';
+  }
+
   return highContrast ? 'lightHighContrast' : 'light';
 }
 
 function createTheme(mode: AppearanceMode): AgendaTheme {
   const isDark = mode === 'dark' || mode === 'darkHighContrast';
+
   const isHighContrast = mode === 'lightHighContrast' || mode === 'darkHighContrast';
+
   const useNativePalette = Platform.OS === 'ios' || Platform.OS === 'android';
-  const primaryReference = getCategoryReference('indigo', mode);
+
+  const primaryReference = categoryColorValues.indigo[mode];
+
   const onPrimary = foregroundForAccent(primaryReference);
+
   const primarySoft = rgba(primaryReference, softAlpha(mode));
 
   const category = Object.fromEntries(
-    (Object.keys(categoryColorValues) as CategoryColorName[]).map((name) => [
-      name,
-      getCategoryColor(name, mode),
-    ]),
+    categoryColorNames.map((name) => [name, categoryColorValues[name][mode]]),
   ) as Record<CategoryColorName, ColorValue>;
 
-  const text = useNativePalette
-    ? isDark
-      ? '#FFFFFF'
-      : '#1C1C1E'
-    : isDark
-      ? '#F3F0EA'
-      : '#27231F';
-  const secondaryText = useNativePalette
+  const text = useNativePalette ? (isDark ? '#FFFFFF' : '#1C1C1E') : isDark ? '#F3F0EA' : '#27231F';
+
+  const textSecondary = useNativePalette
     ? isDark
       ? '#A1A1A6'
       : '#636366'
     : isDark
       ? '#B0AFAB'
       : '#6E675F';
-  const tertiaryText = useNativePalette
+
+  const textTertiary = useNativePalette
     ? isDark
       ? '#7C7C80'
       : '#8E8E93'
     : isDark
       ? '#85888A'
       : '#928A80';
-  const surfaceBackground = useNativePalette
+
+  const background = useNativePalette
     ? isDark
       ? '#000000'
       : '#F2F2F7'
     : isDark
       ? '#10161C'
       : '#F8F4EC';
-  const surfaceSecondary = useNativePalette
+
+  const section = useNativePalette
     ? isDark
       ? '#1C1C1E'
       : '#FFFFFF'
     : neutralColorValues.gray6[mode];
-  const surfaceTertiary = useNativePalette
+
+  const card = useNativePalette
     ? isDark
       ? '#2C2C2E'
       : '#FFFFFF'
     : isDark
       ? neutralColorValues.gray5[mode]
       : '#FFFDF8';
+
   const fillBase = useNativePalette
     ? isDark
       ? '#FFFFFF'
@@ -273,46 +285,59 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
     : isDark
       ? '#AAB0B4'
       : '#6E675F';
+
   const alphaBoost = isHighContrast ? 0.06 : 0;
-  const separatorFallback = useNativePalette
+
+  const separator = useNativePalette
     ? isDark
       ? '#38383A'
       : '#C6C6C8'
     : isDark
       ? '#30383F'
       : '#DDD4C7';
-  const inputFallback = rgba(fillBase, 0.12 + alphaBoost);
-  const orangeRef = getCategoryReference('orange', mode);
-  const redRef = getCategoryReference('red', mode);
+
+  const input = rgba(fillBase, 0.12 + alphaBoost);
+
+  const warning = categoryColorValues.orange[mode];
+
+  const danger = categoryColorValues.red[mode];
 
   return {
     mode,
     isDark,
     isHighContrast,
+
     control: {
       fill: rgba(fillBase, 0.2 + alphaBoost),
       fillSecondary: rgba(fillBase, 0.16 + alphaBoost),
       fillQuaternary: rgba(fillBase, 0.08 + alphaBoost),
       pressed: rgba(primaryReference, softAlpha(mode) + 0.08),
     },
+
     category,
+
     overlay: rgba('#000000', isDark ? 0.55 : 0.25),
-    // Flat string aliases for components that require string colors
-    background: surfaceBackground,
-    section: surfaceSecondary,
-    card: surfaceTertiary,
+
+    background,
+    section,
+    card,
+
     text,
-    textSecondary: secondaryText,
-    textTertiary: tertiaryText,
-    placeholder: tertiaryText,
+    textSecondary,
+    textTertiary,
+    placeholder: textTertiary,
+
     primary: primaryReference,
     primarySoft,
     onPrimary,
-    separator: separatorFallback,
+
+    separator,
     border: neutralColorValues.gray4[mode],
-    input: inputFallback,
-    warning: orangeRef,
-    danger: redRef,
+    input,
+
+    warning,
+    danger,
+
     floating: useNativePalette
       ? isDark
         ? rgba('#1C1C1E', 0.86)
@@ -320,35 +345,40 @@ function createTheme(mode: AppearanceMode): AgendaTheme {
       : isDark
         ? rgba('#06090C', 0.72)
         : rgba('#27231F', 0.72),
+
     floatingText: useNativePalette && !isDark ? '#1C1C1E' : '#FFFFFF',
+
     floatingTextMuted: useNativePalette && !isDark ? rgba('#1C1C1E', 0.58) : rgba('#FFFFFF', 0.65),
   };
 }
 
-/** Apply a user accent (hex reference) onto brand + flat aliases. */
 export function withBrandAccent(
   theme: AgendaTheme,
   accentHex: string,
   mode: AppearanceMode = theme.mode,
 ): AgendaTheme {
-  const primarySoft = rgba(accentHex, softAlpha(mode));
-  const onPrimary = foregroundForAccent(accentHex);
-
   return {
     ...theme,
+
     control: {
       ...theme.control,
       pressed: rgba(accentHex, softAlpha(mode) + 0.08),
     },
+
     primary: accentHex,
-    primarySoft,
-    onPrimary,
+
+    primarySoft: rgba(accentHex, softAlpha(mode)),
+
+    onPrimary: foregroundForAccent(accentHex),
   };
 }
 
 export const lightTheme = createTheme('light');
+
 export const darkTheme = createTheme('dark');
+
 export const lightHighContrastTheme = createTheme('lightHighContrast');
+
 export const darkHighContrastTheme = createTheme('darkHighContrast');
 
 export const themes: Record<AppearanceMode, AgendaTheme> = {

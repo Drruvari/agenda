@@ -15,14 +15,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BlurSurface } from '@/components/ui/BlurSurface';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  spacing,
-  useAppAppearance,
-  useAppTheme,
-} from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner, spacing } from '@/theme/tokens';
 
 type SettingsHeaderProps = {
   title: string;

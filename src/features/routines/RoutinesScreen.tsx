@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Icon } from '@/components/ui/Icon';
 import { type Routine, useData } from '@/data';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export function RoutinesSheet({ onDismiss }: { onDismiss: () => void }) {
   const { styles, theme } = useThemeStyles(createStyles);

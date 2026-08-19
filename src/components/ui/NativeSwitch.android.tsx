@@ -1,6 +1,6 @@
 import { Switch } from 'react-native';
 
-import { useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 
 type Props = {
   disabled?: boolean;

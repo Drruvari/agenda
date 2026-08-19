@@ -28,11 +28,20 @@ type ContinuousCornerStyle = {
 };
 
 function withContinuousCurve(style: ContinuousCornerStyle): ContinuousCornerStyle {
-  return Platform.OS === 'ios' ? { ...style, borderCurve: 'continuous' } : style;
+  if (Platform.OS !== 'ios') {
+    return style;
+  }
+
+  return {
+    ...style,
+    borderCurve: 'continuous',
+  };
 }
 
 export function continuousCorner(value: number): ContinuousCornerStyle {
-  return withContinuousCurve({ borderRadius: value });
+  return withContinuousCurve({
+    borderRadius: value,
+  });
 }
 
 export function continuousCornerBottom(value: number): ContinuousCornerStyle {
@@ -51,11 +60,3 @@ export const typography = {
   title: 22,
   display: 34,
 } as const;
-
-export {
-  type AgendaTheme,
-  type CategoryColorName,
-  categoryColorValues,
-  rgba,
-  spaceColors,
-} from './colors';

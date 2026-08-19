@@ -10,7 +10,10 @@ import {
   type ReminderAccessState,
   requestReminderAccess,
 } from '@/native/notifications/reminders';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export function NotificationSettingsScreen() {
   const { styles } = useThemeStyles(createStyles);

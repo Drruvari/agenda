@@ -12,16 +12,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Icon } from '@/components/ui/Icon';
 import {
   AgendaBottomSheet,
   AgendaSheetHeader,
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
-import { Icon } from '@/components/ui/Icon';
 import { type AgendaItem, type DailyNote, type Routine, type Space, useData } from '@/data';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type SearchResult =
   | { id: string; kind: 'item'; item: AgendaItem; title: string; subtitle: string }
@@ -260,7 +263,11 @@ export function SearchTabScreen() {
 
 function createStyles(theme: AgendaTheme) {
   return StyleSheet.create({
-    root: { flex: 1, paddingHorizontal: Platform.OS === 'ios' ? 0 : 16, backgroundColor: theme.background },
+    root: {
+      flex: 1,
+      paddingHorizontal: Platform.OS === 'ios' ? 0 : 16,
+      backgroundColor: theme.background,
+    },
     embeddedHeader: {
       paddingTop: 8,
       paddingHorizontal: Platform.OS === 'ios' ? 20 : 4,

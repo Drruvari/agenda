@@ -5,7 +5,8 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
-import { fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 type DateFieldProps = {
   embedded?: boolean;

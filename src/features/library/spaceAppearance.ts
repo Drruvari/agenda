@@ -1,5 +1,5 @@
 import type { IconName } from '@/components/ui/Icon';
-import { type CategoryColorName, spaceColors } from '@/theme';
+import { type CategoryColorName, spaceColors } from '@/theme/colors';
 
 export const SPACE_ICON_OPTIONS: IconName[] = [
   'agenda',

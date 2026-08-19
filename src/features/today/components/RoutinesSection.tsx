@@ -6,7 +6,11 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import type { TodayRoutine } from '@/features/today/hooks/useTodayAgenda';
-import { type AgendaTheme, continuousCorner, fonts, motion, spacing, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { motion } from '@/theme/motion';
+import { continuousCorner, spacing } from '@/theme/tokens';
 
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const checkEnter = ZoomIn.springify()

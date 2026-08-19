@@ -1,21 +1,25 @@
-export type ReminderAccessState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+import type { ReminderAccessState } from './reminders.types';
 
-export async function configureReminders(): Promise<void> {}
-
-export async function getReminderAccessState(): Promise<ReminderAccessState> {
-  return 'unavailable';
+export function configureReminders(): Promise<void> {
+  return Promise.resolve();
 }
 
-export async function requestReminderAccess(): Promise<ReminderAccessState> {
-  return 'unavailable';
+export function getReminderAccessState(): Promise<ReminderAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function scheduleReminder(
+export function requestReminderAccess(): Promise<ReminderAccessState> {
+  return Promise.resolve('unavailable');
+}
+
+export function scheduleReminder(
   _title: string,
   _body: string | undefined,
   _when: Date,
 ): Promise<string | null> {
-  return null;
+  return Promise.resolve(null);
 }
 
-export async function cancelReminder(_identifier?: string): Promise<void> {}
+export function cancelReminder(_identifier?: string): Promise<void> {
+  return Promise.resolve();
+}

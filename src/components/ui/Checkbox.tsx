@@ -3,7 +3,9 @@ import Animated, { Easing, ReduceMotion, ZoomIn, ZoomOut } from 'react-native-re
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Icon } from '@/components/ui/Icon';
-import { type AgendaTheme, motion, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { motion } from '@/theme/motion';
 
 const easeOut = Easing.bezier(0.22, 1, 0.36, 1);
 const checkEnter = ZoomIn.springify()

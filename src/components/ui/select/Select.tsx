@@ -1,7 +1,7 @@
 import { Host, Picker } from '@expo/ui';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 export type SelectOption<T extends string | number> = { label: string; value: T };
 

@@ -19,7 +19,10 @@ import {
   SHEET_DISMISS_MS,
 } from '@/components/ui/sheet/Sheet';
 import { type Space, useData } from '@/data';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 import { useLibrary } from './LibraryContext';
 import { SPACE_COLOR_OPTIONS, SPACE_ICON_OPTIONS } from './spaceAppearance';

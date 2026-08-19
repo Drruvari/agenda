@@ -1,42 +1,25 @@
-export type CalendarAccessState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+import type {
+  CalendarAccessState,
+  CreateDeviceEventInput,
+  DeviceCalendarEvent,
+} from './deviceCalendar.types';
 
-export type DeviceCalendarEvent = {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  allDay: boolean;
-  notes?: string;
-  calendarTitle?: string;
-  kind: 'event' | 'birthday';
-};
-
-export type CreateDeviceEventInput = {
-  title: string;
-  details?: string;
-  startDate: Date;
-  endDate: Date;
-  allDay: boolean;
-};
-
-export async function getCalendarAccessState(): Promise<CalendarAccessState> {
-  return 'unavailable';
+export function getCalendarAccessState(): Promise<CalendarAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function requestCalendarAccess(): Promise<CalendarAccessState> {
-  return 'unavailable';
+export function requestCalendarAccess(): Promise<CalendarAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function listDeviceEvents(
-  _startDate: Date,
-  _endDate: Date,
-): Promise<DeviceCalendarEvent[]> {
-  return [];
+export function listDeviceEvents(_startDate: Date, _endDate: Date): Promise<DeviceCalendarEvent[]> {
+  return Promise.resolve([]);
 }
 
-export async function createDeviceEvent(_input: CreateDeviceEventInput): Promise<string | null> {
-  return null;
+export function createDeviceEvent(_input: CreateDeviceEventInput): Promise<string | null> {
+  return Promise.resolve(null);
 }
 
-export async function deleteDeviceEvent(_id: string): Promise<void> {}
-
+export function deleteDeviceEvent(_id: string): Promise<void> {
+  return Promise.resolve();
+}

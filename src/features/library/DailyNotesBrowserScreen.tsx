@@ -5,7 +5,10 @@ import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { type DailyNote, formatLongDate, useData } from '@/data';
 import { SettingsScaffold } from '@/features/settings/SettingsChrome';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export function DailyNotesBrowserScreen() {
   const { repos, revision, setUI } = useData();

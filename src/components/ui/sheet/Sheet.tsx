@@ -26,7 +26,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 export const SHEET_DISMISS_MS = Platform.OS === 'ios' ? 320 : 250;
 

@@ -3,7 +3,8 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { formatLongDate } from '@/data/schema/ids';
-import { fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
 
 type Props = {
   date: string;
@@ -25,7 +26,12 @@ export function PageHeader({ date, drawing, onCalendar, onDraw, onFinishDrawing,
         pressScale={0.96}
         style={[styles.dateButton, { backgroundColor: theme.control.fillQuaternary }]}
       >
-        <Icon color={theme.primary} name="calendar" size={Platform.OS === 'android' ? 20 : 18} stroke={2.1} />
+        <Icon
+          color={theme.primary}
+          name="calendar"
+          size={Platform.OS === 'android' ? 20 : 18}
+          stroke={2.1}
+        />
         <Text numberOfLines={1} style={[styles.date, { color: theme.text }]}>
           {formatLongDate(date)}
         </Text>

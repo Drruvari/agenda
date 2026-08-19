@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
 
 export default function AndroidTabsLayout() {
   const theme = useAppTheme();

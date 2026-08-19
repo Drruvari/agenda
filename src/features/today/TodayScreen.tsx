@@ -48,7 +48,10 @@ import {
   completeSystemReminder,
   systemRemindersSupported,
 } from '@/native/reminders/systemReminders';
-import { type AgendaTheme, fonts, spacing, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { spacing } from '@/theme/tokens';
 
 type AnimatedScrollProps = ComponentProps<typeof Animated.ScrollView>;
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style'];

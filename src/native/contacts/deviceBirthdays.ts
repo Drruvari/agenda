@@ -1,19 +1,13 @@
-export type BirthdayAccessState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
+import type { BirthdayAccessState, DeviceBirthday } from './deviceBirthdays.types';
 
-export type DeviceBirthday = {
-  id: string;
-  name: string;
-  year?: number;
-};
-
-export async function getBirthdayAccessState(): Promise<BirthdayAccessState> {
-  return 'unavailable';
+export function getBirthdayAccessState(): Promise<BirthdayAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function requestBirthdayAccess(): Promise<BirthdayAccessState> {
-  return 'unavailable';
+export function requestBirthdayAccess(): Promise<BirthdayAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function listDeviceBirthdays(_date: Date): Promise<DeviceBirthday[]> {
-  return [];
+export function listDeviceBirthdays(_date: Date): Promise<DeviceBirthday[]> {
+  return Promise.resolve([]);
 }

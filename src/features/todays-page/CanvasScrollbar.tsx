@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { type AgendaTheme, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
 
 type Props = {
   contentHeight: number;
@@ -25,12 +26,7 @@ const HIT_WIDTH = 44;
 /**
  * Large, grabable scrollbar — drag the thumb or tap the track.
  */
-export function CanvasScrollbar({
-  contentHeight,
-  viewportHeight,
-  scrollY,
-  onScrollTo,
-}: Props) {
+export function CanvasScrollbar({ contentHeight, viewportHeight, scrollY, onScrollTo }: Props) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
   const trackHeight = useSharedValue(1);

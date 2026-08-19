@@ -14,7 +14,10 @@ import {
 } from '@/data';
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
 import { SettingsScaffold } from '@/features/settings/SettingsChrome';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type BrowseMode = 'all' | 'inbox' | 'completed' | 'space';
 

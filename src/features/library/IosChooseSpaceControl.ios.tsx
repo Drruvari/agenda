@@ -1,23 +1,11 @@
-import {
-  BottomSheet,
-  Button,
-  Group,
-  Host,
-  List,
-  Text,
-} from '@expo/ui/swift-ui';
-import {
-  buttonStyle,
-  padding,
-  presentationDragIndicator,
-  tint,
-} from '@expo/ui/swift-ui/modifiers';
+import { BottomSheet, Button, Group, Host, List, Text } from '@expo/ui/swift-ui';
+import { buttonStyle, padding, presentationDragIndicator, tint } from '@expo/ui/swift-ui/modifiers';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
 import { useData } from '@/data';
 import { defaultSpaceColor } from '@/features/library/spaceAppearance';
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 type SpaceOption = { label: string; value: string };
 
@@ -52,7 +40,7 @@ export function IosChooseSpaceControl({
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Add',
-          onPress: (name) => {
+          onPress: (name?: string) => {
             const trimmed = name?.trim();
             if (!trimmed) return;
             void (async () => {
@@ -72,12 +60,7 @@ export function IosChooseSpaceControl({
   };
 
   return (
-    <Host
-      colorScheme={colorScheme}
-      ignoreSafeArea="all"
-      matchContents
-      seedColor={accent}
-    >
+    <Host colorScheme={colorScheme} ignoreSafeArea="all" matchContents seedColor={accent}>
       <BottomSheet
         anchor={
           <Button

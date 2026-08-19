@@ -1,6 +1,6 @@
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 
-import { useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
 
 type Props = {
   onChange: (date: Date) => void;

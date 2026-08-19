@@ -3,7 +3,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AgendaLogo } from '@/components/ui/AgendaLogo';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
-import { type AgendaTheme, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
 
 const VERSION = Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0';
 

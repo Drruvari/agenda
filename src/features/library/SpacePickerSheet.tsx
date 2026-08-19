@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { Icon } from '@/components/ui/Icon';
+import { AgendaBottomSheet, SHEET_DISMISS_MS } from '@/components/ui/sheet/Sheet';
 import { type Space, useData } from '@/data';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  useAppAppearance,
-  useThemeStyles,
-} from '@/theme';
+import { useAppAppearance, useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 import { useLibrary } from './LibraryContext';
 import { defaultSpaceColor } from './spaceAppearance';

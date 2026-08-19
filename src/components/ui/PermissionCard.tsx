@@ -1,7 +1,9 @@
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { type AgendaTheme, continuousCorner, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { continuousCorner } from '@/theme/tokens';
 
 export type AccessState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 

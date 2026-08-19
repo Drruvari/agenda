@@ -2,7 +2,9 @@ import { Host, Picker } from '@expo/ui';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { type AgendaTheme, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
 
 type PickerValue = string | number;
 

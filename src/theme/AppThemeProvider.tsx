@@ -8,52 +8,29 @@ import {
 } from 'react';
 import { AccessibilityInfo, Appearance, useColorScheme } from 'react-native';
 
-import type { AccentColor, AppSettings } from '@/data/schema/types';
+import type { AppSettings } from '@/data/schema/types';
 
+import { getAccentColor } from './accent';
 import {
   type AgendaTheme,
   type AppearanceMode,
-  type CategoryColorName,
-  categoryColorValues,
   lightTheme,
   resolveAppearanceMode,
-  softAlpha,
   themes,
   withBrandAccent,
 } from './colors';
 
-/**
- * Settings accent → category color.
- * `purple` maps to system Indigo (former #5856D6 brand family).
- * `magenta` maps to system Purple.
- */
-const ACCENT_TO_CATEGORY: Record<Exclude<AccentColor, 'black'>, CategoryColorName> = {
-  blue: 'blue',
-  red: 'red',
-  purple: 'indigo',
-  green: 'green',
-  brown: 'brown',
-  orange: 'orange',
-  magenta: 'purple',
-  yellow: 'yellow',
-};
+export type ThemeColorScheme = 'light' | 'dark';
 
-type AppThemeValue = {
+export type AppAppearance = {
   accent: string;
   appearanceMode: AppearanceMode;
-  colorScheme: 'light' | 'dark';
+  colorScheme: ThemeColorScheme;
   theme: AgendaTheme;
 };
 
-function accentHex(accent: AccentColor, mode: AppearanceMode): string {
-  if (accent === 'black') {
-    return mode === 'dark' || mode === 'darkHighContrast' ? '#FFFFFF' : '#191919';
-  }
-  return categoryColorValues[ACCENT_TO_CATEGORY[accent]][mode];
-}
-
-const ThemeContext = createContext<AppThemeValue>({
-  accent: categoryColorValues.indigo.light,
+const ThemeContext = createContext<AppAppearance>({
+  accent: lightTheme.primary,
   appearanceMode: 'light',
   colorScheme: 'light',
   theme: lightTheme,
@@ -65,7 +42,8 @@ export function AppThemeProvider({
 }: PropsWithChildren<{ settings: AppSettings }>) {
   const systemScheme = useColorScheme();
   const requestedMode = settings.general.mode;
-  const colorScheme: 'light' | 'dark' =
+
+  const colorScheme: ThemeColorScheme =
     requestedMode === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : requestedMode;
 
   const [highContrast, setHighContrast] = useState(false);
@@ -76,28 +54,45 @@ export function AppThemeProvider({
 
   useEffect(() => {
     let mounted = true;
-    void AccessibilityInfo.isHighTextContrastEnabled?.().then((enabled: boolean) => {
-      if (mounted) setHighContrast(enabled);
-    });
+
+    const readHighContrast = async () => {
+      const isEnabled = AccessibilityInfo.isHighTextContrastEnabled;
+
+      if (!isEnabled) {
+        return;
+      }
+
+      const enabled = await isEnabled();
+
+      if (mounted) {
+        setHighContrast(enabled);
+      }
+    };
+
+    void readHighContrast();
+
     const subscription = AccessibilityInfo.addEventListener(
       'highTextContrastChanged',
-      (enabled: boolean) => setHighContrast(enabled),
+      setHighContrast,
     );
+
     return () => {
       mounted = false;
       subscription.remove();
     };
   }, []);
 
-  const value = useMemo<AppThemeValue>(() => {
+  const value = useMemo<AppAppearance>(() => {
     const appearanceMode = resolveAppearanceMode(colorScheme, highContrast);
-    const base = themes[appearanceMode];
-    const accent = accentHex(settings.general.accent, appearanceMode);
+
+    const baseTheme = themes[appearanceMode];
+    const accent = getAccentColor(settings.general.accent, appearanceMode);
+
     return {
       accent,
       appearanceMode,
       colorScheme,
-      theme: withBrandAccent(base, accent, appearanceMode),
+      theme: withBrandAccent(baseTheme, accent, appearanceMode),
     };
   }, [colorScheme, highContrast, settings.general.accent]);
 
@@ -108,22 +103,20 @@ export function useAppTheme(): AgendaTheme {
   return useContext(ThemeContext).theme;
 }
 
-export function useAppAppearance(): AppThemeValue {
+export function useAppAppearance(): AppAppearance {
   return useContext(ThemeContext);
 }
 
-export function useThemeStyles<T>(factory: (theme: AgendaTheme) => T) {
+export function useThemeStyles<T>(factory: (theme: AgendaTheme) => T): {
+  styles: T;
+  theme: AgendaTheme;
+} {
   const theme = useAppTheme();
+
   const styles = useMemo(() => factory(theme), [factory, theme]);
-  return { styles, theme };
-}
 
-export function getAccentColor(
-  accent: AccentColor,
-  colorScheme: 'light' | 'dark' = 'light',
-  highContrast = false,
-): string {
-  return accentHex(accent, resolveAppearanceMode(colorScheme, highContrast));
+  return {
+    styles,
+    theme,
+  };
 }
-
-export { softAlpha };

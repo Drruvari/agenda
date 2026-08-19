@@ -1,6 +1,9 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type Props = {
   compact?: boolean;

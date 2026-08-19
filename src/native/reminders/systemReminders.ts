@@ -1,29 +1,22 @@
-export type SystemReminderAccessState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
-
-export type DeviceSystemReminder = {
-  id: string;
-  title: string;
-  dueDate?: string;
-  allDay: boolean;
-  notes?: string;
-  listTitle?: string;
-};
+import type { DeviceSystemReminder, SystemReminderAccessState } from './systemReminders.types';
 
 export const systemRemindersSupported = false;
 
-export async function getSystemReminderAccessState(): Promise<SystemReminderAccessState> {
-  return 'unavailable';
+export function getSystemReminderAccessState(): Promise<SystemReminderAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function requestSystemReminderAccess(): Promise<SystemReminderAccessState> {
-  return 'unavailable';
+export function requestSystemReminderAccess(): Promise<SystemReminderAccessState> {
+  return Promise.resolve('unavailable');
 }
 
-export async function listSystemReminders(
+export function listSystemReminders(
   _startDate: Date,
   _endDate: Date,
 ): Promise<DeviceSystemReminder[]> {
-  return [];
+  return Promise.resolve([]);
 }
 
-export async function completeSystemReminder(_id: string): Promise<void> {}
+export function completeSystemReminder(_id: string): Promise<void> {
+  return Promise.resolve();
+}

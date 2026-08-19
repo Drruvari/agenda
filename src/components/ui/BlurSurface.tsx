@@ -9,7 +9,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { continuousCorner, continuousCornerBottom, radius, rgba, useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
+import { rgba } from '@/theme/colors';
+import { continuousCorner, continuousCornerBottom, radius } from '@/theme/tokens';
 
 type Props = PropsWithChildren<{
   blurTarget?: RefObject<NativeView | null>;

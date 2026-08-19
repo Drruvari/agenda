@@ -3,7 +3,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { Typography } from '@/components/ui/Typography';
-import { type AgendaTheme, continuousCorner, radius, spacing, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { continuousCorner, radius, spacing } from '@/theme/tokens';
 
 type NavigationLinkProps = {
   detail?: string;

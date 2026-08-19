@@ -19,7 +19,9 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { triggerHaptic } from '@/lib/haptics';
-import { continuousCorner, fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export type ToastTone = 'success' | 'error' | 'info';
 export type ToastVariant = 'default' | 'accent' | 'success' | 'warning' | 'danger';

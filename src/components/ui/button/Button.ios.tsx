@@ -2,7 +2,7 @@ import { Button as SwiftUIButton, Host } from '@expo/ui/swift-ui';
 import { buttonStyle, disabled as disabledModifier, tint } from '@expo/ui/swift-ui/modifiers';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 export type ButtonProps = {
   label: string;

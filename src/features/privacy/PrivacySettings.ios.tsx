@@ -2,7 +2,7 @@ import { FieldGroup, Host, ListItem, Picker, Switch, Text } from '@expo/ui';
 import { Alert } from 'react-native';
 
 import { useToast } from '@/components/ui/ToastProvider';
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 import { useAppLock } from './AppLockProvider';
 import { LOCK_DELAY_OPTIONS, NOTIFICATION_PREVIEW_OPTIONS } from './types';

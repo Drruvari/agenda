@@ -2,63 +2,68 @@ import type { NotificationPermissionsStatus } from 'expo-notifications';
 
 import { applyNotificationPrivacy } from '@/features/privacy/notificationPrivacy';
 
-import type { ReminderAccessState } from './reminders';
-
-type NotificationsModule = typeof import('expo-notifications');
-
-function getNotifications(): NotificationsModule | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('expo-notifications') as NotificationsModule;
-  } catch {
-    return null;
-  }
-}
+import {
+  configureNotificationHandler,
+  getNotifications,
+  type NotificationsModule,
+} from './expoNotifications';
+import type { ReminderAccessState } from './reminders.types';
 
 function mapPermission(
-  Notifications: NotificationsModule,
+  notifications: NotificationsModule,
   permission: NotificationPermissionsStatus,
 ): ReminderAccessState {
   if (
     permission.granted ||
-    permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
-  )
+    permission.ios?.status === notifications.IosAuthorizationStatus.PROVISIONAL
+  ) {
     return 'granted';
-  if (permission.status === 'undetermined' || permission.canAskAgain) return 'undetermined';
+  }
+
+  if (permission.status === 'undetermined' || permission.canAskAgain) {
+    return 'undetermined';
+  }
+
   return 'denied';
 }
 
 export async function configureReminders(): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
+  const notifications = await getNotifications();
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  if (!notifications) {
+    return;
+  }
+
+  configureNotificationHandler(notifications);
 }
 
 export async function getReminderAccessState(): Promise<ReminderAccessState> {
-  const Notifications = getNotifications();
-  if (!Notifications) return 'unavailable';
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return 'unavailable';
+  }
 
   try {
-    return mapPermission(Notifications, await Notifications.getPermissionsAsync());
+    const permission = await notifications.getPermissionsAsync();
+
+    return mapPermission(notifications, permission);
   } catch {
     return 'unavailable';
   }
 }
 
 export async function requestReminderAccess(): Promise<ReminderAccessState> {
-  const Notifications = getNotifications();
-  if (!Notifications) return 'unavailable';
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return 'unavailable';
+  }
 
   try {
-    return mapPermission(Notifications, await Notifications.requestPermissionsAsync());
+    const permission = await notifications.requestPermissionsAsync();
+
+    return mapPermission(notifications, permission);
   } catch {
     return 'unavailable';
   }
@@ -69,29 +74,48 @@ export async function scheduleReminder(
   body: string | undefined,
   when: Date,
 ): Promise<string | null> {
-  const Notifications = getNotifications();
-  if (!Notifications) return null;
-  if (when.getTime() <= Date.now()) return null;
-  if ((await getReminderAccessState()) !== 'granted') return null;
+  if (when.getTime() <= Date.now()) {
+    return null;
+  }
+
+  if ((await getReminderAccessState()) !== 'granted') {
+    return null;
+  }
+
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return null;
+  }
 
   const preview = applyNotificationPrivacy(title, body);
 
-  return Notifications.scheduleNotificationAsync({
+  return notifications.scheduleNotificationAsync({
     content: {
       title: preview.title,
       body: preview.body,
-      data: { source: 'agenda' },
+      data: {
+        source: 'agenda',
+      },
       sound: 'default',
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      type: notifications.SchedulableTriggerInputTypes.DATE,
       date: when,
     },
   });
 }
 
 export async function cancelReminder(identifier?: string): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications || !identifier) return;
-  await Notifications.cancelScheduledNotificationAsync(identifier);
+  if (!identifier) {
+    return;
+  }
+
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return;
+  }
+
+  await notifications.cancelScheduledNotificationAsync(identifier);
 }

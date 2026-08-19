@@ -31,14 +31,11 @@ import {
 } from '@/data';
 import type { AgendaItem, DailyNote, Drawing, Space } from '@/data/schema/types';
 import { PrivacySettings } from '@/features/privacy';
-import {
-  type AgendaTheme,
-  continuousCorner,
-  fonts,
-  getAccentColor,
-  useAppAppearance,
-  useAppTheme,
-} from '@/theme';
+import { getAccentColor } from '@/theme/accent';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 import { IOSGeneralSettingsForm } from './IOSGeneralSettingsForm';
 import { SettingPicker } from './SettingPicker';

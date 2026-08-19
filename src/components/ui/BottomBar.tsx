@@ -5,7 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { BlurSurface } from '@/components/ui/BlurSurface';
 import { Icon } from '@/components/ui/Icon';
-import { type AgendaTheme, spacing, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { spacing } from '@/theme/tokens';
 
 type Props = {
   onAdd: () => void;

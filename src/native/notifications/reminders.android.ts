@@ -2,68 +2,69 @@ import type { NotificationPermissionsStatus } from 'expo-notifications';
 
 import { applyNotificationPrivacy } from '@/features/privacy/notificationPrivacy';
 
-import type { ReminderAccessState } from './reminders';
+import { configureNotificationHandler, getNotifications } from './expoNotifications';
+import type { ReminderAccessState } from './reminders.types';
 
 const CHANNEL_ID = 'agenda-reminders';
 
-type NotificationsModule = typeof import('expo-notifications');
-
-/**
- * Local notifications remain available in Expo Go on Android; only remote push was removed.
- * @see https://docs.expo.dev/versions/v57.0.0/sdk/notifications/
- */
-function getNotifications(): NotificationsModule | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('expo-notifications') as NotificationsModule;
-  } catch {
-    return null;
-  }
-}
-
 function mapPermission(permission: NotificationPermissionsStatus): ReminderAccessState {
-  if (permission.granted) return 'granted';
-  if (permission.status === 'undetermined' || permission.canAskAgain) return 'undetermined';
+  if (permission.granted) {
+    return 'granted';
+  }
+
+  if (permission.status === 'undetermined' || permission.canAskAgain) {
+    return 'undetermined';
+  }
+
   return 'denied';
 }
 
 export async function configureReminders(): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications) return;
+  const notifications = await getNotifications();
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
-  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+  if (!notifications) {
+    return;
+  }
+
+  configureNotificationHandler(notifications);
+
+  await notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Agenda reminders',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: notifications.AndroidImportance.HIGH,
   });
 }
 
 export async function getReminderAccessState(): Promise<ReminderAccessState> {
-  const Notifications = getNotifications();
-  if (!Notifications) return 'unavailable';
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return 'unavailable';
+  }
 
   try {
     await configureReminders();
-    return mapPermission(await Notifications.getPermissionsAsync());
+
+    const permission = await notifications.getPermissionsAsync();
+
+    return mapPermission(permission);
   } catch {
     return 'unavailable';
   }
 }
 
 export async function requestReminderAccess(): Promise<ReminderAccessState> {
-  const Notifications = getNotifications();
-  if (!Notifications) return 'unavailable';
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return 'unavailable';
+  }
 
   try {
     await configureReminders();
-    return mapPermission(await Notifications.requestPermissionsAsync());
+
+    const permission = await notifications.requestPermissionsAsync();
+
+    return mapPermission(permission);
   } catch {
     return 'unavailable';
   }
@@ -74,22 +75,33 @@ export async function scheduleReminder(
   body: string | undefined,
   when: Date,
 ): Promise<string | null> {
-  const Notifications = getNotifications();
-  if (!Notifications) return null;
-  if (when.getTime() <= Date.now()) return null;
-  if ((await getReminderAccessState()) !== 'granted') return null;
+  if (when.getTime() <= Date.now()) {
+    return null;
+  }
+
+  if ((await getReminderAccessState()) !== 'granted') {
+    return null;
+  }
+
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return null;
+  }
 
   const preview = applyNotificationPrivacy(title, body);
 
-  return Notifications.scheduleNotificationAsync({
+  return notifications.scheduleNotificationAsync({
     content: {
       title: preview.title,
       body: preview.body,
-      data: { source: 'agenda' },
+      data: {
+        source: 'agenda',
+      },
       sound: 'default',
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      type: notifications.SchedulableTriggerInputTypes.DATE,
       date: when,
       channelId: CHANNEL_ID,
     },
@@ -97,7 +109,15 @@ export async function scheduleReminder(
 }
 
 export async function cancelReminder(identifier?: string): Promise<void> {
-  const Notifications = getNotifications();
-  if (!Notifications || !identifier) return;
-  await Notifications.cancelScheduledNotificationAsync(identifier);
+  if (!identifier) {
+    return;
+  }
+
+  const notifications = await getNotifications();
+
+  if (!notifications) {
+    return;
+  }
+
+  await notifications.cancelScheduledNotificationAsync(identifier);
 }

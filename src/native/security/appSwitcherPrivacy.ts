@@ -4,61 +4,63 @@ import { Platform } from 'react-native';
 type ScreenCaptureModule = typeof import('expo-screen-capture');
 
 const PROTECTION_KEY = 'agenda-app-lock';
+const APP_SWITCHER_BLUR_INTENSITY = 0.85;
 
 let cached: ScreenCaptureModule | null | undefined;
 
-function getScreenCapture(): ScreenCaptureModule | null {
-  if (cached !== undefined) return cached;
-  if (Platform.OS === 'web') {
-    cached = null;
+async function getScreenCapture(): Promise<ScreenCaptureModule | null> {
+  if (cached !== undefined) {
     return cached;
   }
 
-  if (!requireOptionalNativeModule('ExpoScreenCapture')) {
+  if (Platform.OS === 'web' || !requireOptionalNativeModule('ExpoScreenCapture')) {
     cached = null;
     return cached;
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cached = require('expo-screen-capture') as ScreenCaptureModule;
+    cached = await import('expo-screen-capture');
   } catch {
     cached = null;
   }
+
   return cached;
 }
 
-/**
- * Hide agenda content in the app switcher / recent apps.
- * iOS: blur overlay via enableAppSwitcherProtectionAsync.
- * Android: FLAG_SECURE via preventScreenCaptureAsync (blank recent-apps preview).
- */
 export async function enableAppSwitcherPrivacy(): Promise<void> {
-  const ScreenCapture = getScreenCapture();
-  if (!ScreenCapture) return;
+  const screenCapture = await getScreenCapture();
+
+  if (!screenCapture) {
+    return;
+  }
 
   try {
     if (Platform.OS === 'ios') {
-      await ScreenCapture.enableAppSwitcherProtectionAsync(0.85);
-    } else {
-      await ScreenCapture.preventScreenCaptureAsync(PROTECTION_KEY);
+      await screenCapture.enableAppSwitcherProtectionAsync(APP_SWITCHER_BLUR_INTENSITY);
+      return;
     }
+
+    await screenCapture.preventScreenCaptureAsync(PROTECTION_KEY);
   } catch {
-    // Native module missing (e.g. Expo Go edge cases) — fail soft.
+    // Best-effort privacy protection.
   }
 }
 
 export async function disableAppSwitcherPrivacy(): Promise<void> {
-  const ScreenCapture = getScreenCapture();
-  if (!ScreenCapture) return;
+  const screenCapture = await getScreenCapture();
+
+  if (!screenCapture) {
+    return;
+  }
 
   try {
     if (Platform.OS === 'ios') {
-      await ScreenCapture.disableAppSwitcherProtectionAsync();
-    } else {
-      await ScreenCapture.allowScreenCaptureAsync(PROTECTION_KEY);
+      await screenCapture.disableAppSwitcherProtectionAsync();
+      return;
     }
+
+    await screenCapture.allowScreenCaptureAsync(PROTECTION_KEY);
   } catch {
-    // ignore
+    // Best-effort privacy protection.
   }
 }

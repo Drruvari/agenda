@@ -7,24 +7,28 @@ export const fonts = {
     web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
+
   sansMedium: Platform.select({
     ios: 'System',
     android: 'sans-serif-medium',
     web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
+
   sansSemi: Platform.select({
     ios: 'System',
     android: 'sans-serif-medium',
     web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     default: 'System',
   }),
+
   serif: Platform.select({
     ios: 'System',
     android: 'serif',
     web: 'Charter, Georgia, serif',
     default: 'serif',
   }),
+
   serifItalic: Platform.select({
     ios: 'System',
     android: 'serif',
@@ -34,8 +38,18 @@ export const fonts = {
 } as const;
 
 export function editorFontFamily(font: string): string | undefined {
-  if (Platform.OS === 'ios') return fonts.sans;
-  if (font === 'avenir' || font === 'switzer' || font === 'instrument-sans') return fonts.sans;
-  if (font === 'charter' || font === 'zodiak' || font === 'instrument-serif') return fonts.serif;
-  return undefined;
+  switch (font) {
+    case 'avenir':
+    case 'switzer':
+    case 'instrument-sans':
+      return fonts.sans;
+
+    case 'charter':
+    case 'zodiak':
+    case 'instrument-serif':
+      return fonts.serif;
+
+    default:
+      return Platform.OS === 'ios' ? fonts.sans : undefined;
+  }
 }

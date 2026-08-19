@@ -27,19 +27,14 @@ import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTime
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import type { Priority } from '@/data/schema/types';
-import { useLibrary } from '@/features/library/LibraryContext';
 import { IosChooseSpaceControl } from '@/features/library/IosChooseSpaceControl';
+import { useLibrary } from '@/features/library/LibraryContext';
 import { type SmartTokenKind, tokenizeSmartInput } from '@/lib/smart-parse/parseSmartInput';
 import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
-import {
-  type AgendaTheme,
-  categoryColorValues,
-  continuousCorner,
-  fonts,
-  spacing,
-  useAppAppearance,
-  useAppTheme,
-} from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import { type AgendaTheme, categoryColorValues } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner, spacing } from '@/theme/tokens';
 
 import {
   DURATION_OPTIONS,
@@ -155,7 +150,11 @@ export function ItemEditorForm({
               accessibilityLabel="Cancel"
               hitSlop={10}
               onPress={onDismiss}
-              style={({ pressed }) => [styles.headerSide, styles.headerSideStart, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.headerSide,
+                styles.headerSideStart,
+                pressed && styles.pressed,
+              ]}
             >
               <Text numberOfLines={1} style={styles.cancel}>
                 Cancel

@@ -11,7 +11,9 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Icon } from '@/components/ui/Icon';
 import { triggerHaptic } from '@/lib/haptics';
-import { fonts, motion, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import { fonts } from '@/theme/fonts';
+import { motion } from '@/theme/motion';
 
 const ACTION_WIDTH = 88;
 const COMPLETE_THRESHOLD = 58;

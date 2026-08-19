@@ -8,7 +8,7 @@ import {
   type ReminderAccessState,
   requestReminderAccess,
 } from '@/native/notifications/reminders';
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 export function NotificationSettingsScreen() {
   const { accent, colorScheme } = useAppAppearance();

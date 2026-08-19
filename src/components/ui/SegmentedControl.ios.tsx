@@ -1,7 +1,7 @@
 import NativeSegmentedControl from '@expo/ui/community/segmented-control';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 type Option<T extends string> = {
   value: T;

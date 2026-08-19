@@ -2,7 +2,9 @@ import { type PressableProps, StyleSheet, type ViewStyle } from 'react-native';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { type AgendaTheme, continuousCorner, radius, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { continuousCorner, radius } from '@/theme/tokens';
 
 type Props = PressableProps & {
   name: IconName;

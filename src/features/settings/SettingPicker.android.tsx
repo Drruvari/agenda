@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AgendaBottomSheet } from '@/components/ui/sheet/Sheet';
 import { Icon } from '@/components/ui/Icon';
-import { type AgendaTheme, continuousCorner, fonts, useAppAppearance, useAppTheme } from '@/theme';
+import { AgendaBottomSheet } from '@/components/ui/sheet/Sheet';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 type PickerValue = string | number;
 

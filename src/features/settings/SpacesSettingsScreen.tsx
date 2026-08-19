@@ -5,7 +5,10 @@ import { Icon } from '@/components/ui/Icon';
 import { type Space, useData } from '@/data';
 import { useLibrary } from '@/features/library';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export function SpacesSettingsScreen() {
   const { refresh, repos, setUI, ui } = useData();

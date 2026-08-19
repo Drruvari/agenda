@@ -1,6 +1,6 @@
-import type { DeviceBirthday } from '@/native/contacts/deviceBirthdays';
+import type { DeviceBirthday } from '@/native/contacts/deviceBirthdays.types';
 
-import type { DeviceCalendarEvent } from './deviceCalendar';
+import type { DeviceCalendarEvent } from './deviceCalendar.types';
 
 export type NativeBirthdayEntry = {
   id: string;
@@ -10,7 +10,7 @@ export type NativeBirthdayEntry = {
 
 function birthdayKey(title: string): string {
   return title
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(/(?:'s|’s)?\s+birthday/g, '')
     .replace(/birthday/g, '')
     .replace(/[^\p{L}\p{N}]/gu, '');
@@ -21,7 +21,16 @@ export function mergeNativeBirthdays(
   contacts: DeviceBirthday[],
 ): NativeBirthdayEntry[] {
   const calendarBirthdays = events.filter((event) => event.kind === 'birthday');
-  const known = new Set(calendarBirthdays.map((event) => birthdayKey(event.title)));
+
+  const knownBirthdays = new Set(calendarBirthdays.map((event) => birthdayKey(event.title)));
+
+  const contactBirthdays = contacts
+    .filter((contact) => !knownBirthdays.has(birthdayKey(contact.name)))
+    .map((contact) => ({
+      id: `contact-birthday:${contact.id}`,
+      title: `${contact.name}’s birthday`,
+      subtitle: contact.year !== undefined ? `Contacts · born ${contact.year}` : 'Contacts',
+    }));
 
   return [
     ...calendarBirthdays.map((event) => ({
@@ -29,12 +38,6 @@ export function mergeNativeBirthdays(
       title: event.title,
       subtitle: event.calendarTitle ?? 'Birthdays',
     })),
-    ...contacts
-      .filter((contact) => !known.has(birthdayKey(contact.name)))
-      .map((contact) => ({
-        id: `contact-birthday:${contact.id}`,
-        title: `${contact.name}’s birthday`,
-        subtitle: contact.year ? `Contacts · born ${contact.year}` : 'Contacts',
-      })),
+    ...contactBirthdays,
   ];
 }

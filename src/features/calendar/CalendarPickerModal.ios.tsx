@@ -4,7 +4,7 @@ import { datePickerStyle } from '@expo/ui/swift-ui/modifiers';
 import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { useAppAppearance } from '@/theme';
+import { useAppAppearance } from '@/theme/AppThemeProvider';
 
 type Props = {
   onChange: (date: Date) => void;

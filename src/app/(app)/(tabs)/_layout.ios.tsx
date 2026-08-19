@@ -1,6 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { useAppAppearance, useAppTheme } from '@/theme';
+import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 
 export default function TabsLayout() {
   const { accent } = useAppAppearance();

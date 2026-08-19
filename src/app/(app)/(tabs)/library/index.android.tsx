@@ -6,7 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { type AgendaItem, type DailyNote, type Space, useData } from '@/data';
 import { useLibrary } from '@/features/library';
-import { type AgendaTheme, continuousCorner, fonts, useThemeStyles } from '@/theme';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { fonts } from '@/theme/fonts';
+import { continuousCorner } from '@/theme/tokens';
 
 export default function LibraryScreen() {
   const router = useRouter();

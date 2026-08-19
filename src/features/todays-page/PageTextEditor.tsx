@@ -2,7 +2,9 @@ import { type Ref, useImperativeHandle, useMemo, useRef } from 'react';
 import { Platform, StyleSheet, Text, TextInput, type TextStyle, View } from 'react-native';
 
 import { tokenizeMarkdown } from '@/lib/markdown/tokenizeMarkdown';
-import { type AgendaTheme, editorFontFamily, fonts, useAppTheme } from '@/theme';
+import { useAppTheme } from '@/theme/AppThemeProvider';
+import type { AgendaTheme } from '@/theme/colors';
+import { editorFontFamily, fonts } from '@/theme/fonts';
 
 export type PageTextEditorHandle = {
   blur: () => void;
