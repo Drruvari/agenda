@@ -1,16 +1,11 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 
 import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
+import { useOpenThenLeave } from '@/hooks/useOpenThenLeave';
 
 export function RoutineCreateScreen() {
   const { openCreate } = useItemEditor();
-
-  useEffect(() => {
-    openCreate('routine');
-    if (router.canGoBack()) router.back();
-    else router.replace('/routines');
-  }, [openCreate]);
-
+  const open = useCallback(() => openCreate('routine'), [openCreate]);
+  useOpenThenLeave(open, '/routines');
   return null;
 }

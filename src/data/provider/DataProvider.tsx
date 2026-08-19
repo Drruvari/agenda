@@ -8,8 +8,10 @@ import { createRepositories, type Repositories } from '@/data/repositories/repos
 import { toLocalDateString } from '@/data/schema/ids';
 import { type AppSettings, DEFAULT_SETTINGS } from '@/data/schema/types';
 import { seedIfNeeded } from '@/data/seed/seed';
-import { createSettingsStore, type SettingsStore } from '@/data/settings/settings';
+import { createSettingsStore } from '@/data/settings/settings';
+import type { SettingsStore } from '@/data/settings/types';
 import { AppThemeProvider } from '@/theme/AppThemeProvider';
+import { useAgendaFonts } from '@/theme/loadFonts';
 
 import { DataContext, type DataContextValue, type PlannerUIState } from './DataContext';
 
@@ -31,6 +33,7 @@ function createInitialUIState(): PlannerUIState {
 }
 
 export function DataProvider({ children }: PropsWithChildren) {
+  const fontsReady = useAgendaFonts();
   const [resources, setResources] = useState<DataResources | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +165,7 @@ export function DataProvider({ children }: PropsWithChildren) {
     );
   }
 
-  if (!value) {
+  if (!value || !fontsReady) {
     return (
       <View style={styles.centered}>
         <AgendaLogo size={28} color="#5856D6" spin />

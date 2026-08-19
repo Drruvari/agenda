@@ -4,6 +4,7 @@ import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
 import { typography } from '@/theme/tokens';
+import { type } from '@/theme/type';
 
 type Variant = 'display' | 'title' | 'body' | 'label' | 'caption' | 'section' | 'page';
 
@@ -35,24 +36,20 @@ function createStyles(theme: AgendaTheme) {
       color: theme.text,
     },
     display: {
-      fontSize: typography.display,
-      lineHeight: 40,
+      ...type.largeTitle,
       fontFamily: fonts.serif,
+      fontWeight: '400',
       letterSpacing: -0.4,
     },
     title: {
-      fontSize: typography.title,
-      fontFamily: fonts.sansSemi,
-      fontWeight: '600',
+      ...type.title,
     },
     page: {
       fontSize: 24,
       fontFamily: fonts.serifItalic,
     },
     body: {
-      fontSize: typography.body,
-      fontFamily: fonts.sansMedium,
-      fontWeight: '500',
+      ...type.body,
     },
     label: {
       fontSize: typography.label,
@@ -60,15 +57,11 @@ function createStyles(theme: AgendaTheme) {
       fontWeight: '500',
     },
     caption: {
-      fontSize: typography.caption,
-      fontFamily: fonts.sansMedium,
-      fontWeight: '500',
+      ...type.caption,
     },
     section: {
-      fontSize: typography.caption,
-      fontFamily: fonts.sansSemi,
+      ...type.sectionTitle,
       fontWeight: '600',
-      letterSpacing: 0.8,
       textTransform: 'uppercase',
       color: theme.textSecondary,
     },

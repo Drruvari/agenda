@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -26,12 +26,7 @@ export function PageHeader({ date, drawing, onCalendar, onDraw, onFinishDrawing,
         pressScale={0.96}
         style={[styles.dateButton, { backgroundColor: theme.control.fillQuaternary }]}
       >
-        <Icon
-          color={theme.primary}
-          name="calendar"
-          size={Platform.OS === 'android' ? 20 : 18}
-          stroke={2.1}
-        />
+        <Icon color={theme.primary} name="calendar" size={18} stroke={2.1} />
         <Text numberOfLines={1} style={[styles.date, { color: theme.text }]}>
           {formatLongDate(date)}
         </Text>
@@ -67,7 +62,7 @@ function IconButton({
       pressScale={0.9}
       style={[styles.iconButton, { backgroundColor: theme.control.fillQuaternary }]}
     >
-      <Icon color={theme.text} name={icon} size={Platform.OS === 'android' ? 22 : 20} />
+      <Icon color={theme.text} name={icon} size={20} />
     </AnimatedPressable>
   );
 }
@@ -82,25 +77,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dateButton: {
-    minHeight: Platform.OS === 'android' ? 48 : 42,
+    minHeight: 42,
     flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
-    borderRadius: Platform.OS === 'android' ? 24 : 21,
+    borderRadius: 21,
   },
   date: {
     fontFamily: fonts.sans,
-    fontSize: Platform.OS === 'android' ? 18 : 24,
-    lineHeight: Platform.OS === 'android' ? 24 : 30,
+    fontSize: 24,
+    lineHeight: 30,
     letterSpacing: -0.35,
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {
-    width: Platform.OS === 'android' ? 48 : 40,
-    height: Platform.OS === 'android' ? 48 : 40,
-    borderRadius: Platform.OS === 'android' ? 24 : 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

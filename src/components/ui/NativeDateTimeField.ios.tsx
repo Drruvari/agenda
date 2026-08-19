@@ -8,31 +8,10 @@ import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
 import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 import { fonts } from '@/theme/fonts';
 
-type DateFieldProps = {
-  embedded?: boolean;
-  onChange: (value: string) => void;
-  value: string;
-};
+import { timeToDate, toLocalTimeString } from './NativeDateTimeField.shared';
+import type { NativeDateFieldProps, NativeTimeFieldProps } from './NativeDateTimeField.types';
 
-type TimeFieldProps = {
-  embedded?: boolean;
-  onChange: (value: string) => void;
-  optional?: boolean;
-  value: string;
-};
-
-function toLocalTimeString(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function timeToDate(time: string): Date {
-  const [hour, minute] = time.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hour || 0, minute || 0, 0, 0);
-  return date;
-}
-
-export function NativeDateField({ onChange, value }: DateFieldProps) {
+export function NativeDateField({ onChange, value }: NativeDateFieldProps) {
   const { accent, colorScheme } = useAppAppearance();
   const date = useMemo(() => parseLocalDate(value), [value]);
 
@@ -54,7 +33,7 @@ export function NativeDateField({ onChange, value }: DateFieldProps) {
   );
 }
 
-export function NativeTimeField({ onChange, optional = true, value }: TimeFieldProps) {
+export function NativeTimeField({ onChange, optional = true, value }: NativeTimeFieldProps) {
   const { accent, colorScheme } = useAppAppearance();
   const theme = useAppTheme();
   const hasTime = Boolean(value.trim());

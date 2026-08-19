@@ -1,16 +1,11 @@
-import { Pressable, type StyleProp, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useAppTheme } from '@/theme/AppThemeProvider';
-import { fonts } from '@/theme/fonts';
+import { continuousCorner, layout } from '@/theme/tokens';
+import { type } from '@/theme/type';
 
-export type ButtonProps = {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  role?: 'default' | 'cancel' | 'destructive';
-  style?: StyleProp<ViewStyle>;
-  variant?: 'default' | 'prominent';
-};
+import type { ButtonProps } from './Button.types';
 
 export function Button({
   disabled,
@@ -22,37 +17,37 @@ export function Button({
 }: ButtonProps) {
   const theme = useAppTheme();
   const prominent = variant === 'prominent';
+  const color = role === 'destructive' ? theme.danger : prominent ? theme.onPrimary : theme.primary;
+
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      pressedStyle={styles.pressed}
+      style={[
         styles.root,
         prominent && { backgroundColor: theme.primary },
-        pressed && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.label,
-          {
-            color:
-              role === 'destructive' ? theme.danger : prominent ? theme.onPrimary : theme.primary,
-          },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
+      <Text style={[styles.label, { color }]}>{label}</Text>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { minHeight: 44, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: fonts.sansMedium, fontSize: 16 },
+  root: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...continuousCorner(layout.controlRadius),
+  },
+  label: {
+    ...type.rowLabel,
+  },
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.4 },
 });

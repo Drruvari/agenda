@@ -1,5 +1,1 @@
-import { SettingsScreen } from '@/features/settings/SettingsScreen';
-
-export default function ExportSettingsScreen() {
-  return <SettingsScreen categoryOnly initialTab="export" />;
-}
+export { ExportSettingsScreen as default } from '@/features/settings/ExportSettingsScreen';

@@ -43,7 +43,7 @@ export function CanvasScrollbar({ contentHeight, viewportHeight, scrollY, onScro
     const usable = Math.max(1, trackHeight.value - TRACK_INSET * 2);
     const progress = Math.min(1, Math.max(0, (localY - TRACK_INSET) / usable));
     onScrollTo(progress * maxScroll);
-    scrollY.value = progress * maxScroll;
+    scrollY.set(progress * maxScroll);
   };
 
   const thumbStyle = useAnimatedStyle(() => {
@@ -71,8 +71,8 @@ export function CanvasScrollbar({ contentHeight, viewportHeight, scrollY, onScro
       Gesture.Pan()
         .minDistance(0)
         .onBegin(() => {
-          dragStartScroll.value = scrollY.value;
-          active.value = withSpring(1, { damping: 18, stiffness: 220 });
+          dragStartScroll.set(scrollY.get());
+          active.set(withSpring(1, { damping: 18, stiffness: 220 }));
           scheduleOnRN(setDraggingJS, true);
         })
         .onUpdate((event) => {
@@ -86,11 +86,11 @@ export function CanvasScrollbar({ contentHeight, viewportHeight, scrollY, onScro
             maxScroll,
             Math.max(0, dragStartScroll.value + (event.translationY / travel) * maxScroll),
           );
-          scrollY.value = next;
+          scrollY.set(next);
           scheduleOnRN(onScrollTo, next);
         })
         .onFinalize(() => {
-          active.value = withSpring(0, { damping: 16, stiffness: 180 });
+          active.set(withSpring(0, { damping: 16, stiffness: 180 }));
           scheduleOnRN(setDraggingJS, false);
         }),
     [
@@ -112,7 +112,7 @@ export function CanvasScrollbar({ contentHeight, viewportHeight, scrollY, onScro
       style={styles.track}
       pointerEvents="box-none"
       onLayout={(event) => {
-        trackHeight.value = event.nativeEvent.layout.height;
+        trackHeight.set(event.nativeEvent.layout.height);
       }}
     >
       <Pressable

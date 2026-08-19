@@ -1,9 +1,9 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 
-import { useItemEditor } from '@/features/item-editor';
+import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
+import { leaveCurrentRoute } from '@/hooks/useOpenThenLeave';
 
-/** Deep-link / legacy route → Universal sheet for an existing item. */
 export function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const itemId = Array.isArray(id) ? id[0] : id;
@@ -11,8 +11,7 @@ export function TaskDetailsScreen() {
 
   useEffect(() => {
     if (itemId) openEdit(itemId);
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
+    leaveCurrentRoute();
   }, [itemId, openEdit]);
 
   return null;

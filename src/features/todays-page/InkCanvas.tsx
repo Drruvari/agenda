@@ -240,6 +240,8 @@ export function InkCanvas({
     [eraseAt],
   );
 
+  /* RNGH worklets hop to JS stroke handlers that keep session state in refs. */
+  /* eslint-disable react-hooks/refs */
   const inkGesture = useMemo(() => {
     const isInk = tool === 'pen' || tool === 'highlighter';
     const isErase = tool === 'eraser';
@@ -292,6 +294,7 @@ export function InkCanvas({
         if (!success && !isErase) scheduleOnRN(cancelStrokeJS);
       });
   }, [beginStrokeJS, cancelStrokeJS, enabled, endStrokeJS, eraseAtJS, moveStrokeJS, penOnly, tool]);
+  /* eslint-enable react-hooks/refs */
 
   const livePath = useMemo(() => pointsToSvgPath(livePoints), [livePoints]);
   const committed = useMemo(

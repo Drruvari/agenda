@@ -1,134 +1,32 @@
-import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { type CSSProperties, useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type CSSProperties, useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { parseLocalDate, toLocalDateString } from '@/data/schema/ids';
 import { useAppTheme } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
-import { continuousCorner } from '@/theme/tokens';
 
-type DateFieldProps = {
-  embedded?: boolean;
-  onChange: (value: string) => void;
-  value: string;
-};
+import type { NativeDateFieldProps, NativeTimeFieldProps } from './NativeDateTimeField.types';
 
-type TimeFieldProps = {
-  embedded?: boolean;
-  onChange: (value: string) => void;
-  optional?: boolean;
-  value: string;
-};
-
-export function NativeDateField({ embedded = false, onChange, value }: DateFieldProps) {
+export function NativeDateField({ onChange, value }: NativeDateFieldProps) {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const [open, setOpen] = useState(false);
-  const date = parseLocalDate(value);
-
-  if (Platform.OS === 'web') {
-    return (
-      <WebDateInput onChange={onChange} style={webInputStyle(theme)} type="date" value={value} />
-    );
-  }
-
-  const openPicker = () => {
-    setOpen(true);
-  };
 
   return (
-    <View>
-      <Pressable
-        accessibilityLabel="Choose date"
-        accessibilityRole="button"
-        onPress={openPicker}
-        style={embedded ? styles.embeddedTrigger : styles.trigger}
-      >
-        <Text style={styles.triggerText}>{formatDisplayDate(date)}</Text>
-      </Pressable>
-
-      {open ? (
-        <DateTimePicker
-          accentColor={theme.primary}
-          mode="date"
-          onDismiss={() => setOpen(false)}
-          onValueChange={(_, next) => {
-            onChange(toLocalDateString(next));
-            setOpen(false);
-          }}
-          presentation="dialog"
-          value={date}
-        />
-      ) : null}
-    </View>
+    <WebDateInput onChange={onChange} style={webInputStyle(theme)} type="date" value={value} />
   );
 }
 
-export function NativeTimeField({
-  embedded = false,
-  onChange,
-  optional = true,
-  value,
-}: TimeFieldProps) {
+export function NativeTimeField({ onChange, optional = true, value }: NativeTimeFieldProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [open, setOpen] = useState(false);
   const hasTime = Boolean(value.trim());
-  const date = hasTime ? timeToDate(value) : new Date();
-
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.row}>
-        <WebDateInput onChange={onChange} style={webInputStyle(theme)} type="time" value={value} />
-        {optional && hasTime ? (
-          <Pressable accessibilityLabel="Clear time" onPress={() => onChange('')}>
-            <Text style={styles.clear}>Clear</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    );
-  }
-
-  const openPicker = () => {
-    setOpen(true);
-  };
 
   return (
     <View style={styles.row}>
-      <Pressable
-        accessibilityLabel={hasTime ? 'Change time' : 'Add time'}
-        accessibilityRole="button"
-        onPress={openPicker}
-        style={[
-          embedded ? styles.embeddedTrigger : styles.trigger,
-          !embedded && styles.timeTrigger,
-        ]}
-      >
-        <Text style={[styles.triggerText, !hasTime && styles.placeholder]}>
-          {hasTime ? formatDisplayTime(value) : 'Add time'}
-        </Text>
-      </Pressable>
-
+      <WebDateInput onChange={onChange} style={webInputStyle(theme)} type="time" value={value} />
       {optional && hasTime ? (
         <Pressable accessibilityLabel="Clear time" onPress={() => onChange('')}>
           <Text style={styles.clear}>Clear</Text>
         </Pressable>
-      ) : null}
-
-      {open ? (
-        <DateTimePicker
-          accentColor={theme.primary}
-          is24Hour
-          mode="time"
-          onDismiss={() => setOpen(false)}
-          onValueChange={(_, next) => {
-            onChange(toLocalTimeString(next));
-            setOpen(false);
-          }}
-          presentation="dialog"
-          value={date}
-        />
       ) : null}
     </View>
   );
@@ -154,36 +52,6 @@ function WebDateInput({
       value={value}
     />
   );
-}
-
-function timeToDate(time: string): Date {
-  const [hour, minute] = time.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hour || 0, minute || 0, 0, 0);
-  return date;
-}
-
-function toLocalTimeString(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function formatDisplayDate(date: Date): string {
-  return date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatDisplayTime(time: string): string {
-  const [hourRaw, minuteRaw] = time.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hourRaw || 0, minuteRaw || 0, 0, 0);
-  return date.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 }
 
 function webInputStyle(theme: AgendaTheme): CSSProperties {
@@ -212,31 +80,6 @@ function createStyles(theme: AgendaTheme) {
       justifyContent: 'flex-end',
       gap: 10,
     },
-    trigger: {
-      minHeight: 36,
-      justifyContent: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      backgroundColor: theme.input,
-      ...continuousCorner(10),
-    },
-    embeddedTrigger: {
-      minHeight: 28,
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingHorizontal: 0,
-      paddingVertical: 0,
-      backgroundColor: 'transparent',
-    },
-    timeTrigger: { flexGrow: 0, minWidth: 96 },
-    triggerText: {
-      color: theme.text,
-      fontFamily: fonts.sansMedium,
-      fontSize: 16,
-      lineHeight: 22,
-      textAlign: 'right',
-    },
-    placeholder: { color: theme.placeholder },
     clear: {
       color: theme.primary,
       fontFamily: fonts.sansSemi,

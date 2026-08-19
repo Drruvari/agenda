@@ -1,7 +1,16 @@
-import type { AppSettings } from '@/data/schema/types';
-import { DEFAULT_SETTINGS } from '@/data/schema/types';
+import { type AppSettings, DEFAULT_SETTINGS } from '@/data/schema/types';
 
 const SETTINGS_KEY = 'app.settings';
+
+export type SettingsStore = {
+  getSettings(): Promise<AppSettings>;
+  setSettings(settings: AppSettings): Promise<void>;
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+};
+
+type SettingsStorage = Pick<SettingsStore, 'getItem' | 'setItem' | 'removeItem'>;
 
 function cloneSettings(settings: AppSettings = DEFAULT_SETTINGS): AppSettings {
   return {
@@ -21,34 +30,31 @@ function mergeSettings(stored: Partial<AppSettings> | null): AppSettings {
   };
 }
 
-export type SettingsStore = {
-  getSettings(): Promise<AppSettings>;
-  setSettings(settings: AppSettings): Promise<void>;
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  removeItem(key: string): Promise<void>;
-};
+function parseSettings(raw: string | null): AppSettings {
+  if (!raw) {
+    return cloneSettings();
+  }
 
-export function createSettingsHelpers(
-  store: Pick<SettingsStore, 'getItem' | 'setItem' | 'removeItem'>,
-): SettingsStore {
+  try {
+    return mergeSettings(JSON.parse(raw) as Partial<AppSettings>);
+  } catch {
+    return cloneSettings();
+  }
+}
+
+export function createSettingsStoreFromStorage(storage: SettingsStorage): SettingsStore {
   return {
-    getItem: store.getItem,
-    setItem: store.setItem,
-    removeItem: store.removeItem,
+    getItem: (key) => storage.getItem(key),
+    setItem: (key, value) => storage.setItem(key, value),
+    removeItem: (key) => storage.removeItem(key),
+
     async getSettings() {
-      const raw = await store.getItem(SETTINGS_KEY);
-      if (!raw) {
-        return cloneSettings();
-      }
-      try {
-        return mergeSettings(JSON.parse(raw) as Partial<AppSettings>);
-      } catch {
-        return cloneSettings();
-      }
+      const raw = await storage.getItem(SETTINGS_KEY);
+      return parseSettings(raw);
     },
-    async setSettings(settings: AppSettings) {
-      await store.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+    async setSettings(settings) {
+      await storage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     },
   };
 }

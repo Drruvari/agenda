@@ -1,12 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
+import { SettingsRow } from '@/components/ui/settings/SettingsRow';
+import { SettingsSection } from '@/components/ui/settings/SettingsSection';
 import type { AccentColor, AppSettings } from '@/data/schema/types';
 import { SettingPicker } from '@/features/settings/SettingPicker';
-import { SettingsSection } from '@/features/settings/SettingsChrome';
-import { useAppTheme } from '@/theme/AppThemeProvider';
+import { useThemeStyles } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
-import { fonts } from '@/theme/fonts';
+import { layout } from '@/theme/tokens';
 
 const ACCENTS: { label: string; value: AccentColor }[] = [
   { label: 'Black', value: 'black' },
@@ -27,8 +28,7 @@ export function AndroidGeneralSettingsForm({
   general: AppSettings['general'];
   onChange: (patch: Partial<AppSettings['general']>) => void;
 }) {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
+  const { styles } = useThemeStyles(createStyles);
 
   return (
     <View style={styles.sections}>
@@ -75,104 +75,99 @@ export function AndroidGeneralSettingsForm({
       </SettingsSection>
 
       <SettingsSection title="Today">
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Show completed section"
-          onValueChange={(showCompleted) => onChange({ showCompleted })}
-          value={general.showCompleted}
+          trailing={
+            <NativeSwitch
+              onValueChange={(showCompleted) => onChange({ showCompleted })}
+              value={general.showCompleted}
+            />
+          }
         />
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Compact day list"
-          onValueChange={(compactStream) => onChange({ compactStream })}
-          value={general.compactStream}
+          trailing={
+            <NativeSwitch
+              onValueChange={(compactStream) => onChange({ compactStream })}
+              value={general.compactStream}
+            />
+          }
         />
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Keep Space filter"
-          onValueChange={(keepFilterWhileChangingDays) => onChange({ keepFilterWhileChangingDays })}
-          value={general.keepFilterWhileChangingDays}
+          trailing={
+            <NativeSwitch
+              onValueChange={(keepFilterWhileChangingDays) =>
+                onChange({ keepFilterWhileChangingDays })
+              }
+              value={general.keepFilterWhileChangingDays}
+            />
+          }
         />
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Swipe to change day"
-          onValueChange={(swipeToChangeDay) => onChange({ swipeToChangeDay })}
-          value={general.swipeToChangeDay}
+          trailing={
+            <NativeSwitch
+              onValueChange={(swipeToChangeDay) => onChange({ swipeToChangeDay })}
+              value={general.swipeToChangeDay}
+            />
+          }
         />
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Calendar indicators"
-          onValueChange={(calendarIndicators) => onChange({ calendarIndicators })}
-          value={general.calendarIndicators}
+          trailing={
+            <NativeSwitch
+              onValueChange={(calendarIndicators) => onChange({ calendarIndicators })}
+              value={general.calendarIndicators}
+            />
+          }
         />
-        <Toggle
+        <SettingsRow
           last
           label="Tap to edit"
-          onValueChange={(clickToEdit) => onChange({ clickToEdit })}
-          value={general.clickToEdit}
+          trailing={
+            <NativeSwitch
+              onValueChange={(clickToEdit) => onChange({ clickToEdit })}
+              value={general.clickToEdit}
+            />
+          }
         />
       </SettingsSection>
 
       <SettingsSection title="Pull down on Today">
-        <Toggle
-          last={false}
+        <SettingsRow
           label="Quick Add"
-          onValueChange={(pullDownToAdd) =>
-            onChange({ pullDownToAdd, ...(pullDownToAdd ? { pullDownToSearch: false } : {}) })
+          trailing={
+            <NativeSwitch
+              onValueChange={(pullDownToAdd) =>
+                onChange({ pullDownToAdd, ...(pullDownToAdd ? { pullDownToSearch: false } : {}) })
+              }
+              value={general.pullDownToAdd}
+            />
           }
-          value={general.pullDownToAdd}
         />
-        <Toggle
+        <SettingsRow
           last
           label="Search"
-          onValueChange={(pullDownToSearch) =>
-            onChange({ pullDownToSearch, ...(pullDownToSearch ? { pullDownToAdd: false } : {}) })
+          trailing={
+            <NativeSwitch
+              onValueChange={(pullDownToSearch) =>
+                onChange({
+                  pullDownToSearch,
+                  ...(pullDownToSearch ? { pullDownToAdd: false } : {}),
+                })
+              }
+              value={general.pullDownToSearch}
+            />
           }
-          value={general.pullDownToSearch}
         />
       </SettingsSection>
     </View>
   );
 }
 
-function Toggle({
-  last,
-  label,
-  onValueChange,
-  value,
-}: {
-  last: boolean;
-  label: string;
-  onValueChange: (value: boolean) => void;
-  value: boolean;
-}) {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-  return (
-    <View style={[styles.toggleRow, last && styles.lastRow]}>
-      <Text style={styles.toggleLabel}>{label}</Text>
-      <NativeSwitch onValueChange={onValueChange} value={value} />
-    </View>
-  );
-}
-
-function createStyles(theme: AgendaTheme) {
+function createStyles(_theme: AgendaTheme) {
   return StyleSheet.create({
-    sections: { gap: 16 },
-    toggleRow: {
-      minHeight: 56,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.separator,
-    },
-    lastRow: { borderBottomWidth: 0 },
-    toggleLabel: {
-      flex: 1,
-      color: theme.text,
-      fontFamily: fonts.sansMedium,
-      fontSize: 16,
-    },
+    sections: { gap: layout.sectionGap },
   });
 }

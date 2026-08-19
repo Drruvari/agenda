@@ -1,17 +1,11 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 
-import { useItemEditor } from '@/features/item-editor';
+import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
+import { useOpenThenLeave } from '@/hooks/useOpenThenLeave';
 
-/** Deep-link / legacy route → Universal sheet. */
 export function TaskCreateScreen() {
   const { openCreate } = useItemEditor();
-
-  useEffect(() => {
-    openCreate('task');
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
-  }, [openCreate]);
-
+  const open = useCallback(() => openCreate('task'), [openCreate]);
+  useOpenThenLeave(open);
   return null;
 }

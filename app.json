@@ -50,7 +50,16 @@
       ],
       "expo-sqlite",
       "expo-status-bar",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Switzer-Regular.ttf",
+            "./assets/fonts/Switzer-Medium.ttf",
+            "./assets/fonts/Switzer-Semibold.ttf"
+          ]
+        }
+      ],
       [
         "expo-calendar",
         {

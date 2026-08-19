@@ -1,5 +1,1 @@
-import { SettingsScreen } from '@/features/settings/SettingsScreen';
-
-export default function SyncSettingsScreen() {
-  return <SettingsScreen categoryOnly initialTab="sync" />;
-}
+export { SyncSettingsScreen as default } from '@/features/settings/SyncSettingsScreen';

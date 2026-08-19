@@ -1,5 +1,5 @@
-import type { Repositories } from '@/data/repositories/repositories';
 import type { CreateEventInput, CreateTaskInput } from '@/data/repositories/agenda.repository';
+import type { Repositories } from '@/data/repositories/repositories';
 import { localDateTime } from '@/data/schema/ids';
 import type { AgendaItem, EventItem, TaskItem } from '@/data/schema/types';
 import { createDeviceEvent, deleteDeviceEvent } from '@/native/calendar/deviceCalendar';
@@ -123,11 +123,11 @@ export async function uncompleteAgendaTask(
   }
 
   try {
-    return repos.agenda.update({
+    return (await repos.agenda.update({
       ...restored,
       notificationId: scheduled.notificationId,
       reminderAt: scheduled.reminderAt ?? restored.reminderAt,
-    }) as Promise<TaskItem>;
+    })) as TaskItem;
   } catch (error) {
     await cancelReminderSafely(scheduled.notificationId);
 

@@ -2,15 +2,14 @@ import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 
 import { useAppTheme } from '@/theme/AppThemeProvider';
 
-type Props = {
-  onChange: (date: Date) => void;
-  onClose: () => void;
-  value: Date;
-  visible: boolean;
-};
+import type { CalendarPickerModalProps } from './CalendarPickerModal.types';
 
-/** Material 3 date dialog — mounts only while visible. */
-export function CalendarPickerModal({ onChange, onClose, value, visible }: Props) {
+export function CalendarPickerModal({
+  onChange,
+  onClose,
+  value,
+  visible,
+}: CalendarPickerModalProps) {
   const theme = useAppTheme();
 
   if (!visible) {

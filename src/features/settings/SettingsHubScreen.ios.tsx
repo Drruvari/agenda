@@ -3,7 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
-export default function SettingsScreen() {
+export function SettingsHubScreen() {
   const router = useRouter();
   const { accent, colorScheme } = useAppAppearance();
 

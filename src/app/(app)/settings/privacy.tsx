@@ -1,5 +1,1 @@
-import { SettingsScreen } from '@/features/settings/SettingsScreen';
-
-export default function PrivacySettingsScreen() {
-  return <SettingsScreen categoryOnly initialTab="privacy" />;
-}
+export { PrivacySettingsScreen as default } from '@/features/settings/PrivacySettingsScreen';

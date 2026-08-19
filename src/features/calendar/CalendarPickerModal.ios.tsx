@@ -6,31 +6,30 @@ import { StyleSheet } from 'react-native';
 
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
-type Props = {
-  onChange: (date: Date) => void;
-  onClose: () => void;
-  value: Date;
-  visible: boolean;
-};
+import type { CalendarPickerModalProps } from './CalendarPickerModal.types';
 
-/** Native iOS calendar sheet — SwiftUI graphical DatePicker in Expo UI BottomSheet. */
-export function CalendarPickerModal({ onChange, onClose, value, visible }: Props) {
+export function CalendarPickerModal({
+  onChange,
+  onClose,
+  value,
+  visible,
+}: CalendarPickerModalProps) {
   const { accent, colorScheme } = useAppAppearance();
   const [selection, setSelection] = useState(value);
-  const [presented, setPresented] = useState(visible);
+  const [wasVisible, setWasVisible] = useState(visible);
 
-  if (!visible && !presented) {
-    return null;
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setSelection(value);
   }
 
   const dismiss = () => {
-    setPresented(false);
     onClose();
   };
 
   return (
     <Host colorScheme={colorScheme} seedColor={accent} style={styles.host}>
-      <BottomSheet isPresented={presented} onDismiss={dismiss}>
+      <BottomSheet isPresented={visible} onDismiss={dismiss}>
         <Column spacing={8} style={styles.content}>
           <Row alignment="center" spacing={4} style={styles.topBar}>
             <Spacer />
@@ -49,9 +48,7 @@ export function CalendarPickerModal({ onChange, onClose, value, visible }: Props
           <DatePicker
             displayedComponents={['date']}
             modifiers={[datePickerStyle('graphical')]}
-            onDateChange={(date) => {
-              setSelection(date);
-            }}
+            onDateChange={setSelection}
             selection={selection}
           />
         </Column>

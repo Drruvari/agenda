@@ -1,5 +1,4 @@
-import type { NotesRepository } from '@/data/repositories/notes.repository';
-import { NoteConflictError } from '@/data/repositories/notes.repository';
+import { NoteConflictError, type NotesRepository } from '@/data/repositories/notes.repository';
 import type { DailyNote } from '@/data/schema/types';
 
 export type SaveStatus = 'clean' | 'dirty' | 'saving' | 'saved' | 'error';

@@ -1,5 +1,4 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { Platform } from 'react-native';
 
 type LocalAuthenticationModule = typeof import('expo-local-authentication');
 
@@ -10,7 +9,7 @@ async function getLocalAuthentication(): Promise<LocalAuthenticationModule | nul
     return cached;
   }
 
-  if (Platform.OS === 'web' || !requireOptionalNativeModule('ExpoLocalAuthentication')) {
+  if (!requireOptionalNativeModule('ExpoLocalAuthentication')) {
     cached = null;
     return cached;
   }
@@ -33,7 +32,6 @@ export async function canAuthenticate(): Promise<boolean> {
 
   try {
     const level = await localAuthentication.getEnrolledLevelAsync();
-
     return level !== localAuthentication.SecurityLevel.NONE;
   } catch {
     return false;
@@ -52,7 +50,6 @@ export async function biometricAvailable(): Promise<boolean> {
       localAuthentication.hasHardwareAsync(),
       localAuthentication.isEnrolledAsync(),
     ]);
-
     return hasHardware && isEnrolled;
   } catch {
     return false;
@@ -74,10 +71,8 @@ export async function authenticateApp(): Promise<boolean> {
       disableDeviceFallback: false,
       cancelLabel: 'Cancel',
     });
-
     return result.success;
   } catch {
-    // Authentication is unavailable or was interrupted.
     return false;
   }
 }

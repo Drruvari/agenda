@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { type PropsWithChildren, type ReactNode, type RefObject, useMemo } from 'react';
 import {
   Platform,
-  PlatformColor,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,10 +14,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BlurSurface } from '@/components/ui/BlurSurface';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { SettingsSection } from '@/components/ui/settings/SettingsSection';
 import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
-import { fonts } from '@/theme/fonts';
-import { continuousCorner, spacing } from '@/theme/tokens';
+import { continuousCorner, layout, spacing } from '@/theme/tokens';
+import { type } from '@/theme/type';
+
+export { SettingsSection };
 
 type SettingsHeaderProps = {
   title: string;
@@ -128,13 +130,16 @@ export function SettingsScaffold({
     <View style={[styles.scrollContent, styles.fill, { paddingBottom: padBottom }]}>{body}</View>
   );
 
+  const usesStackHeader = header === null;
+  const edges =
+    Platform.OS === 'android' && usesStackHeader
+      ? (['bottom', 'left', 'right'] as const)
+      : Platform.OS === 'ios' || usesStackHeader
+        ? (['left', 'right'] as const)
+        : (['top', 'left', 'right'] as const);
+
   return (
-    <SafeAreaView
-      edges={
-        Platform.OS === 'ios' || header === null ? ['left', 'right'] : ['top', 'left', 'right']
-      }
-      style={styles.safeArea}
-    >
+    <SafeAreaView edges={edges} style={styles.safeArea}>
       <BlurTargetView ref={blurTargetRef} style={styles.blurTarget}>
         {resolvedHeader}
         {content}
@@ -167,7 +172,7 @@ export function SettingsTabBar<T extends string>({
   const insets = useSafeAreaInsets();
   const theme = useAppTheme();
   const styles = useMemo(() => createChromeStyles(theme), [theme]);
-  const offset = Math.max(insets.bottom + (Platform.OS === 'android' ? 10 : 8), spacing.md);
+  const offset = Math.max(insets.bottom + spacing.sm, spacing.md);
 
   return (
     <View pointerEvents="box-none" style={[styles.tabBarWrap, { bottom: offset }]}>
@@ -213,25 +218,9 @@ export function SettingsTabBar<T extends string>({
   );
 }
 
-/** Section title + card used across settings tabs and sub-screens. */
-export function SettingsSection({ children, title }: { children: ReactNode; title?: string }) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createChromeStyles(theme), [theme]);
-  return (
-    <View style={styles.sectionWrap}>
-      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
-      <View style={styles.sectionCard}>{children}</View>
-    </View>
-  );
-}
-
 export function createChromeStyles(theme: AgendaTheme) {
-  const iosBackground = Platform.OS === 'ios' ? PlatformColor('systemGroupedBackground') : null;
-  const iosSection =
-    Platform.OS === 'ios' ? PlatformColor('secondarySystemGroupedBackground') : null;
-  const iosSecondaryLabel = Platform.OS === 'ios' ? PlatformColor('secondaryLabel') : null;
   return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: iosBackground ?? theme.background },
+    safeArea: { flex: 1, backgroundColor: theme.background },
     blurTarget: { flex: 1 },
     fill: { flex: 1 },
     header: {
@@ -239,7 +228,7 @@ export function createChromeStyles(theme: AgendaTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingHorizontal: 16,
+      paddingHorizontal: layout.screenPadding,
     },
     roundButton: {
       width: 44,
@@ -252,10 +241,7 @@ export function createChromeStyles(theme: AgendaTheme) {
     headerTitle: {
       flex: 1,
       color: theme.text,
-      fontFamily: fonts.sansSemi,
-      fontWeight: '600',
-      fontSize: 22,
-      letterSpacing: -0.3,
+      ...type.title,
     },
     headerSpacer: { width: 44, height: 44 },
     doneButton: {
@@ -264,30 +250,18 @@ export function createChromeStyles(theme: AgendaTheme) {
       paddingHorizontal: 18,
       ...continuousCorner(22),
     },
-    doneLabel: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 16 },
+    doneLabel: { ...type.rowLabel },
     description: {
       marginBottom: 18,
       color: theme.textSecondary,
-      fontFamily: fonts.sans,
+      fontFamily: type.subtitle.fontFamily,
       fontSize: 15,
       lineHeight: 22,
     },
     scrollContent: {
-      paddingHorizontal: 16,
-      paddingTop: Platform.OS === 'ios' ? 8 : 12,
-      gap: Platform.OS === 'ios' ? 24 : 16,
-    },
-    sectionWrap: { gap: Platform.OS === 'ios' ? 8 : 10 },
-    sectionTitle: {
-      color: iosSecondaryLabel ?? theme.textSecondary,
-      fontFamily: Platform.OS === 'ios' ? undefined : fonts.sansSemi,
-      fontSize: 13,
-      fontWeight: Platform.OS === 'ios' ? '400' : undefined,
-    },
-    sectionCard: {
-      overflow: 'hidden',
-      backgroundColor: iosSection ?? theme.section,
-      ...continuousCorner(Platform.OS === 'ios' ? 14 : 20),
+      paddingHorizontal: layout.screenPadding,
+      paddingTop: spacing.sm,
+      gap: layout.sectionGap,
     },
     tabBarWrap: {
       position: 'absolute',
@@ -323,7 +297,7 @@ export function createChromeStyles(theme: AgendaTheme) {
     },
     tabLabel: {
       color: theme.floatingTextMuted,
-      fontFamily: fonts.sansMedium,
+      fontFamily: type.caption.fontFamily,
       fontWeight: '500',
       fontSize: 10,
       letterSpacing: -0.1,

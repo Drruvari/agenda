@@ -1,21 +1,15 @@
 import NativeSegmentedControl from '@expo/ui/community/segmented-control';
-import type { StyleProp, ViewStyle } from 'react-native';
 
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
-type Option<T extends string> = {
-  value: T;
-  label: string;
-};
+import type { SegmentedControlProps } from './SegmentedControl.types';
 
-type Props<T extends string> = {
-  options: Option<T>[];
-  value: T;
-  onChange: (value: T) => void;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function SegmentedControl<T extends string>({ options, value, onChange, style }: Props<T>) {
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  style,
+}: SegmentedControlProps<T>) {
   const { accent, colorScheme } = useAppAppearance();
   const selectedIndex = Math.max(
     0,

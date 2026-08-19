@@ -9,6 +9,17 @@ export const spacing = {
   xxl: 32,
 } as const;
 
+export const layout = {
+  screenPadding: 16,
+  sectionGap: 24,
+  sectionTitleGap: 8,
+  rowHeight: 56,
+  rowGap: 12,
+  cardRadius: 16,
+  controlRadius: 12,
+  headerHeight: 56,
+} as const;
+
 export const radius = {
   sm: 10,
   md: 14,

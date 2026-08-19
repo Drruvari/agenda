@@ -27,7 +27,8 @@ import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-n
 
 import { Icon } from '@/components/ui/Icon';
 import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
-import { fonts } from '@/theme/fonts';
+import { layout } from '@/theme/tokens';
+import { type } from '@/theme/type';
 
 export const SHEET_DISMISS_MS = Platform.OS === 'ios' ? 320 : 250;
 
@@ -175,7 +176,7 @@ export function AgendaSheetHeader({
   const theme = useAppTheme();
   const { accent, colorScheme } = useAppAppearance();
   return (
-    <View style={[styles.header, Platform.OS !== 'ios' && { borderBottomColor: theme.separator }]}>
+    <View style={styles.header}>
       <Text pointerEvents="none" style={[styles.title, { color: theme.text }]} numberOfLines={1}>
         {title}
       </Text>
@@ -203,10 +204,12 @@ export function AgendaSheetHeader({
             />
           </SwiftUIHost>
         ) : (
-          <Pressable onPress={onCancel} style={[styles.side, styles.sideStart]}>
-            <Text numberOfLines={1} style={[styles.cancel, { color: theme.primary }]}>
-              {cancelLabel}
-            </Text>
+          <Pressable
+            accessibilityLabel={cancelLabel}
+            onPress={onCancel}
+            style={[styles.side, styles.iconButton, { backgroundColor: theme.section }]}
+          >
+            <Icon name="close" size={18} color={theme.text} />
           </Pressable>
         )}
         <View style={styles.sideSpacer} />
@@ -239,14 +242,20 @@ export function AgendaSheetHeader({
             accessibilityLabel={action?.label}
             disabled={!action || action.disabled}
             onPress={action?.onPress}
-            style={[styles.side, styles.end]}
+            style={[
+              styles.side,
+              styles.iconButton,
+              {
+                backgroundColor: action?.disabled ? theme.section : theme.primary,
+                opacity: action ? (action.disabled ? 0.4 : 1) : 0,
+              },
+            ]}
           >
-            {action?.icon === 'add' ? <Icon name="add" size={24} color={theme.primary} /> : null}
-            {action && !action.icon ? (
-              <Text numberOfLines={1} style={[styles.action, { color: theme.primary }]}>
-                {action.label}
-              </Text>
-            ) : null}
+            {action?.icon === 'add' ? (
+              <Icon name="add" size={20} color={theme.onPrimary} />
+            ) : (
+              <Icon name="check" size={20} color={theme.onPrimary} />
+            )}
           </Pressable>
         )}
       </View>
@@ -257,9 +266,8 @@ export function AgendaSheetHeader({
 const styles = StyleSheet.create({
   host: { flex: 1 },
   header: {
-    height: 56,
+    height: layout.headerHeight,
     justifyContent: 'center',
-    borderBottomWidth: Platform.OS === 'ios' ? 0 : StyleSheet.hairlineWidth,
   },
   headerBar: {
     minHeight: 44,
@@ -268,23 +276,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   side: {
-    minWidth: Platform.OS === 'android' ? 72 : 44,
+    width: 44,
     height: 44,
-    paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
+    minWidth: 44,
     justifyContent: 'center',
-    ...(Platform.OS === 'ios' ? { width: 44, alignItems: 'center' as const } : null),
+    alignItems: 'center',
   },
-  sideStart: { alignItems: 'flex-start' },
+  iconButton: {
+    borderRadius: 22,
+  },
   sideSpacer: { flex: 1 },
-  end: { alignItems: 'flex-end' },
-  cancel: { fontFamily: fonts.sansMedium, fontSize: 16 },
   title: {
     ...StyleSheet.absoluteFill,
     textAlign: 'center',
     textAlignVertical: 'center',
-    fontFamily: fonts.sansSemi,
-    fontSize: 17,
-    lineHeight: 56,
+    ...type.sheetTitle,
+    lineHeight: layout.headerHeight,
   },
-  action: { fontFamily: fonts.sansMedium, fontSize: 16 },
 });

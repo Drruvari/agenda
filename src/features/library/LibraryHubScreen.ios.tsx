@@ -6,10 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useData } from '@/data/provider/DataContext';
 import type { AgendaItem, DailyNote, Space } from '@/data/schema/types';
-import { useLibrary } from '@/features/library';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
-export default function LibraryScreen() {
+import { useLibrary } from './LibraryContext';
+
+export function LibraryHubScreen() {
   const router = useRouter();
   const { repos, revision } = useData();
   const { openCreateSpace } = useLibrary();

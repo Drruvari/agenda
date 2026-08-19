@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react';
 import type { DatabaseClient } from '@/data/database/types';
 import type { Repositories } from '@/data/repositories/repositories';
 import type { AppSettings, PlannerMode } from '@/data/schema/types';
-import type { SettingsStore } from '@/data/settings/settings';
+import type { SettingsStore } from '@/data/settings/types';
 
 export type PlannerUIState = {
   selectedDate: string;

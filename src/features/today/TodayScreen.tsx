@@ -27,8 +27,8 @@ import { INBOX_FILTER_ID, isInboxSpaceFilter } from '@/data/spaces/spaceFilter';
 import { completeAgendaTask, uncompleteAgendaTask } from '@/domain/agendaLifecycle';
 import { useAppSheets } from '@/features/app-sheets/AppSheetsContext';
 import { CalendarPickerModal } from '@/features/calendar/CalendarPickerModal';
-import { useItemEditor } from '@/features/item-editor';
-import { useLibrary } from '@/features/library';
+import { useItemEditor } from '@/features/item-editor/ItemEditorContext';
+import { useLibrary } from '@/features/library/LibraryContext';
 import { AgendaSections } from '@/features/today/components/AgendaSections';
 import { RoutinesSection } from '@/features/today/components/RoutinesSection';
 import {
@@ -889,7 +889,7 @@ function createStyles(theme: AgendaTheme) {
     },
 
     dateHeaderRow: {
-      marginTop: Platform.OS === 'ios' ? 8 : 12,
+      marginTop: 8,
       marginBottom: 20,
       flexDirection: 'row',
       alignItems: 'center',
@@ -902,8 +902,8 @@ function createStyles(theme: AgendaTheme) {
     dateTitle: {
       fontFamily: fonts.sans,
       fontWeight: '400',
-      fontSize: Platform.OS === 'ios' ? 28 : 34,
-      lineHeight: Platform.OS === 'ios' ? 34 : 41,
+      fontSize: 28,
+      lineHeight: 34,
       letterSpacing: -0.45,
       color: C.text,
     },

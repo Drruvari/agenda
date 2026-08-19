@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { useAppTheme } from '@/theme/AppThemeProvider';
+import { type } from '@/theme/type';
 
 export default function AndroidTabsLayout() {
   const theme = useAppTheme();
@@ -17,10 +18,10 @@ export default function AndroidTabsLayout() {
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: styles.label,
         tabBarStyle: {
-          backgroundColor: theme.section,
+          backgroundColor: theme.background,
           borderTopColor: theme.separator,
           borderTopWidth: StyleSheet.hairlineWidth,
-          elevation: 8,
+          elevation: 0,
         },
         tabBarItemStyle: styles.item,
       }}
@@ -29,8 +30,8 @@ export default function AndroidTabsLayout() {
         name="(today)"
         options={{
           title: 'Agenda',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Icon name="calendar" color={color as string} size={focused ? size + 2 : size} />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="calendar" color={color as string} size={size} />
           ),
         }}
       />
@@ -38,8 +39,8 @@ export default function AndroidTabsLayout() {
         name="page"
         options={{
           title: 'Page',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Icon name="writing" color={color as string} size={focused ? size + 2 : size} />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="writing" color={color as string} size={size} />
           ),
         }}
       />
@@ -47,8 +48,8 @@ export default function AndroidTabsLayout() {
         name="library"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Icon name="notebook" color={color as string} size={focused ? size + 2 : size} />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="notebook" color={color as string} size={size} />
           ),
         }}
       />
@@ -56,8 +57,8 @@ export default function AndroidTabsLayout() {
         name="search"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Icon name="search" color={color as string} size={focused ? size + 2 : size} />
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="search" color={color as string} size={size} />
           ),
         }}
       />
@@ -66,6 +67,10 @@ export default function AndroidTabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 12, fontWeight: '600' },
+  label: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 11,
+    fontWeight: '500',
+  },
   item: { paddingTop: 4 },
 });

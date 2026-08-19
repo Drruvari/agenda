@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppState, type AppStateStatus, Platform, StyleSheet, View } from 'react-native';
+import { AppState, type AppStateStatus, StyleSheet, View } from 'react-native';
 
 import { useData } from '@/data/provider/DataContext';
 import {
@@ -59,7 +59,7 @@ export function AppLockProvider({ children }: PropsWithChildren) {
   const [locked, setLocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
-  const [biometricsReady, setBiometricsReady] = useState(Platform.OS !== 'web');
+  const [biometricsReady, setBiometricsReady] = useState(false);
 
   const backgroundedAt = useRef<number | null>(null);
   const authenticatingRef = useRef(false);
@@ -124,7 +124,6 @@ export function AppLockProvider({ children }: PropsWithChildren) {
         return true;
       }
 
-      // Require authentication before disabling App Lock.
       const ok = locked ? await unlock() : await authenticateApp();
       if (!ok) return false;
 
@@ -191,7 +190,6 @@ export function AppLockProvider({ children }: PropsWithChildren) {
     return () => subscription.remove();
   }, [prefs, ready]);
 
-  // Auto-prompt once when the lock screen appears (cold start / return).
   useEffect(() => {
     if (!ready || !locked || !prefs.enabled) return;
     if (authenticatingRef.current) return;

@@ -232,9 +232,9 @@ function createStyles(theme: AgendaTheme) {
       gap: 4,
     },
     chip: {
-      width: Platform.OS === 'android' ? 40 : 34,
-      height: Platform.OS === 'android' ? 40 : 34,
-      borderRadius: Platform.OS === 'android' ? 20 : 17,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       alignItems: 'center',
       justifyContent: 'center',
     },

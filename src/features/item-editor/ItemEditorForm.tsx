@@ -1,34 +1,13 @@
-import { Host, Picker } from '@expo/ui';
-import { Button as NativeButton } from '@expo/ui/swift-ui';
-import {
-  accessibilityLabel,
-  buttonBorderShape,
-  buttonStyle,
-  controlSize,
-  disabled as nativeDisabled,
-  labelStyle,
-  tint,
-} from '@expo/ui/swift-ui/modifiers';
-import { type ReactNode, useMemo, useState } from 'react';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useMemo } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Icon } from '@/components/ui/Icon';
+import { FormRow } from '@/components/ui/form/FormRow';
+import { FormSection } from '@/components/ui/form/FormSection';
 import { NativeDateField, NativeTimeField } from '@/components/ui/NativeDateTimeField';
 import { NativeSwitch } from '@/components/ui/NativeSwitch';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import type { Priority } from '@/data/schema/types';
-import { IosChooseSpaceControl } from '@/features/library/IosChooseSpaceControl';
-import { useLibrary } from '@/features/library/LibraryContext';
 import { tokenizeSmartInput } from '@/lib/smart-parse/parseSmartInput';
 import type { SmartTokenKind } from '@/lib/smart-parse/parseSmartInput.types';
 import { ensureNotificationPermissionForReminders } from '@/native/notifications/ensureNotificationPermission';
@@ -37,6 +16,9 @@ import { type AgendaTheme, categoryColorValues } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
 import { continuousCorner, spacing } from '@/theme/tokens';
 
+import { EditorPickerRow } from './EditorPickerRow';
+import { ItemEditorHeaderActions } from './ItemEditorHeaderActions';
+import { SpacePickerRow } from './SpacePickerRow';
 import {
   DURATION_OPTIONS,
   type ItemEditorDraft,
@@ -92,7 +74,7 @@ export function ItemEditorForm({
   onSave,
   onTitleChange,
 }: ItemEditorFormProps) {
-  const { accent, colorScheme } = useAppAppearance();
+  const { accent } = useAppAppearance();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme, accent), [theme, accent]);
@@ -122,89 +104,13 @@ export function ItemEditorForm({
         <Text pointerEvents="none" numberOfLines={1} style={styles.heading}>
           {heading}
         </Text>
-        <View style={styles.headerBar}>
-          {Platform.OS === 'ios' ? (
-            <Host
-              key={`${inputKey}-close`}
-              colorScheme={colorScheme}
-              ignoreSafeArea="all"
-              matchContents
-              seedColor={accent}
-              style={styles.headerSide}
-            >
-              <NativeButton
-                label="Close"
-                modifiers={[
-                  labelStyle('iconOnly'),
-                  accessibilityLabel('Close editor'),
-                  buttonStyle('glass'),
-                  buttonBorderShape('circle'),
-                  controlSize('large'),
-                  tint(theme.textSecondary),
-                ]}
-                onPress={onDismiss}
-                systemImage="xmark"
-              />
-            </Host>
-          ) : (
-            <Pressable
-              accessibilityLabel="Cancel"
-              hitSlop={10}
-              onPress={onDismiss}
-              style={({ pressed }) => [
-                styles.headerSide,
-                styles.headerSideStart,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text numberOfLines={1} style={styles.cancel}>
-                Cancel
-              </Text>
-            </Pressable>
-          )}
-
-          <View style={styles.headerSideSpacer} />
-
-          {Platform.OS === 'ios' ? (
-            <Host
-              colorScheme={colorScheme}
-              ignoreSafeArea="all"
-              matchContents
-              seedColor={accent}
-              style={styles.headerSide}
-            >
-              <NativeButton
-                label="Save"
-                modifiers={[
-                  labelStyle('iconOnly'),
-                  accessibilityLabel('Save item'),
-                  buttonStyle('glassProminent'),
-                  buttonBorderShape('circle'),
-                  controlSize('large'),
-                  nativeDisabled(!canSave),
-                ]}
-                onPress={onSave}
-                systemImage={saving ? 'ellipsis' : 'checkmark'}
-              />
-            </Host>
-          ) : (
-            <Pressable
-              accessibilityLabel="Save"
-              disabled={!canSave}
-              hitSlop={10}
-              onPress={onSave}
-              style={({ pressed }) => [
-                styles.headerSide,
-                styles.headerSideEnd,
-                pressed && canSave && styles.pressed,
-              ]}
-            >
-              <Text numberOfLines={1} style={[styles.saveLabel, !canSave && styles.saveDisabled]}>
-                {saving ? '…' : 'Save'}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+        <ItemEditorHeaderActions
+          canSave={canSave}
+          inputKey={inputKey}
+          saving={saving}
+          onDismiss={onDismiss}
+          onSave={onSave}
+        />
       </View>
 
       <ScrollView
@@ -306,20 +212,19 @@ export function ItemEditorForm({
         ) : null}
 
         {draft.kind === 'routine' ? (
-          <FormSection title="Organization" styles={styles}>
+          <FormSection title="Organization">
             <SpacePickerRow
               label="Space"
               spaces={spaceOptions}
               value={draft.spaceId || NONE_SPACE}
               onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
-              styles={styles}
             />
-            <EditorRow label="Active" last>
+            <FormRow label="Active" last>
               <NativeSwitch
                 onValueChange={(routineActive) => onChange({ routineActive })}
                 value={draft.routineActive}
               />
-            </EditorRow>
+            </FormRow>
           </FormSection>
         ) : null}
 
@@ -411,14 +316,14 @@ function TaskFields({
 }) {
   return (
     <>
-      <FormSection title="Date & Time" styles={styles}>
-        <EditorRow label="Date">
+      <FormSection title="Date & Time">
+        <FormRow label="Date">
           <NativeDateField embedded onChange={(date) => onChange({ date })} value={draft.date} />
-        </EditorRow>
+        </FormRow>
         <TimeOffRow draft={draft} last styles={styles} onChange={onChange} />
       </FormSection>
 
-      <FormSection title="Schedule" styles={styles}>
+      <FormSection title="Schedule">
         <EditorPickerRow
           label="Repeat"
           options={RECURRENCE_OPTIONS}
@@ -453,13 +358,12 @@ function TaskFields({
         />
       </FormSection>
 
-      <FormSection title="Organization" styles={styles}>
+      <FormSection title="Organization">
         <SpacePickerRow
           label="Space"
           spaces={spaceOptions}
           value={draft.spaceId || NONE_SPACE}
           onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
-          styles={styles}
         />
         <EditorPickerRow
           label="Priority"
@@ -490,8 +394,8 @@ function EventFields({
 
   return (
     <>
-      <FormSection title="Date & Time" styles={styles}>
-        <EditorRow
+      <FormSection title="Date & Time">
+        <FormRow
           label="All-day"
           value={
             <SwitchControl
@@ -506,18 +410,18 @@ function EventFields({
             />
           }
         />
-        <EditorRow label="Starts">
+        <FormRow label="Starts">
           <NativeDateField embedded onChange={(date) => onChange({ date })} value={draft.date} />
-        </EditorRow>
+        </FormRow>
         {draft.timed ? (
-          <EditorRow label="Time">
+          <FormRow label="Time">
             <NativeTimeField
               embedded
               optional={false}
               onChange={(time) => onChange({ time, timed: Boolean(time.trim()) })}
               value={draft.time}
             />
-          </EditorRow>
+          </FormRow>
         ) : null}
         {draft.timed ? (
           <EditorPickerRow
@@ -529,14 +433,13 @@ function EventFields({
             onChange={(value) => onChange({ durationMinutes: Number(value) || 30 })}
           />
         ) : (
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Ends</Text>
+          <FormRow last label="Ends">
             <Text style={styles.mutedValue}>Same day</Text>
-          </View>
+          </FormRow>
         )}
       </FormSection>
 
-      <FormSection title="Schedule" styles={styles}>
+      <FormSection title="Schedule">
         <EditorPickerRow
           label="Repeat"
           options={RECURRENCE_OPTIONS}
@@ -562,14 +465,13 @@ function EventFields({
         />
       </FormSection>
 
-      <FormSection title="Organization" styles={styles}>
+      <FormSection title="Organization">
         <SpacePickerRow
           label="Space"
           last
           spaces={spaceOptions}
           value={draft.spaceId || NONE_SPACE}
           onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
-          styles={styles}
         />
       </FormSection>
     </>
@@ -588,17 +490,16 @@ function NoteFields({
   styles: FieldStyles;
 }) {
   return (
-    <FormSection title="Organization" styles={styles}>
-      <EditorRow label="Date">
+    <FormSection title="Organization">
+      <FormRow label="Date">
         <NativeDateField embedded onChange={(date) => onChange({ date })} value={draft.date} />
-      </EditorRow>
+      </FormRow>
       <SpacePickerRow
         label="Space"
         last
         spaces={spaceOptions}
         value={draft.spaceId || NONE_SPACE}
         onChange={(spaceId) => onChange({ spaceId: spaceId === NONE_SPACE ? '' : spaceId })}
-        styles={styles}
       />
     </FormSection>
   );
@@ -636,7 +537,7 @@ function TimeOffRow({
   }
 
   return (
-    <EditorRow
+    <FormRow
       label="Time"
       last={last}
       value={
@@ -666,23 +567,6 @@ function TimeOffRow({
   );
 }
 
-function FormSection({
-  children,
-  styles,
-  title,
-}: {
-  children: ReactNode;
-  styles: FieldStyles;
-  title: string;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>{children}</View>
-    </View>
-  );
-}
-
 function SwitchControl({
   onValueChange,
   value,
@@ -702,183 +586,6 @@ const switchWrap = {
   justifyContent: 'center' as const,
   alignItems: 'center' as const,
 };
-
-function EditorRow({
-  children,
-  label,
-  last,
-  value,
-}: {
-  children?: ReactNode;
-  label: string;
-  last?: boolean;
-  value?: ReactNode;
-}) {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, theme.primary), [theme]);
-  return (
-    <View>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <View style={styles.rowTrailing}>{value ?? children}</View>
-      </View>
-      {!last ? <View style={styles.insetSeparator} /> : null}
-    </View>
-  );
-}
-
-function SpacePickerRow({
-  label,
-  last,
-  onChange,
-  spaces,
-  styles,
-  value,
-}: {
-  label: string;
-  last?: boolean;
-  onChange: (value: string) => void;
-  spaces: { label: string; value: string }[];
-  styles: FieldStyles;
-  value: string;
-}) {
-  const { accent } = useAppAppearance();
-  const theme = useAppTheme();
-  const { openSpacePicker } = useLibrary();
-  const selected = spaces.find((option) => option.value === value)?.label ?? 'Inbox';
-
-  if (Platform.OS === 'ios') {
-    return (
-      <View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>{label}</Text>
-          <IosChooseSpaceControl onChange={onChange} spaces={spaces} value={value} />
-        </View>
-        {!last ? <View style={styles.insetSeparator} /> : null}
-      </View>
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityLabel={`${label}, ${selected}`}
-      accessibilityRole="button"
-      onPress={() =>
-        openSpacePicker(value === NONE_SPACE ? null : value, (spaceId) =>
-          onChange(spaceId ?? NONE_SPACE),
-        )
-      }
-      style={({ pressed }) => [pressed && styles.pressed]}
-    >
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <View style={styles.rowTrailing}>
-          <Text style={[styles.rowPickerValue, { color: accent }]}>{selected}</Text>
-          <Icon name="chevronRight" size={18} color={theme.textSecondary} />
-        </View>
-      </View>
-      {!last ? <View style={styles.insetSeparator} /> : null}
-    </Pressable>
-  );
-}
-
-function EditorPickerRow({
-  displayValue,
-  label,
-  last,
-  onChange,
-  options,
-  value,
-}: {
-  displayValue?: string;
-  label: string;
-  last?: boolean;
-  onChange: (value: string) => void;
-  options: { label: string; value: string }[];
-  value: string;
-}) {
-  const { accent, colorScheme } = useAppAppearance();
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, accent), [theme, accent]);
-  const [open, setOpen] = useState(false);
-  const selected = displayValue ?? options.find((option) => option.value === value)?.label ?? value;
-
-  if (Platform.OS === 'ios') {
-    return (
-      <View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>{label}</Text>
-          <Host
-            colorScheme={colorScheme}
-            ignoreSafeArea="all"
-            matchContents
-            seedColor={accent}
-            style={styles.pickerHost}
-          >
-            <Picker appearance="menu" onValueChange={onChange} selectedValue={value}>
-              {options.map((option) => (
-                <Picker.Item key={option.value} label={option.label} value={option.value} />
-              ))}
-            </Picker>
-          </Host>
-        </View>
-        {!last ? <View style={styles.insetSeparator} /> : null}
-      </View>
-    );
-  }
-
-  return (
-    <>
-      <Pressable
-        accessibilityLabel={`${label}, ${selected}`}
-        accessibilityRole="button"
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [pressed && styles.pressed]}
-      >
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>{label}</Text>
-          <Text numberOfLines={1} style={[styles.rowPickerValue, { color: accent }]}>
-            {selected}
-          </Text>
-        </View>
-        {!last ? <View style={styles.insetSeparator} /> : null}
-      </Pressable>
-
-      <Modal animationType="fade" transparent visible={open} onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.modalTitle}>{label}</Text>
-            {options.map((option) => {
-              const active = option.value === value;
-              return (
-                <Pressable
-                  key={option.value || 'none'}
-                  onPress={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.modalOption,
-                    active && styles.modalOptionActive,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.modalOptionLabel, active && { color: accent }]}>
-                    {option.label}
-                  </Text>
-                  {active ? <Icon color={accent} name="check" size={20} stroke={2.2} /> : null}
-                </Pressable>
-              );
-            })}
-            <Pressable onPress={() => setOpen(false)} style={styles.modalCancel}>
-              <Text style={[styles.modalCancelLabel, { color: accent }]}>Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </>
-  );
-}
 
 function createStyles(theme: AgendaTheme, accent: string) {
   // Transparent on iOS so the sheet's liquid-glass material shows through between cards.
@@ -904,34 +611,6 @@ function createStyles(theme: AgendaTheme, accent: string) {
       marginBottom: spacing.sm,
       backgroundColor: sheetBg,
     },
-    headerBar: {
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    headerSide: {
-      minWidth: Platform.OS === 'android' ? 72 : 44,
-      height: 44,
-      paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
-      justifyContent: 'center',
-      ...(Platform.OS === 'ios' ? { width: 44, alignItems: 'center' as const } : null),
-    },
-    headerSideStart: {
-      alignItems: 'flex-start',
-    },
-    headerSideSpacer: {
-      flex: 1,
-    },
-    headerSideEnd: {
-      alignItems: 'flex-end',
-    },
-    cancel: {
-      color: theme.textSecondary,
-      fontFamily: fonts.sansMedium,
-      fontSize: 17,
-      lineHeight: 22,
-    },
     heading: {
       ...StyleSheet.absoluteFill,
       textAlign: 'center',
@@ -940,15 +619,6 @@ function createStyles(theme: AgendaTheme, accent: string) {
       fontSize: 17,
       lineHeight: 56,
       letterSpacing: -0.2,
-    },
-    saveLabel: {
-      color: accent,
-      fontFamily: fonts.sansSemi,
-      fontSize: 17,
-      lineHeight: 22,
-    },
-    saveDisabled: {
-      opacity: 0.35,
     },
     scroll: {
       flexGrow: 1,
@@ -991,58 +661,6 @@ function createStyles(theme: AgendaTheme, accent: string) {
       ...titleTypography,
       backgroundColor: 'transparent',
     },
-    section: {
-      gap: spacing.xs,
-    },
-    sectionTitle: {
-      marginLeft: spacing.sm,
-      color: theme.textSecondary,
-      fontFamily: fonts.sans,
-      fontSize: 13,
-      lineHeight: 16,
-      letterSpacing: -0.08,
-      textTransform: 'uppercase',
-    },
-    card: {
-      overflow: 'hidden',
-      backgroundColor: cardBg,
-      ...continuousCorner(12),
-    },
-    row: {
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingLeft: spacing.lg,
-      paddingRight: spacing.lg,
-      paddingVertical: spacing.sm,
-    },
-    insetSeparator: {
-      height: StyleSheet.hairlineWidth,
-      marginLeft: spacing.lg,
-      backgroundColor: theme.separator,
-    },
-    rowLabel: {
-      flex: 1,
-      minWidth: 0,
-      color: theme.text,
-      fontFamily: fonts.sans,
-      fontSize: 17,
-      lineHeight: 22,
-      paddingRight: spacing.md,
-    },
-    rowTrailing: {
-      flexShrink: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-    },
-    rowPickerValue: {
-      flexShrink: 1,
-      textAlign: 'right',
-      fontFamily: fonts.sans,
-      fontSize: 17,
-      lineHeight: 22,
-    },
     mutedValue: {
       color: theme.textSecondary,
       fontFamily: fonts.sans,
@@ -1058,11 +676,6 @@ function createStyles(theme: AgendaTheme, accent: string) {
       fontFamily: fonts.sansSemi,
       fontSize: 15,
     },
-    pickerHost: {
-      flexShrink: 0,
-      alignSelf: 'center',
-      marginLeft: 'auto',
-    },
     detailsInput: {
       minHeight: 72,
       paddingHorizontal: spacing.lg,
@@ -1075,57 +688,6 @@ function createStyles(theme: AgendaTheme, accent: string) {
     },
     noteBody: {
       minHeight: 140,
-    },
-    modalBackdrop: {
-      flex: 1,
-      justifyContent: 'flex-end',
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      padding: spacing.md,
-      paddingBottom: spacing.lg,
-    },
-    modalSheet: {
-      overflow: 'hidden',
-      backgroundColor: theme.card,
-      ...continuousCorner(14),
-    },
-    modalTitle: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.sm,
-      color: theme.text,
-      fontFamily: fonts.sansSemi,
-      fontSize: 17,
-    },
-    modalOption: {
-      minHeight: 50,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.md,
-      paddingHorizontal: spacing.lg,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.separator,
-    },
-    modalOptionActive: {
-      backgroundColor: theme.primarySoft,
-    },
-    modalOptionLabel: {
-      flex: 1,
-      color: theme.text,
-      fontFamily: fonts.sansMedium,
-      fontSize: 16,
-      lineHeight: 22,
-    },
-    modalCancel: {
-      minHeight: 50,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.separator,
-    },
-    modalCancelLabel: {
-      fontFamily: fonts.sansSemi,
-      fontSize: 16,
     },
     deleteButton: {
       minHeight: 48,

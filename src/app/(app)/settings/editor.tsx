@@ -1,5 +1,1 @@
-import { SettingsScreen } from '@/features/settings/SettingsScreen';
-
-export default function EditorSettingsScreen() {
-  return <SettingsScreen categoryOnly initialTab="editor" />;
-}
+export { EditorSettingsScreen as default } from '@/features/settings/EditorSettingsScreen';

@@ -7,16 +7,7 @@ import {
   Text as NativeText,
 } from '@expo/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Platform,
-  PlatformColor,
-  Pressable,
-  Share,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -33,7 +24,7 @@ import {
   type ItemType,
   type Space,
 } from '@/data/schema/types';
-import { PrivacySettings } from '@/features/privacy';
+import { PrivacySettings } from '@/features/privacy/PrivacySettings';
 import { getAccentColor } from '@/theme/accent';
 import { useAppAppearance, useAppTheme } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
@@ -1162,12 +1153,8 @@ async function copyText(value: string): Promise<void> {
 }
 
 function createStyles(theme: AgendaTheme) {
-  const iosSection =
-    Platform.OS === 'ios' ? PlatformColor('secondarySystemGroupedBackground') : null;
-  const iosText = Platform.OS === 'ios' ? PlatformColor('label') : null;
-  const iosSecondaryText = Platform.OS === 'ios' ? PlatformColor('secondaryLabel') : null;
   return StyleSheet.create({
-    sections: { gap: 16 },
+    sections: { gap: 24 },
     backupWarning: {
       gap: 6,
       paddingHorizontal: 16,
@@ -1189,12 +1176,12 @@ function createStyles(theme: AgendaTheme) {
       lineHeight: 17,
     },
     settingRow: {
-      minHeight: 64,
+      minHeight: 56,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
       paddingLeft: 16,
-      paddingRight: Platform.OS === 'ios' ? 6 : 8,
+      paddingRight: 12,
       paddingVertical: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.separator,
@@ -1203,15 +1190,16 @@ function createStyles(theme: AgendaTheme) {
     lastRow: { borderBottomWidth: 0 },
     rowCopy: { flex: 1, minWidth: 0, gap: 3 },
     rowTitle: {
-      color: iosText ?? theme.text,
-      fontFamily: Platform.OS === 'ios' ? undefined : fonts.sansMedium,
+      color: theme.text,
+      fontFamily: fonts.sansMedium,
       fontSize: 16,
+      lineHeight: 22,
     },
     rowSubtitle: {
-      color: iosSecondaryText ?? theme.textSecondary,
-      fontFamily: Platform.OS === 'ios' ? undefined : fonts.sans,
-      fontSize: 13,
-      lineHeight: 18,
+      color: theme.textSecondary,
+      fontFamily: fonts.sans,
+      fontSize: 12.5,
+      lineHeight: 17,
     },
     rowValue: { color: theme.text, fontFamily: fonts.sans, fontSize: 15 },
     trailingControl: {
@@ -1273,7 +1261,7 @@ function createStyles(theme: AgendaTheme) {
       minHeight: 48,
       justifyContent: 'center',
       paddingHorizontal: 16,
-      backgroundColor: iosSection ?? theme.section,
+      backgroundColor: theme.section,
       ...continuousCorner(16),
     },
     actionText: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 15 },

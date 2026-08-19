@@ -2,13 +2,9 @@ import { Host, Switch } from '@expo/ui';
 
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
-type Props = {
-  disabled?: boolean;
-  onValueChange: (value: boolean) => void;
-  value: boolean;
-};
+import type { NativeSwitchProps } from './NativeSwitch.types';
 
-export function NativeSwitch({ disabled, onValueChange, value }: Props) {
+export function NativeSwitch({ disabled, onValueChange, value }: NativeSwitchProps) {
   const { accent, colorScheme } = useAppAppearance();
   const seedColor =
     colorScheme === 'dark' && accent.toUpperCase() === '#FFFFFF' ? '#34C759' : accent;

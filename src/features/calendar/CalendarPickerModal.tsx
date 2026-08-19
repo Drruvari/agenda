@@ -5,14 +5,14 @@ import { useAppTheme } from '@/theme/AppThemeProvider';
 import type { AgendaTheme } from '@/theme/colors';
 import { continuousCorner } from '@/theme/tokens';
 
-type Props = {
-  onChange: (date: Date) => void;
-  onClose: () => void;
-  value: Date;
-  visible: boolean;
-};
+import type { CalendarPickerModalProps } from './CalendarPickerModal.types';
 
-export function CalendarPickerModal({ onChange, onClose, value, visible }: Props) {
+export function CalendarPickerModal({
+  onChange,
+  onClose,
+  value,
+  visible,
+}: CalendarPickerModalProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const webInputStyle = useMemo<CSSProperties>(
@@ -31,16 +31,18 @@ export function CalendarPickerModal({ onChange, onClose, value, visible }: Props
     }),
     [theme],
   );
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const [year, month, day] = event.target.value.split('-').map(Number);
-    if (year && month && day) onChange(new Date(year, month - 1, day));
-  };
 
   const inputValue = [
     value.getFullYear(),
     String(value.getMonth() + 1).padStart(2, '0'),
     String(value.getDate()).padStart(2, '0'),
   ].join('-');
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const [year, month, day] = event.target.value.split('-').map(Number);
+    if (!year || !month || !day) return;
+    onChange(new Date(year, month - 1, day));
+  };
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>

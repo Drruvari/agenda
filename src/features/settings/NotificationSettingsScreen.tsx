@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SettingRadioGroup } from '@/components/ui/settings/SettingRadioGroup';
-import { useAppLock } from '@/features/privacy';
+import { useAppLock } from '@/features/privacy/AppLockProvider';
 import { NOTIFICATION_PREVIEW_OPTIONS } from '@/features/privacy/types';
 import { SettingsScaffold, SettingsSection } from '@/features/settings/SettingsChrome';
 import { getReminderAccessState, requestReminderAccess } from '@/native/notifications/reminders';

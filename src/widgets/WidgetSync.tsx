@@ -15,8 +15,7 @@ export function WidgetSync() {
   const generationRef = useRef(0);
   const dateRef = useRef(toLocalDateString());
 
-  const applyPendingAndroidToggles = useCallback(async () => {
-    if (Platform.OS !== 'android') return false;
+  const applyPendingWidgetToggles = useCallback(async () => {
     const pending = await drainPendingWidgetToggles();
     if (pending.length === 0) return false;
     for (const toggle of pending) {
@@ -34,7 +33,7 @@ export function WidgetSync() {
     const generation = Math.max(Date.now(), generationRef.current + 1);
     generationRef.current = generation;
     try {
-      const applied = await applyPendingAndroidToggles();
+      const applied = await applyPendingWidgetToggles();
       if (applied) {
         refresh();
         return;
@@ -45,7 +44,7 @@ export function WidgetSync() {
     } catch (error) {
       console.error('[widget-sync]', error);
     }
-  }, [applyPendingAndroidToggles, refresh, repos]);
+  }, [applyPendingWidgetToggles, refresh, repos]);
 
   useEffect(() => {
     void sync();
@@ -66,7 +65,7 @@ export function WidgetSync() {
       Platform.OS === 'android'
         ? setInterval(() => {
             void (async () => {
-              const applied = await applyPendingAndroidToggles();
+              const applied = await applyPendingWidgetToggles();
               if (applied) refresh();
             })();
           }, 2_000)
@@ -76,7 +75,7 @@ export function WidgetSync() {
       clearInterval(dayRollover);
       if (pendingPoll) clearInterval(pendingPoll);
     };
-  }, [applyPendingAndroidToggles, refresh, sync]);
+  }, [applyPendingWidgetToggles, refresh, sync]);
 
   return null;
 }

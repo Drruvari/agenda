@@ -1,7 +1,7 @@
 import { FieldGroup, Host, ListItem, Picker, Text } from '@expo/ui';
 import { useEffect, useState } from 'react';
 
-import { useAppLock } from '@/features/privacy';
+import { useAppLock } from '@/features/privacy/AppLockProvider';
 import { NOTIFICATION_PREVIEW_OPTIONS } from '@/features/privacy/types';
 import { getReminderAccessState, requestReminderAccess } from '@/native/notifications/reminders';
 import type { ReminderAccessState } from '@/native/notifications/reminders.types';

@@ -1,1 +1,1 @@
-export { ItemsBrowserScreen as default } from '@/features/library/ItemsBrowserScreen';
+export { LibraryHubScreen as default } from '@/features/library/LibraryHubScreen';

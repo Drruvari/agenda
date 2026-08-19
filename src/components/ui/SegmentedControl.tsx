@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Platform, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -14,33 +14,23 @@ import { fonts } from '@/theme/fonts';
 import { motion } from '@/theme/motion';
 import { continuousCorner } from '@/theme/tokens';
 
-type Option<T extends string> = {
-  value: T;
-  label: string;
-};
+import type { SegmentedControlProps } from './SegmentedControl.types';
 
-type Props<T extends string> = {
-  options: Option<T>[];
-  value: T;
-  onChange: (value: T) => void;
-  style?: StyleProp<ViewStyle>;
-};
-
-export function SegmentedControl<T extends string>({ options, value, onChange, style }: Props<T>) {
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  style,
+}: SegmentedControlProps<T>) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const reduceMotion = useReducedMotion();
   const segmentWidth = useSharedValue(0);
-  const activeIndex = useSharedValue(
-    Math.max(
-      0,
-      options.findIndex((option) => option.value === value),
-    ),
-  );
   const selectedIndex = Math.max(
     0,
     options.findIndex((option) => option.value === value),
   );
+  const activeIndex = useSharedValue(selectedIndex);
 
   useEffect(() => {
     activeIndex.set(reduceMotion ? selectedIndex : withSpring(selectedIndex, motion.snappy));
@@ -92,8 +82,8 @@ function createStyles(theme: AgendaTheme) {
       alignItems: 'center',
       padding: 3,
       backgroundColor: theme.section,
-      borderWidth: Platform.OS === 'android' ? 0 : StyleSheet.hairlineWidth,
-      borderColor: Platform.OS === 'android' ? 'transparent' : theme.separator,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.separator,
       ...continuousCorner(999),
     },
     segment: {
@@ -108,13 +98,8 @@ function createStyles(theme: AgendaTheme) {
       left: 3,
       top: 3,
       bottom: 3,
-      backgroundColor: Platform.OS === 'android' ? theme.background : theme.card,
+      backgroundColor: theme.card,
       ...continuousCorner(999),
-      shadowColor: '#000000',
-      shadowOpacity: Platform.OS === 'android' ? 0 : 0.06,
-      shadowRadius: 4,
-      shadowOffset: { width: 0, height: 1 },
-      elevation: Platform.OS === 'android' ? 0 : 1,
     },
     segmentText: {
       fontFamily: fonts.sansMedium,

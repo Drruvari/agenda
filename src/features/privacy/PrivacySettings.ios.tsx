@@ -1,9 +1,9 @@
 import { FieldGroup, Host, ListItem, Picker, Switch, Text } from '@expo/ui';
-import { Alert } from 'react-native';
 
 import { useToast } from '@/components/ui/ToastProvider';
 import { useAppAppearance } from '@/theme/AppThemeProvider';
 
+import { requestAppLockChange } from './appLockActions';
 import { useAppLock } from './AppLockProvider';
 import { LOCK_DELAY_OPTIONS, NOTIFICATION_PREVIEW_OPTIONS } from './types';
 
@@ -14,18 +14,12 @@ export function PrivacySettings() {
   const { biometricsReady, prefs, setDelay, setEnabled, setNotificationPreview } = useAppLock();
 
   const setLockEnabled = (enabled: boolean) => {
-    void (async () => {
-      if (enabled && !biometricsReady) {
-        Alert.alert(
-          'Device authentication required',
-          'Set up biometrics or a device passcode in system Settings, then try again.',
-        );
-        return;
-      }
-      if (!(await setEnabled(enabled)) && enabled) {
-        showToast('Could not enable App Lock', { tone: 'error' });
-      }
-    })();
+    void requestAppLockChange({
+      enabled,
+      biometricsReady,
+      setEnabled,
+      onFailure: () => showToast('Could not enable App Lock', { tone: 'error' }),
+    });
   };
 
   return (

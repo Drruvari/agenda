@@ -1,26 +1,24 @@
 import { Platform } from 'react-native';
 
+const sans = Platform.select({
+  ios: 'System',
+  default: 'Switzer-Regular',
+});
+
+const sansMedium = Platform.select({
+  ios: 'System',
+  default: 'Switzer-Medium',
+});
+
+const sansSemi = Platform.select({
+  ios: 'System',
+  default: 'Switzer-Semibold',
+});
+
 export const fonts = {
-  sans: Platform.select({
-    ios: 'System',
-    android: 'sans-serif',
-    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    default: 'System',
-  }),
-
-  sansMedium: Platform.select({
-    ios: 'System',
-    android: 'sans-serif-medium',
-    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    default: 'System',
-  }),
-
-  sansSemi: Platform.select({
-    ios: 'System',
-    android: 'sans-serif-medium',
-    web: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    default: 'System',
-  }),
+  sans,
+  sansMedium,
+  sansSemi,
 
   serif: Platform.select({
     ios: 'System',
@@ -50,6 +48,6 @@ export function editorFontFamily(font: string): string | undefined {
       return fonts.serif;
 
     default:
-      return Platform.OS === 'ios' ? fonts.sans : undefined;
+      return fonts.sans;
   }
 }
