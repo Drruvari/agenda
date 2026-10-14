@@ -1,129 +1,36 @@
 # Agenda
 
-Agenda is a local-first planner built with Expo SDK 57, React Native, Expo Router, and SQLite. It supports iOS, Android, and a static web build.
+Agenda is a local-first planner with fully native iOS and Android applications.
 
-## Requirements
+- `agenda-ios`: Swift 6, SwiftUI and SQLite
+- `agenda-android`: Kotlin, Jetpack Compose and SQLite
 
-- Node.js 22.13 or newer
-- npm
-- Xcode for iOS builds
-- Android Studio and an Android SDK for Android builds
+Both applications use the `com.drruvari.agenda` identity and preserve the existing `agenda.v3.db` schema.
 
-This app uses native modules and must run in a development build, not Expo Go.
+The iOS app provides:
 
-## Project structure
+- three focused destinations: Agenda, Page, and Library
+- task, event, note, space, and routine management
+- date navigation, completion tracking, priorities, reminders, and calendar mirroring
+- device calendar events and contact birthdays
+- daily text pages and `ink-v1` freehand drawing
+- Inbox, All Items, Completed, Daily Notes, Spaces, and integrated search
+- biometric privacy lock, appearance settings, local export, and WidgetKit widgets
 
-- `src/app`: Expo Router routes and navigation layouts
-- `src/features`: screens, feature state, and feature-specific logic
-- `src/components`: shared layout and UI primitives
-- `src/data`: SQLite, repositories, migrations, queries, and settings storage
-- `src/native`: platform-specific integrations
-- `src/theme`: appearance, color, typography, spacing, and motion tokens
-- `assets`: fonts, branding, and app images
-- `plugins`: Expo config plugins
+## Build iOS
 
-## Install and run
+Open `agenda-ios/AgendaNative.xcodeproj` in Xcode, select the `AgendaNative` scheme and run.
 
-Install dependencies:
+## Build Android
 
-```bash
-npm install
-```
-
-Create and launch a local development build. The first native build and every native dependency or config-plugin change requires one of these commands:
+Open `agenda-android` in Android Studio or run:
 
 ```bash
-npm run ios
-npm run android
+cd agenda-android
+./gradlew assembleDebug
+./gradlew testDebugUnitTest
 ```
 
-After the development client is installed, start Metro for normal JavaScript and TypeScript changes:
+## Data compatibility
 
-```bash
-npm start
-```
-
-Run the web app:
-
-```bash
-npm run web
-```
-
-## Quality checks
-
-Run the complete local check:
-
-```bash
-npm run check
-```
-
-Or run checks separately:
-
-```bash
-npm run typecheck
-npm run lint
-npm run lint:fix
-npm run test
-npm run test:watch
-npm run format:check
-npm run format
-npx expo-doctor
-```
-
-`npm run lint:fix` and `npm run format` modify files. The other commands above are read-only.
-
-## Native project generation
-
-The `ios` and `android` directories are generated and ignored by Git. Regenerate them after changing native dependencies, app configuration, or config plugins:
-
-```bash
-npx expo prebuild --clean
-npm run ios
-npm run android
-```
-
-`npx expo prebuild --clean` deletes and recreates both native directories. Commit app configuration and config-plugin changes, not generated native files.
-
-## Production builds
-
-Sign in and configure EAS once:
-
-```bash
-npx eas-cli login
-npx eas-cli build:configure
-```
-
-Create builds using the profiles in `eas.json`:
-
-```bash
-npx eas-cli build --profile development --platform ios
-npx eas-cli build --profile development --platform android
-npx eas-cli build --profile preview --platform ios
-npx eas-cli build --profile preview --platform android
-npx eas-cli build --profile production --platform all
-```
-
-Submit production builds:
-
-```bash
-npx eas-cli submit --platform ios
-npx eas-cli submit --platform android
-```
-
-Export the static web build to `dist`:
-
-```bash
-npx expo export --platform web
-```
-
-## Optional local cleanup
-
-These directories are generated and can be recreated:
-
-```bash
-rm -rf .expo dist
-rm -rf ios android
-rm -rf node_modules && npm install
-```
-
-Only remove `ios` and `android` when you are ready to regenerate them with `npx expo prebuild --clean` or the platform run commands.
+iOS continues to use the historical `Documents/SQLite/agenda.v3.db` location. Android uses the standard application database directory. Installing these apps as signed updates with the same store identity preserves existing planner data.
